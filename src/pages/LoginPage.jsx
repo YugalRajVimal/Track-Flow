@@ -48,7 +48,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-500 shadow-glow-md mb-4">
             <RiShip2Line className="text-white text-2xl" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">TrackFlow</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Ammiy London</h1>
           <p className="text-slate-500 mt-1.5 text-sm">Enterprise AWB Barcode Platform</p>
         </div>
 

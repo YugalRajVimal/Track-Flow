@@ -53,11 +53,12 @@ export default function Sidebar({ open, onClose }) {
       {/* Logo */}
       <div className={`flex items-center justify-between p-5 border-b ${sidebarColors.border} bg-white`}>
         <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl ${sidebarColors.logoBg} flex items-center justify-center shadow-glow-sm`}>
-            <RiShip2Line className="text-white text-lg" />
+          <div className={`w-16 h-16 flex items-center justify-center `}>
+            <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain" />
           </div>
+     
           <div>
-            <div className="font-bold text-gray-900 text-sm leading-none">TrackFlow</div>
+            <div className="font-bold text-gray-900 text-sm leading-none">Ammiy London</div>
             <div className="text-xs text-slate-500 mt-0.5">AWB Platform</div>
           </div>
         </div>
