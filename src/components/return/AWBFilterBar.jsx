@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { RiSearchLine, RiDownloadLine, RiRefreshLine, RiFileDownloadLine, RiUpload2Fill } from 'react-icons/ri'
+import { RiSearchLine, RiRefreshLine, RiUpload2Fill } from 'react-icons/ri'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import { returnAPI } from '../../api/return'
 import toast from 'react-hot-toast'
@@ -61,17 +61,6 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
             className={lightTheme.input}
           />
         </div>
-
-        {/* Status */}
-        <select
-          value={filters.status || ''}
-          onChange={e => onChange({ status: e.target.value, page: 1 })}
-          className={lightTheme.select}
-        >
-          <option value="">All Status</option>
-          <option value="dispatched">Dispatched</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
 
         {/* Channel Partner */}
         <select
