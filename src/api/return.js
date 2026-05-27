@@ -1,11 +1,11 @@
 import api from './axios'
 
 export const returnAPI = {
-  scan: (data) => api.post('/awb/scan', data),
-  list: (params) => api.get('/awb', { params }),
-  getById: (id) => api.get(`/awb/${id}`),
-  update: (id, data) => api.put(`/awb/${id}`, data),
-  delete: (id) => api.delete(`/awb/${id}`),
+  scan: (data) => api.post('/returns/scan', data),
+  list: (params) => api.get('/returns', { params }),
+  getById: (id) => api.get(`/returns/${id}`),
+  update: (id, data) => api.put(`/returns/${id}`, data),
+  delete: (id) => api.delete(`/returns/${id}`),
   exportCsv: (params) =>
     api.get('/export/awb-csv', {
       params,

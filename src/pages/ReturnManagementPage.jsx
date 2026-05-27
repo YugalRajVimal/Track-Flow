@@ -11,8 +11,8 @@ import { DataTable, Pagination } from '../components/common/DataTable'
 import StatusBadge from '../components/common/StatusBadge'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import Modal from '../components/common/Modal'
-import AWBScanForm from '../components/awb/AWBScanForm'
-import AWBFilterBar from '../components/awb/AWBFilterBar'
+import AWBScanForm from '../components/return/AWBScanForm'
+import AWBFilterBar from '../components/return/AWBFilterBar'
 
 // --- Light theme color palette overrides ---
 const textDark = 'text-slate-800'
