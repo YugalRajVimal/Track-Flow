@@ -52,7 +52,7 @@ export default function ReturnManagementPage() {
         setPagination(res.data.pagination || null)
       }
     } catch {
-      toast.error('Failed to load AWB records')
+      toast.error('Failed to load return records')
     } finally {
       setLoading(false)
     }
@@ -69,7 +69,7 @@ export default function ReturnManagementPage() {
     setDeleting(true)
     try {
       await returnAPI.delete(deleteItem._id)
-      toast.success('AWB deleted')
+      toast.success('Return deleted')
       fetchAWBs()
     } catch {
       toast.error('Delete failed')
@@ -96,7 +96,7 @@ export default function ReturnManagementPage() {
     },
     {
       key: 'awbId',
-      label: 'AWB ID',
+      label: 'Return ID',
       render: (val) => (
         <span className={`font-mono ${accent} text-xs ${bgHighlight} px-2 py-1 rounded-lg border ${accentBorder}/30`}>
           {val}
@@ -193,7 +193,7 @@ export default function ReturnManagementPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className={`${textDark} text-2xl font-bold tracking-tight`}>AWB Management</h1>
+            <h1 className={`${textDark} text-2xl font-bold tracking-tight`}>Return Management</h1>
             <p className={`${textSubtle} text-sm mt-1`}>Scan, track, and manage AWB barcodes</p>
           </div>
         </div>
@@ -229,7 +229,7 @@ export default function ReturnManagementPage() {
           {/* Right: Table */}
           <div className={`xl:col-span-2 ${bgLight} ${cardShadow} ${cardBorder} rounded-xl overflow-hidden`}>
             <div className={`p-5 border-b ${borderLight} bg-slate-50`}>
-              <h2 className={`${textDark} text-lg font-semibold mb-4`}>AWB Records</h2>
+              <h2 className={`${textDark} text-lg font-semibold mb-4`}>Return Records</h2>
               <AWBFilterBar
                 filters={filters}
                 onChange={handleFilterChange}
