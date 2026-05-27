@@ -323,13 +323,17 @@
 //     </Modal>
 //   )
 // }
-
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType, NotFoundException } from '@zxing/library'
+import {
+  BrowserMultiFormatReader,
+  BarcodeFormat,
+  DecodeHintType,
+  NotFoundException,
+} from '@zxing/library'
 import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
 import Modal from '../common/Modal'
 
-// Only 1D barcode formats — no QR, no DataMatrix, no Aztec
+// ── 1D-only formats ────────────────────────────────────────────────────────
 const BARCODE_FORMATS = [
   BarcodeFormat.CODE_128,
   BarcodeFormat.CODE_39,
@@ -343,173 +347,228 @@ const BARCODE_FORMATS = [
   BarcodeFormat.RSS_14,
 ]
 
+const BLOCKED_2D = new Set([
+  BarcodeFormat.QR_CODE,
+  BarcodeFormat.DATA_MATRIX,
+  BarcodeFormat.AZTEC,
+  BarcodeFormat.PDF_417,
+  BarcodeFormat.MAXICODE,
+])
+
+// How many consecutive identical reads before we accept the result
+const CONFIRM_THRESHOLD = 4
+
 function createReader() {
   const hints = new Map()
   hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
-  // TRY_HARDER rotates and scales the image — critical for sideways barcodes
   hints.set(DecodeHintType.TRY_HARDER, true)
+  // CHARACTER_SET helps with long CODE-128 strings like Flipkart AWB
+  hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
   return new BrowserMultiFormatReader(hints, {
-    delayBetweenScanAttempts: 100,
-    delayBetweenScanSuccess: 500,
+    delayBetweenScanAttempts: 80,   // fast polling
+    delayBetweenScanSuccess: 300,
   })
 }
 
-/**
- * Helper to list video input devices.
- * The ZXing BrowserMultiFormatReader does not always expose listVideoInputDevices in all builds/distributions,
- * so use navigator.mediaDevices.enumerateDevices() directly to get video input devices.
- */
-async function listVideoInputDevices() {
-  if (
-    typeof navigator === "undefined" ||
-    !navigator.mediaDevices ||
-    !navigator.mediaDevices.enumerateDevices
-  ) {
-    return []
-  }
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices()
-    return devices.filter((d) => d.kind === "videoinput")
-  } catch {
-    return []
+// ── Confirmation buffer ────────────────────────────────────────────────────
+// Accepts a result only after CONFIRM_THRESHOLD reads of the SAME value.
+// Also prefers the LONGEST result seen (partial reads are shorter).
+function createConfirmBuffer() {
+  const counts = {}   // value → count
+  let longestSeen = ''
+
+  return {
+    push(value) {
+      if (!value) return null
+
+      // Track longest candidate (partial reads produce shorter strings)
+      if (value.length > longestSeen.length) longestSeen = value
+
+      // Only count strings that are at least as long as the longest seen
+      // so short partial reads don't pollute the vote
+      const key = value.length >= longestSeen.length ? value : null
+      if (!key) return null
+
+      counts[key] = (counts[key] || 0) + 1
+      if (counts[key] >= CONFIRM_THRESHOLD) return key
+      return null
+    },
+    reset() {
+      Object.keys(counts).forEach(k => delete counts[k])
+      longestSeen = ''
+    },
   }
 }
 
 export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
-  const readerRef = useRef(null)
-  const videoRef = useRef(null)
+  const readerRef   = useRef(null)
+  const videoRef    = useRef(null)
   const fileInputRef = useRef(null)
-  const [error, setError] = useState(null)
-  const [mode, setMode] = useState('camera')
+  const streamRef   = useRef(null)
+  const bufferRef   = useRef(createConfirmBuffer())
+  const lockedRef   = useRef(false)   // prevent double-fire after confirm
+
+  const [mode, setMode]       = useState('camera')
+  const [error, setError]     = useState(null)
   const [scanning, setScanning] = useState(false)
   const [torchOn, setTorchOn] = useState(false)
-  const streamRef = useRef(null)
+  const [confidence, setConfidence] = useState(0)  // visual feedback 0-100
 
+  // ── Stop camera ────────────────────────────────────────────────────────
   const stopCamera = useCallback(async () => {
-    try {
-      readerRef.current?.reset()
-    } catch (_) {}
-    // Also manually stop all tracks to fully release the camera
+    lockedRef.current = false
+    bufferRef.current.reset()
+    setConfidence(0)
+    try { readerRef.current?.reset() } catch (_) {}
     streamRef.current?.getTracks().forEach(t => t.stop())
     streamRef.current = null
     setScanning(false)
     setTorchOn(false)
   }, [])
 
+  // ── Start camera ───────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
     setError(null)
     setScanning(false)
-
+    lockedRef.current = false
+    bufferRef.current.reset()
+  
     try {
       readerRef.current = createReader()
-
-      // Prefer rear/environment camera for better autofocus on barcodes
-      const devices = await listVideoInputDevices()
-      const rear = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1]
-
-      if (!rear) throw new Error('No camera found')
-
-      // Get stream manually so we can attach torch later
+  
+      // ✅ Instance method, not static
+      const devices = await readerRef.current.listVideoInputDevices()
+      if (!devices.length) throw new Error('No camera found')
+  
+      const rear =
+        devices.find(d => /back|rear|environment/i.test(d.label)) ||
+        devices[devices.length - 1]
+  
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: { exact: rear.deviceId },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          focusMode: 'continuous',        // key for reading barcodes
-          zoom: 1,
-        }
+          width:    { ideal: 1920, min: 1280 },
+          height:   { ideal: 1080, min: 720 },
+          focusMode: 'continuous',
+          exposureMode: 'continuous',
+          whiteBalanceMode: 'continuous',
+        },
       })
       streamRef.current = stream
-
+  
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
       }
-
+  
       readerRef.current.decodeFromStream(stream, videoRef.current, (result, err) => {
-        if (result) {
-          const fmt = result.getBarcodeFormat()
-          // Double-guard: reject any 2D formats
-          if ([
-            BarcodeFormat.QR_CODE,
-            BarcodeFormat.DATA_MATRIX,
-            BarcodeFormat.AZTEC,
-            BarcodeFormat.PDF_417,
-          ].includes(fmt)) return
-
-          stopCamera()
-          onScan(result.getText())
-          onClose()
+        if (!result || lockedRef.current) return
+        if (BLOCKED_2D.has(result.getBarcodeFormat())) return
+  
+        const text = result.getText()
+        if (!text || text.length < 4) return
+  
+        const confirmed = bufferRef.current.push(text)
+        setConfidence(prev => Math.min(100, prev + (confirmed ? 100 : 12)))
+  
+        if (confirmed) {
+          lockedRef.current = true
+          setConfidence(100)
+          stopCamera().then(() => {
+            onScan(confirmed)
+            onClose()
+          })
         }
-        // NotFoundException = no barcode in this frame, ignore silently
       })
-
+  
       setScanning(true)
     } catch (e) {
       const msg = e?.message || ''
       if (/permission|notallowed/i.test(msg)) {
-        setError('Camera permission denied. Please allow camera access.')
+        setError('Camera permission denied. Please allow camera access and reload.')
       } else if (/no camera/i.test(msg)) {
         setError('No camera found on this device.')
       } else {
-        setError('Could not start camera. Try uploading an image instead.')
+        setError('Camera failed to start. Try uploading an image instead.')
         console.error(e)
       }
     }
   }, [stopCamera, onScan, onClose])
 
-  // Toggle torch/flashlight
+  // ── Torch toggle ──────────────────────────────────────────────────────
   const toggleTorch = useCallback(async () => {
     const track = streamRef.current?.getVideoTracks()[0]
     if (!track) return
     try {
       await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
       setTorchOn(t => !t)
-    } catch (_) {
-      // Torch not supported on this device
-    }
+    } catch (_) {}
   }, [torchOn])
 
-  // File / image scanning
+  // ── File upload scan ──────────────────────────────────────────────────
   const handleFileChange = useCallback(async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
 
     try {
+      // Run the same image through the reader MULTIPLE times at different
+      // scales — this catches partial reads on high-res label photos
       const reader = createReader()
-      const imgEl = document.createElement('img')
-      const url = URL.createObjectURL(file)
+      const url    = URL.createObjectURL(file)
 
-      await new Promise((resolve, reject) => {
-        imgEl.onload = resolve
-        imgEl.onerror = reject
-        imgEl.src = url
-      })
+      const img = new Image()
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
 
-      const result = await reader.decodeFromImageElement(imgEl)
+      // Try at original size, then 2×, then 0.75× scale
+      const canvas  = document.createElement('canvas')
+      const ctx     = canvas.getContext('2d')
+      const scales  = [1, 1.5, 2, 0.75]
+      const results = {}
+
+      for (const scale of scales) {
+        canvas.width  = Math.round(img.naturalWidth  * scale)
+        canvas.height = Math.round(img.naturalHeight * scale)
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+        try {
+          const r = await reader.decodeFromCanvas(canvas)
+          if (r && !BLOCKED_2D.has(r.getBarcodeFormat())) {
+            const t = r.getText()
+            results[t] = (results[t] || 0) + 1
+          }
+        } catch (_) {}
+      }
+
       URL.revokeObjectURL(url)
 
-      const fmt = result.getBarcodeFormat()
-      if ([BarcodeFormat.QR_CODE, BarcodeFormat.DATA_MATRIX, BarcodeFormat.AZTEC, BarcodeFormat.PDF_417].includes(fmt)) {
-        setError('Only barcodes are supported. QR/2D codes are ignored.')
+      // Pick the value seen most often (majority vote across scales)
+      const sorted = Object.entries(results).sort((a, b) => b[1] - a[1])
+      if (sorted.length === 0) {
+        setError('No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.')
         return
       }
 
-      onScan(result.getText())
+      // Among tied winners, prefer the longest (most complete read)
+      const topCount  = sorted[0][1]
+      const topValues = sorted.filter(([, c]) => c === topCount).map(([v]) => v)
+      const best      = topValues.reduce((a, b) => (a.length >= b.length ? a : b))
+
+      onScan(best)
       onClose()
-    } catch (e) {
-      if (e instanceof NotFoundException) {
-        setError('No barcode found in this image. Try a clearer photo.')
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
       } else {
         setError('Could not read image. Please try again.')
+        console.error(err)
       }
     }
 
     e.target.value = ''
   }, [onScan, onClose])
 
-  // Lifecycle: start/stop with modal open state and mode
+  // ── Lifecycle ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return
     if (mode === 'camera') {
@@ -520,16 +579,9 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
     }
   }, [open, mode])
 
-  // Full cleanup on close
-  useEffect(() => {
-    if (!open) stopCamera()
-  }, [open])
+  useEffect(() => { if (!open) stopCamera() }, [open])
 
-  const switchMode = (m) => {
-    if (m === mode) return
-    setError(null)
-    setMode(m)
-  }
+  const switchMode = (m) => { if (m !== mode) { setError(null); setConfidence(0); setMode(m) } }
 
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
@@ -537,22 +589,15 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
 
         {/* Mode tabs */}
         <div className="flex gap-2">
-          <button
-            onClick={() => switchMode('camera')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === 'camera' ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <RiCameraLine /> Camera
-          </button>
-          <button
-            onClick={() => switchMode('file')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === 'file' ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <RiImageLine /> Upload Image
-          </button>
+          {[['camera', <RiCameraLine />, 'Camera'], ['file', <RiImageLine />, 'Upload Image']].map(([m, icon, label]) => (
+            <button key={m} onClick={() => switchMode(m)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
+                mode === m ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {icon} {label}
+            </button>
+          ))}
         </div>
 
         {/* Hint */}
@@ -560,8 +605,8 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
           <RiBarcodeLine className="text-brand-500 shrink-0" />
           <span>
             {mode === 'camera'
-              ? 'Hold steady — works with sideways barcodes too'
-              : 'Upload a photo of the shipping label'}
+              ? 'Keep barcode fully in frame and hold steady'
+              : 'Upload a clear, well-lit photo of the label'}
           </span>
         </div>
 
@@ -575,44 +620,56 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         {/* Camera view */}
         {mode === 'camera' && (
           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover"
-              muted
-              playsInline
-              autoPlay
-            />
+            <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
 
-            {/* Scanning overlay — wide short box for 1D barcodes */}
+            {/* Targeting overlay */}
             {scanning && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="relative w-4/5 h-16">
-                  {/* Corner marks */}
-                  {['top-0 left-0', 'top-0 right-0', 'bottom-0 left-0', 'bottom-0 right-0'].map((pos, i) => (
-                    <span key={i} className={`absolute ${pos} w-4 h-4 border-brand-400 border-2 ${
-                      i < 2 ? 'border-b-0' : 'border-t-0'
-                    } ${i % 2 === 0 ? 'border-r-0' : 'border-l-0'}`} />
+                {/* Dimmed surround */}
+                <div className="absolute inset-0 bg-black/30" />
+                {/* Clear window — wide & short for 1D barcodes */}
+                <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
+                  {/* Animated scan line */}
+                  <div className="absolute inset-x-0 h-0.5 bg-brand-400"
+                    style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
+                  {/* Corner accents */}
+                  {['-top-px -left-px', '-top-px -right-px', '-bottom-px -left-px', '-bottom-px -right-px'].map((p, i) => (
+                    <span key={i} className={`absolute ${p} w-3 h-3 border-brand-300`}
+                      style={{
+                        borderWidth: 2,
+                        borderTopWidth:    i < 2 ? 2 : 0,
+                        borderBottomWidth: i >= 2 ? 2 : 0,
+                        borderLeftWidth:   i % 2 === 0 ? 2 : 0,
+                        borderRightWidth:  i % 2 === 1 ? 2 : 0,
+                      }} />
                   ))}
-                  {/* Scan line animation */}
-                  <div className="absolute inset-x-0 top-0 h-0.5 bg-brand-400 opacity-80 animate-[scan_1.5s_ease-in-out_infinite]" />
                 </div>
               </div>
             )}
 
-            {/* Torch button */}
+            {/* Confidence bar */}
+            {scanning && confidence > 0 && (
+              <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/40">
+                <div
+                  className="h-full bg-brand-400 transition-all duration-150"
+                  style={{ width: `${confidence}%` }}
+                />
+              </div>
+            )}
+
+            {/* Torch */}
             {scanning && (
-              <button
-                onClick={toggleTorch}
-                className={`absolute bottom-3 right-3 p-2 rounded-full text-xs font-medium transition-colors ${
+              <button onClick={toggleTorch}
+                className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
                   torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/50 text-white'
                 }`}
               >
-                {torchOn ? '🔦 On' : '🔦'}
+                🔦 {torchOn ? 'On' : 'Off'}
               </button>
             )}
 
             {!scanning && !error && (
-              <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/40">
+              <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
                 Starting camera…
               </div>
             )}
@@ -622,20 +679,13 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         {/* File upload */}
         {mode === 'file' && (
           <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <button onClick={() => fileInputRef.current?.click()}
               className="w-full py-10 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 hover:border-brand-400 hover:text-brand-500 transition-colors text-sm flex flex-col items-center gap-2"
             >
               <RiImageLine className="text-3xl" />
               <span>Tap to choose a photo of the barcode</span>
-              <span className="text-xs text-slate-300">JPG, PNG, WebP supported</span>
+              <span className="text-xs text-slate-300">JPG · PNG · WebP</span>
             </button>
           </>
         )}
@@ -646,11 +696,11 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         </p>
       </div>
 
-      {/* Keyframe for scan line */}
       <style>{`
-        @keyframes scan {
-          0%, 100% { transform: translateY(0); opacity: 1; }
-          50% { transform: translateY(60px); opacity: 0.6; }
+        @keyframes scanline {
+          0%   { top: 0;    opacity: 1;   }
+          50%  { top: 74px; opacity: 0.7; }
+          100% { top: 0;    opacity: 1;   }
         }
       `}</style>
     </Modal>
