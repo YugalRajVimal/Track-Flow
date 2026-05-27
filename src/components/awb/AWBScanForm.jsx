@@ -227,6 +227,7 @@ export default function AWBScanForm({ onSuccess }) {
         clearErrors('awbId')
         awbInputRef.current && awbInputRef.current.focus()
         onSuccess?.()
+        // Do NOT close BarcodeScanner here per new requirements
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to scan AWB'
@@ -245,6 +246,7 @@ export default function AWBScanForm({ onSuccess }) {
       brandId: getValues('brandId'),
       awbId
     })
+    // Do NOT close BarcodeScanner after scan -- leave open
   }
 
   // Allow user to type and also submit by pressing Enter
