@@ -416,9 +416,11 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
   const [torchOn, setTorchOn] = useState(false)
   const [confidence, setConfidence] = useState(0)  // visual feedback 0-100
 
-  // Camera devices and selected device
-  const [devices, setDevices] = useState([])
-  const [activeDeviceId, setActiveDeviceId] = useState(null)
+
+// With these — add facingMode tracking too:
+const [devices, setDevices] = useState([])
+const [activeDeviceId, setActiveDeviceId] = useState(null)
+const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
 
   // ── Stop camera ────────────────────────────────────────────────────────
   const stopCamera = useCallback(async () => {
@@ -432,99 +434,125 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
     setTorchOn(false)
   }, [])
 
-  // Modified startCamera to always prioritize rear camera on first open
-  const startCamera = useCallback(
-    async (preferredDeviceId = null) => {
-      setError(null)
-      setScanning(false)
-      lockedRef.current = false
-      bufferRef.current.reset()
-      setConfidence(0)
-
-      try {
-        readerRef.current = createReader()
-        const allDevices = await readerRef.current.listVideoInputDevices()
-        if (!allDevices.length) throw new Error('No camera found')
-        setDevices(allDevices)
-
-        // Determine which camera to use
-        let selected = null
-        // If an explicit selection is made by the user
-        if (preferredDeviceId) {
-          selected = allDevices.find(d => d.deviceId === preferredDeviceId)
-        }
-        // No preferred: try to find a back/rear camera by label
-        if (!selected) {
-          selected = allDevices.find(d =>
-            /back|rear|environment/i.test(d.label)
-          )
-        }
-        // Fallback to the first one if back not found
-        if (!selected) {
-          selected = allDevices[0]
-        }
-
-        setActiveDeviceId(selected.deviceId)
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            deviceId: { exact: selected.deviceId },
-            width:    { ideal: 1920, min: 1280 },
-            height:   { ideal: 1080, min: 720 },
-            focusMode:        'continuous',
-            exposureMode:     'continuous',
-            whiteBalanceMode: 'continuous',
-          },
-        })
-        streamRef.current = stream
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
-        }
-
-        readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
-          if (!result || lockedRef.current) return
-          if (BLOCKED_2D.has(result.getBarcodeFormat())) return
-
-          const text = result.getText()
-          if (!text || text.length < 4) return
-
-          const confirmed = bufferRef.current.push(text)
-          setConfidence(prev => Math.min(100, prev + (confirmed ? 100 : 12)))
-
-          if (confirmed) {
-            lockedRef.current = true
-            setConfidence(100)
-            stopCamera().then(() => {
-              onScan(confirmed)
-              onClose()
-            })
-          }
-        })
-
-        setScanning(true)
-      } catch (e) {
-        const msg = e?.message || ''
-        if (/permission|notallowed/i.test(msg)) {
-          setError('Camera permission denied. Please allow camera access and reload.')
-        } else if (/no camera/i.test(msg)) {
-          setError('No camera found on this device.')
-        } else {
-          setError('Camera failed to start. Try uploading an image instead.')
-        }
-      }
-    },
-    [stopCamera, onScan, onClose]
-  )
-
-  // Switch camera handler — stops current, restarts with new device
-  const switchCamera = useCallback(async (deviceId) => {
-    await stopCamera()
+  const startCamera = useCallback(async (preferredDeviceId = null, preferredFacing = null) => {
+    setError(null)
+    setScanning(false)
+    lockedRef.current = false
     bufferRef.current.reset()
     setConfidence(0)
-    setTimeout(() => startCamera(deviceId), 200)
-  }, [stopCamera, startCamera])
+  
+    try {
+      readerRef.current = createReader()
+  
+      // ── Enumerate cameras ──────────────────────────────────────────────
+      // On mobile, labels are blank until after first getUserMedia call.
+      // So we request permission first with a cheap constraint, then enumerate.
+      let allDevices = []
+      try {
+        // Trigger permission prompt so labels get populated
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
+        tempStream.getTracks().forEach(t => t.stop())
+      } catch (_) {}
+  
+      allDevices = await readerRef.current.listVideoInputDevices()
+      setDevices(allDevices)
+  
+      // ── Pick device ────────────────────────────────────────────────────
+      let selected = null
+  
+      if (preferredDeviceId) {
+        // User explicitly switched to a device
+        selected = allDevices.find(d => d.deviceId === preferredDeviceId)
+      }
+  
+      if (!selected && preferredFacing) {
+        // Switch by facing mode (front/back toggle)
+        if (preferredFacing === 'environment') {
+          selected = allDevices.find(d => /back|rear|environment/i.test(d.label))
+        } else {
+          selected = allDevices.find(d => /front|user|facetime|selfie/i.test(d.label))
+        }
+      }
+  
+      if (!selected) {
+        // Default: rear camera
+        selected =
+          allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
+          allDevices[0]
+      }
+  
+      if (!selected) throw new Error('No camera found')
+  
+      setActiveDeviceId(selected.deviceId)
+  
+      // Detect facing mode from label for the flip button state
+      const isfront = /front|user|facetime|selfie/i.test(selected.label)
+      setFacingMode(isfront ? 'user' : 'environment')
+  
+      // ── Start stream ───────────────────────────────────────────────────
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId:        { exact: selected.deviceId },
+          width:           { ideal: 1920, min: 1280 },
+          height:          { ideal: 1080, min: 720 },
+          focusMode:       'continuous',
+          exposureMode:    'continuous',
+          whiteBalanceMode:'continuous',
+        },
+      })
+      streamRef.current = stream
+  
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+  
+      readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
+        if (!result || lockedRef.current) return
+        if (BLOCKED_2D.has(result.getBarcodeFormat())) return
+  
+        const text = result.getText()
+        if (!text || text.length < 4) return
+  
+        const confirmed = bufferRef.current.push(text)
+        setConfidence(prev => Math.min(100, prev + (confirmed ? 100 : 12)))
+  
+        if (confirmed) {
+          lockedRef.current = true
+          setConfidence(100)
+          stopCamera().then(() => {
+            onScan(confirmed)
+            onClose()
+          })
+        }
+      })
+  
+      setScanning(true)
+    } catch (e) {
+      const msg = e?.message || ''
+      if (/permission|notallowed/i.test(msg)) {
+        setError('Camera permission denied. Please allow camera access and reload.')
+      } else if (/no camera/i.test(msg)) {
+        setError('No camera found on this device.')
+      } else {
+        setError('Camera failed to start. Try uploading an image instead.')
+        console.error(e)
+      }
+    }
+  }, [stopCamera, onScan, onClose])
+  // Switch camera handler — stops current, restarts with new device
+  // Flip between front and back
+const flipCamera = useCallback(async () => {
+  const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
+  await stopCamera()
+  setTimeout(() => startCamera(null, nextFacing), 200)
+}, [facingMode, stopCamera, startCamera])
+
+// Switch to a specific device (for 3+ camera phones)
+const switchCamera = useCallback(async (deviceId) => {
+  await stopCamera()
+  setTimeout(() => startCamera(deviceId, null), 200)
+}, [stopCamera, startCamera])
 
   // ── Torch toggle ──────────────────────────────────────────────────────
   const toggleTorch = useCallback(async () => {
@@ -676,44 +704,53 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
             )}
 
             {/* Top controls row */}
-            {scanning && (
-              <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+        {/* Top controls row */}
+{scanning && (
+  <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
 
-                {/* Torch */}
-                <button onClick={toggleTorch}
-                  className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                    torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/50 text-white'
-                  }`}
-                >
-                  🔦 {torchOn ? 'On' : 'Off'}
-                </button>
+    {/* Torch */}
+    <button
+      onClick={toggleTorch}
+      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
+        torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
+      }`}
+    >
+      🔦 {torchOn ? 'On' : 'Off'}
+    </button>
 
-                {/* Camera dropdown */}
-                {devices.length > 1 && (
-                  <select
-                    value={activeDeviceId || ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      if (val !== activeDeviceId) switchCamera(val)
-                    }}
-                    className="bg-black/50 text-white px-2 py-1 rounded-full text-xs font-medium border-0"
-                    style={{ maxWidth: 160 }}
-                    title="Choose camera"
-                  >
-                    {devices.map((d, i) => {
-                      // Show the device label, or fallback if not present
-                      let displayLabel = d.label || `Camera ${i + 1}`
-                      if (!displayLabel.trim()) displayLabel = `Camera ${i + 1}`
-                      return (
-                        <option value={d.deviceId} key={d.deviceId}>
-                          {displayLabel}
-                        </option>
-                      )
-                    })}
-                  </select>
-                )}
-              </div>
-            )}
+    <div className="flex items-center gap-2">
+      {/* Flip camera button — always visible on mobile, works by facingMode */}
+      {devices.length > 1 && (
+        <button
+          onClick={flipCamera}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
+          title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
+        >
+          {/* Flip icon using unicode — no extra dependency */}
+          <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
+          <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
+        </button>
+      )}
+
+      {/* Extra dropdown only shown on desktop/tablet with 3+ cameras */}
+      {devices.length > 2 && (
+        <select
+          value={activeDeviceId || ''}
+          onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
+          className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
+          style={{ maxWidth: 130 }}
+        >
+          {devices.map((d, i) => (
+            <option value={d.deviceId} key={d.deviceId}>
+              {d.label?.trim() || `Camera ${i + 1}`}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+
+  </div>
+)}
 
             {!scanning && !error && (
               <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
