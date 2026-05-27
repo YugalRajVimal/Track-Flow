@@ -323,6 +323,8 @@
 //     </Modal>
 //   )
 // }
+
+
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   BrowserMultiFormatReader,
@@ -414,9 +416,9 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
   const [torchOn, setTorchOn] = useState(false)
   const [confidence, setConfidence] = useState(0)  // visual feedback 0-100
 
-  // Add to state declarations
-const [devices, setDevices] = useState([])
-const [activeDeviceId, setActiveDeviceId] = useState(null)
+  // Camera devices and selected device
+  const [devices, setDevices] = useState([])
+  const [activeDeviceId, setActiveDeviceId] = useState(null)
 
   // ── Stop camera ────────────────────────────────────────────────────────
   const stopCamera = useCallback(async () => {
@@ -430,89 +432,99 @@ const [activeDeviceId, setActiveDeviceId] = useState(null)
     setTorchOn(false)
   }, [])
 
+  // Modified startCamera to always prioritize rear camera on first open
+  const startCamera = useCallback(
+    async (preferredDeviceId = null) => {
+      setError(null)
+      setScanning(false)
+      lockedRef.current = false
+      bufferRef.current.reset()
+      setConfidence(0)
 
-// Update startCamera to accept an optional deviceId
-const startCamera = useCallback(async (preferredDeviceId = null) => {
-  setError(null)
-  setScanning(false)
-  lockedRef.current = false
-  bufferRef.current.reset()
-  setConfidence(0)
+      try {
+        readerRef.current = createReader()
+        const allDevices = await readerRef.current.listVideoInputDevices()
+        if (!allDevices.length) throw new Error('No camera found')
+        setDevices(allDevices)
 
-  try {
-    readerRef.current = createReader()
+        // Determine which camera to use
+        let selected = null
+        // If an explicit selection is made by the user
+        if (preferredDeviceId) {
+          selected = allDevices.find(d => d.deviceId === preferredDeviceId)
+        }
+        // No preferred: try to find a back/rear camera by label
+        if (!selected) {
+          selected = allDevices.find(d =>
+            /back|rear|environment/i.test(d.label)
+          )
+        }
+        // Fallback to the first one if back not found
+        if (!selected) {
+          selected = allDevices[0]
+        }
 
-    const allDevices = await readerRef.current.listVideoInputDevices()
-    if (!allDevices.length) throw new Error('No camera found')
+        setActiveDeviceId(selected.deviceId)
 
-    // Save devices list for the switcher UI
-    setDevices(allDevices)
-
-    // Priority: explicit choice → rear camera → last device
-    const selected =
-      (preferredDeviceId && allDevices.find(d => d.deviceId === preferredDeviceId)) ||
-      allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
-      allDevices[allDevices.length - 1]
-
-    setActiveDeviceId(selected.deviceId)
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        deviceId: { exact: selected.deviceId },
-        width:    { ideal: 1920, min: 1280 },
-        height:   { ideal: 1080, min: 720 },
-        focusMode:        'continuous',
-        exposureMode:     'continuous',
-        whiteBalanceMode: 'continuous',
-      },
-    })
-    streamRef.current = stream
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream
-      await videoRef.current.play()
-    }
-
-    readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
-      if (!result || lockedRef.current) return
-      if (BLOCKED_2D.has(result.getBarcodeFormat())) return
-
-      const text = result.getText()
-      if (!text || text.length < 4) return
-
-      const confirmed = bufferRef.current.push(text)
-      setConfidence(prev => Math.min(100, prev + (confirmed ? 100 : 12)))
-
-      if (confirmed) {
-        lockedRef.current = true
-        setConfidence(100)
-        stopCamera().then(() => {
-          onScan(confirmed)
-          onClose()
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: { exact: selected.deviceId },
+            width:    { ideal: 1920, min: 1280 },
+            height:   { ideal: 1080, min: 720 },
+            focusMode:        'continuous',
+            exposureMode:     'continuous',
+            whiteBalanceMode: 'continuous',
+          },
         })
+        streamRef.current = stream
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play()
+        }
+
+        readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
+          if (!result || lockedRef.current) return
+          if (BLOCKED_2D.has(result.getBarcodeFormat())) return
+
+          const text = result.getText()
+          if (!text || text.length < 4) return
+
+          const confirmed = bufferRef.current.push(text)
+          setConfidence(prev => Math.min(100, prev + (confirmed ? 100 : 12)))
+
+          if (confirmed) {
+            lockedRef.current = true
+            setConfidence(100)
+            stopCamera().then(() => {
+              onScan(confirmed)
+              onClose()
+            })
+          }
+        })
+
+        setScanning(true)
+      } catch (e) {
+        const msg = e?.message || ''
+        if (/permission|notallowed/i.test(msg)) {
+          setError('Camera permission denied. Please allow camera access and reload.')
+        } else if (/no camera/i.test(msg)) {
+          setError('No camera found on this device.')
+        } else {
+          setError('Camera failed to start. Try uploading an image instead.')
+        }
       }
-    })
+    },
+    [stopCamera, onScan, onClose]
+  )
 
-    setScanning(true)
-  } catch (e) {
-    const msg = e?.message || ''
-    if (/permission|notallowed/i.test(msg)) {
-      setError('Camera permission denied. Please allow camera access and reload.')
-    } else if (/no camera/i.test(msg)) {
-      setError('No camera found on this device.')
-    } else {
-      setError('Camera failed to start. Try uploading an image instead.')
-    }
-  }
-}, [stopCamera, onScan, onClose])
-
-// Switch camera handler — stops current, restarts with new device
-const switchCamera = useCallback(async (deviceId) => {
-  await stopCamera()
-  bufferRef.current.reset()
-  setConfidence(0)
-  setTimeout(() => startCamera(deviceId), 200)
-}, [stopCamera, startCamera])
+  // Switch camera handler — stops current, restarts with new device
+  const switchCamera = useCallback(async (deviceId) => {
+    await stopCamera()
+    bufferRef.current.reset()
+    setConfidence(0)
+    setTimeout(() => startCamera(deviceId), 200)
+  }, [stopCamera, startCamera])
 
   // ── Torch toggle ──────────────────────────────────────────────────────
   const toggleTorch = useCallback(async () => {
@@ -591,14 +603,17 @@ const switchCamera = useCallback(async (deviceId) => {
   useEffect(() => {
     if (!open) return
     if (mode === 'camera') {
-      const t = setTimeout(startCamera, 300)
+      const t = setTimeout(() => {
+        // On open/camera mode, don't pass preferredDeviceId to allow default rear-camera logic
+        startCamera(null)
+      }, 300)
       return () => { clearTimeout(t); stopCamera() }
     } else {
       stopCamera()
     }
-  }, [open, mode])
+  }, [open, mode, startCamera, stopCamera])
 
-  useEffect(() => { if (!open) stopCamera() }, [open])
+  useEffect(() => { if (!open) stopCamera() }, [open, stopCamera])
 
   const switchMode = (m) => { if (m !== mode) { setError(null); setConfidence(0); setMode(m) } }
 
@@ -636,83 +651,77 @@ const switchCamera = useCallback(async (deviceId) => {
           </div>
         )}
 
-        {/* Camera view */}
-      {/* Camera view */}
-{mode === 'camera' && (
-  <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-    <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
+        {/* Camera view with dropdown camera selector */}
+        {mode === 'camera' && (
+          <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+            <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
 
-    {/* Targeting overlay — unchanged */}
-    {scanning && (
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="absolute inset-0 bg-black/30" />
-        <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
-          <div className="absolute inset-x-0 h-0.5 bg-brand-400"
-            style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
-        </div>
-      </div>
-    )}
+            {/* Targeting overlay */}
+            {scanning && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 bg-black/30" />
+                <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
+                  <div className="absolute inset-x-0 h-0.5 bg-brand-400"
+                    style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
+                </div>
+              </div>
+            )}
 
-    {/* Confidence bar — unchanged */}
-    {scanning && confidence > 0 && (
-      <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/40">
-        <div className="h-full bg-brand-400 transition-all duration-150"
-          style={{ width: `${confidence}%` }} />
-      </div>
-    )}
+            {/* Confidence bar */}
+            {scanning && confidence > 0 && (
+              <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/40">
+                <div className="h-full bg-brand-400 transition-all duration-150"
+                  style={{ width: `${confidence}%` }} />
+              </div>
+            )}
 
-    {/* ── Top controls row ── */}
-    {scanning && (
-      <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+            {/* Top controls row */}
+            {scanning && (
+              <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
 
-        {/* Torch */}
-        <button onClick={toggleTorch}
-          className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-            torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/50 text-white'
-          }`}
-        >
-          🔦 {torchOn ? 'On' : 'Off'}
-        </button>
-
-        {/* Camera switcher — only shown when multiple cameras exist */}
-        {devices.length > 1 && (
-          <div className="flex items-center gap-1 bg-black/50 rounded-full p-1">
-            {devices.map((d, i) => {
-              const isRear  = /back|rear|environment/i.test(d.label)
-              const isFront = /front|user|facetime/i.test(d.label)
-              const isActive = d.deviceId === activeDeviceId
-
-              // Label: try to detect front/rear, else fallback to index
-              const label = isRear ? '🔭' : isFront ? '🤳' : `Cam ${i + 1}`
-
-              return (
-                <button
-                  key={d.deviceId}
-                  onClick={() => !isActive && switchCamera(d.deviceId)}
-                  title={d.label || `Camera ${i + 1}`}
-                  className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                    isActive
-                      ? 'bg-white text-slate-800'
-                      : 'text-white/70 hover:text-white'
+                {/* Torch */}
+                <button onClick={toggleTorch}
+                  className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                    torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/50 text-white'
                   }`}
                 >
-                  {label}
+                  🔦 {torchOn ? 'On' : 'Off'}
                 </button>
-              )
-            })}
+
+                {/* Camera dropdown */}
+                {devices.length > 1 && (
+                  <select
+                    value={activeDeviceId || ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      if (val !== activeDeviceId) switchCamera(val)
+                    }}
+                    className="bg-black/50 text-white px-2 py-1 rounded-full text-xs font-medium border-0"
+                    style={{ maxWidth: 160 }}
+                    title="Choose camera"
+                  >
+                    {devices.map((d, i) => {
+                      // Show the device label, or fallback if not present
+                      let displayLabel = d.label || `Camera ${i + 1}`
+                      if (!displayLabel.trim()) displayLabel = `Camera ${i + 1}`
+                      return (
+                        <option value={d.deviceId} key={d.deviceId}>
+                          {displayLabel}
+                        </option>
+                      )
+                    })}
+                  </select>
+                )}
+              </div>
+            )}
+
+            {!scanning && !error && (
+              <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
+                Starting camera…
+              </div>
+            )}
           </div>
         )}
-
-      </div>
-    )}
-
-    {!scanning && !error && (
-      <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
-        Starting camera…
-      </div>
-    )}
-  </div>
-)}
 
         {/* File upload */}
         {mode === 'file' && (
