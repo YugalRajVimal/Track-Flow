@@ -10,6 +10,7 @@ import AuditLogsPage from './pages/AuditLogsPage'
 import UsersPage from './pages/UsersPage'
 import ChannelPartnersPage from './pages/ChannelPartnersPage'
 import BrandsPage from './pages/BrandsPage'
+import ReturnManagementPage from './pages/ReturnManagementPage'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -66,6 +67,7 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="awb-management" element={<AWBManagementPage />} />
+          <Route path="return-management" element={<ReturnManagementPage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route
             path="users"
