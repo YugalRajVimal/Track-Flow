@@ -103,6 +103,8 @@ export default function AWBCancelForm({ onSuccess, userId }) {
   }
 
   const onScan = (awbId) => {
+    // Always toast on every scan that this id status set to cancel
+    toast(`AWB ${awbId} status set to cancel`, { icon: '⚠️' })
     if (submitting) {
       // Ignore scan while canceling previous AWB
       return
