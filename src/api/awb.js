@@ -2,7 +2,7 @@ import api from './axios'
 
 export const awbAPI = {
   scan: (data) => api.post('/awb/scan', data),
-  cancel: (awbId) => api.put(`/awb/cancel/${awbId}`),
+  cancel: (awbId, data) => api.put(`/awb/cancel/${awbId}`, data),
   list: (params) => api.get('/awb', { params }),
   getById: (id) => api.get(`/awb/${id}`),
   update: (id, data) => api.put(`/awb/${id}`, data),

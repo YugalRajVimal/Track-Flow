@@ -159,7 +159,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
-import { RiBarcodeLine, RiQrScanLine } from 'react-icons/ri'
+import { RiBarcodeLine, RiQrScanLine, RiSendPlane2Line, RiLoader4Line } from 'react-icons/ri'
 import { awbAPI } from '../../api/awb'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
@@ -170,17 +170,17 @@ export default function AWBScanForm({ onSuccess }) {
   const [loadingBrands, setLoadingBrands] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  
   // Used to reset only AWB field after successful scan
   const awbInputRef = useRef(null)
 
-  const { register, handleSubmit, watch, setValue, resetField, getValues, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, resetField, getValues, formState: { errors }, clearErrors, trigger } = useForm({
     defaultValues: {
       channelPartnerId: "",
       brandId: "",
       awbId: "",
     }
   })
+
   const selectedPartner = watch('channelPartnerId')
   const selectedBrand = watch('brandId')
 
@@ -196,20 +196,17 @@ export default function AWBScanForm({ onSuccess }) {
       .finally(() => setLoadingBrands(false))
   }, [selectedPartner])
 
-  // Submission triggered by onScan, not button
-  const onScan = async (awbId) => {
-    // Validate channel partner and brand selection first
-    const currentChannelPartner = getValues("channelPartnerId")
-    const currentBrand = getValues("brandId")
-    if (!currentChannelPartner) {
-      toast.error("Please select a Channel Partner before scanning a barcode")
+  // Submission triggered by onScan or Enter from input field
+  const doSubmit = async (data) => {
+    const { channelPartnerId, brandId, awbId } = data
+    // Validate partner/brand
+    if (!channelPartnerId) {
+      toast.error("Please select a Channel Partner before scanning or submitting")
       return
-    } else if (!currentBrand) {
-      toast.error("Please select a Brand before scanning a barcode")
+    } else if (!brandId) {
+      toast.error("Please select a Brand before scanning or submitting")
       return
     }
-
-    setValue('awbId', awbId)
     try {
       setSubmitting(true)
       // Validate field rules on AWB
@@ -222,17 +219,12 @@ export default function AWBScanForm({ onSuccess }) {
         toast.error("AWB must be 6-30 alphanumeric characters.")
         return
       }
-      // Submit scan
-      const data = {
-        channelPartnerId: currentChannelPartner,
-        brandId: currentBrand,
-        awbId,
-      }
-      const res = await awbAPI.scan(data)
+      const res = await awbAPI.scan({ channelPartnerId, brandId, awbId })
       if (res.data?.success) {
         toast.success(res.data.message || `AWB ${awbId} scanned successfully`)
         // Only clear AWB field -- keep Channel Partner and Brand
         setValue('awbId', '')
+        clearErrors('awbId')
         awbInputRef.current && awbInputRef.current.focus()
         onSuccess?.()
       }
@@ -244,6 +236,34 @@ export default function AWBScanForm({ onSuccess }) {
     }
   }
 
+  // If barcode scanner returns, treat same as manual submit
+  const onScan = async (awbId) => {
+    setValue('awbId', awbId, { shouldValidate: true, shouldDirty: true })
+    clearErrors('awbId')
+    doSubmit({
+      channelPartnerId: getValues('channelPartnerId'),
+      brandId: getValues('brandId'),
+      awbId
+    })
+  }
+
+  // Allow user to type and also submit by pressing Enter
+  const handleAWBKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSubmit(doSubmit)()
+    }
+  }
+
+  // OnChange updates error message live as the user types
+  const handleAWBChange = (e) => {
+    setValue('awbId', e.target.value, { shouldValidate: true, shouldDirty: true })
+    // Clear "AWB ID is required" error as soon as user types
+    if (errors.awbId && e.target.value) {
+      clearErrors('awbId')
+    }
+  }
+
   // Light theme classes
   const baseInput =
     "input-field pl-9 font-mono bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:ring-blue-200"
@@ -252,6 +272,8 @@ export default function AWBScanForm({ onSuccess }) {
   const baseLabel = "label text-slate-700"
   const baseButtonSecondary =
     "btn-secondary px-3 flex-shrink-0 bg-slate-100 border border-slate-300 hover:bg-blue-100 text-blue-600"
+  const baseButtonPrimary =
+    "btn-primary px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 font-semibold"
   const errorText = "text-pink-600 text-xs mt-1"
 
   return (
@@ -264,7 +286,7 @@ export default function AWBScanForm({ onSuccess }) {
         title="Scan AWB Barcode"
       />
 
-      <form className="space-y-4" autoComplete="off" onSubmit={e => e.preventDefault()}>
+      <form className="space-y-4" autoComplete="off" onSubmit={handleSubmit(doSubmit)}>
         {/* Channel Partner */}
         <div>
           <label className={baseLabel}>Channel Partner *</label>
@@ -272,6 +294,7 @@ export default function AWBScanForm({ onSuccess }) {
             <select
               {...register('channelPartnerId', { required: 'Channel partner is required' })}
               className={baseSelect}
+              disabled={submitting}
             >
               <option value="">Select channel partner...</option>
               {partners.map(p => (
@@ -290,7 +313,7 @@ export default function AWBScanForm({ onSuccess }) {
           <select
             {...register('brandId', { required: 'Brand is required' })}
             className={baseSelect}
-            disabled={!selectedPartner || loadingBrands}
+            disabled={!selectedPartner || loadingBrands || submitting}
           >
             <option value="">
               {!selectedPartner ? 'Select partner first...' : loadingBrands ? 'Loading brands...' : 'Select brand...'}
@@ -304,7 +327,7 @@ export default function AWBScanForm({ onSuccess }) {
           )}
         </div>
 
-        {/* AWB ID */}
+        {/* AWB ID field (manual input allowed, scan also works, Enter submits) */}
         <div>
           <label className={baseLabel}>AWB ID *</label>
           <div className="flex gap-2">
@@ -321,9 +344,9 @@ export default function AWBScanForm({ onSuccess }) {
                 placeholder="AWB123456"
                 autoComplete="off"
                 ref={awbInputRef}
-                // User cannot type manually
-                readOnly
-                tabIndex={-1}
+                onKeyDown={handleAWBKeyDown}
+                onChange={handleAWBChange}
+                disabled={submitting}
               />
             </div>
             <button
@@ -340,7 +363,13 @@ export default function AWBScanForm({ onSuccess }) {
             <p className={errorText}>{errors.awbId.message}</p>
           )}
         </div>
-        {/* The submit button is removed. Scan triggers submit. */}
+        <button type="submit" disabled={submitting} className={baseButtonPrimary}>
+          {submitting ? (
+            <><RiLoader4Line className="animate-spin" /> Scanning...</>
+          ) : (
+            <><RiSendPlane2Line /> Submit Scan</>
+          )}
+        </button>
       </form>
     </>
   )

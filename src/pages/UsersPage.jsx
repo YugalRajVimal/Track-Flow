@@ -31,6 +31,10 @@ const USER_FIELDS = [
     validation: { minLength: { value: 6, message: 'Min 6 characters' } }
   },
   {
+    name: 'passcode', label: 'Passcode', type: 'text', required: true, placeholder: 'e.g. 12345',
+    validation: { pattern: { value: /^\d{5}$/, message: 'Passcode must be exactly 5 digits' } }
+  },
+  {
     name: 'role', label: 'Role', type: 'select', required: true,
     options: [{ value: 'admin', label: 'Admin' }, { value: 'user', label: 'User' }]
   },
@@ -67,6 +71,7 @@ export default function UsersPage() {
       if (editing) {
         const payload = { ...data }
         if (!payload.password) delete payload.password
+        if (!payload.passcode) delete payload.passcode
         await usersAPI.update(editing._id, payload)
         toast.success('User updated')
       } else {
@@ -104,6 +109,10 @@ export default function UsersPage() {
   const columns = [
     { key: 'name', label: 'Name', render: v => <span className={styles.neutral}>{v}</span> },
     { key: 'email', label: 'Email', render: v => <span className={`${styles.labelSecondary} text-xs`}>{v}</span> },
+    {
+      key: 'passcode', label: 'Passcode',
+      render: v => <span className="text-xs">{v ? v : <span className={styles.muted}>—</span>}</span>
+    },
     {
       key: 'role', label: 'Role',
       render: v => (
@@ -160,7 +169,13 @@ export default function UsersPage() {
         onSubmit={handleSave}
         title={editing ? 'Edit User' : 'Add User'}
         fields={editing
-          ? USER_FIELDS.map(f => f.name === 'password' ? { ...f, required: false } : f)
+          ? USER_FIELDS.map(f =>
+              f.name === 'password'
+                ? { ...f, required: false }
+                : f.name === 'passcode'
+                ? { ...f, required: false }
+                : f
+            )
           : USER_FIELDS
         }
         defaultValues={editing || {}}

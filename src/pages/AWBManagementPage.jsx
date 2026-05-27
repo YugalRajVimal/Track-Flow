@@ -48,6 +48,7 @@ export default function AWBManagementPage() {
     try {
       const res = await awbAPI.list(filters)
       if (res.data?.success) {
+
         setAwbs(res.data.data || [])
         setPagination(res.data.pagination || null)
       }
