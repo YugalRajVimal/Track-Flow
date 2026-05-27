@@ -416,11 +416,13 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
   const [torchOn, setTorchOn] = useState(false)
   const [confidence, setConfidence] = useState(0)  // visual feedback 0-100
 
+  // New: Track the last successfully scanned barcode value for display
+  const [lastScannedValue, setLastScannedValue] = useState(null);
 
-// With these — add facingMode tracking too:
-const [devices, setDevices] = useState([])
-const [activeDeviceId, setActiveDeviceId] = useState(null)
-const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
+  // With these — add facingMode tracking too:
+  const [devices, setDevices] = useState([])
+  const [activeDeviceId, setActiveDeviceId] = useState(null)
+  const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
 
   // ── Stop camera ────────────────────────────────────────────────────────
   const stopCamera = useCallback(async () => {
@@ -520,9 +522,11 @@ const [facingMode, setFacingMode] = useState('environment') // 'environment'=rea
         if (confirmed) {
           lockedRef.current = true
           setConfidence(100)
+          setLastScannedValue(confirmed)
           stopCamera().then(() => {
             onScan(confirmed)
-            onClose()
+            // REMOVE: onClose() so modal does not close automatically
+            // onClose()
           })
         }
       })
@@ -539,20 +543,21 @@ const [facingMode, setFacingMode] = useState('environment') // 'environment'=rea
         console.error(e)
       }
     }
-  }, [stopCamera, onScan, onClose])
+  }, [stopCamera, onScan /* onClose intentionally removed from deps */])
+
   // Switch camera handler — stops current, restarts with new device
   // Flip between front and back
-const flipCamera = useCallback(async () => {
-  const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
-  await stopCamera()
-  setTimeout(() => startCamera(null, nextFacing), 200)
-}, [facingMode, stopCamera, startCamera])
+  const flipCamera = useCallback(async () => {
+    const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
+    await stopCamera()
+    setTimeout(() => startCamera(null, nextFacing), 200)
+  }, [facingMode, stopCamera, startCamera])
 
-// Switch to a specific device (for 3+ camera phones)
-const switchCamera = useCallback(async (deviceId) => {
-  await stopCamera()
-  setTimeout(() => startCamera(deviceId, null), 200)
-}, [stopCamera, startCamera])
+  // Switch to a specific device (for 3+ camera phones)
+  const switchCamera = useCallback(async (deviceId) => {
+    await stopCamera()
+    setTimeout(() => startCamera(deviceId, null), 200)
+  }, [stopCamera, startCamera])
 
   // ── Torch toggle ──────────────────────────────────────────────────────
   const toggleTorch = useCallback(async () => {
@@ -613,8 +618,10 @@ const switchCamera = useCallback(async (deviceId) => {
       const topValues = sorted.filter(([, c]) => c === topCount).map(([v]) => v)
       const best      = topValues.reduce((a, b) => (a.length >= b.length ? a : b))
 
+      setLastScannedValue(best)
       onScan(best)
-      onClose()
+      // Do not close modal
+      // onClose()
     } catch (err) {
       if (err instanceof NotFoundException) {
         setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
@@ -625,7 +632,7 @@ const switchCamera = useCallback(async (deviceId) => {
     }
 
     e.target.value = ''
-  }, [onScan, onClose])
+  }, [onScan])
 
   // ── Lifecycle ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -679,6 +686,20 @@ const switchCamera = useCallback(async (deviceId) => {
           </div>
         )}
 
+        {/* Success - Last scanned value display */}
+        {lastScannedValue && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-green-700 text-sm flex items-center gap-2">
+            <span className="font-semibold">Scanned:</span>
+            <span className="font-mono break-all">{lastScannedValue}</span>
+            <button
+              className="ml-auto px-2 py-1 rounded text-xs bg-green-200 hover:bg-green-300 text-green-800"
+              onClick={() => setLastScannedValue(null)}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {/* Camera view with dropdown camera selector */}
         {mode === 'camera' && (
           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
@@ -704,53 +725,52 @@ const switchCamera = useCallback(async (deviceId) => {
             )}
 
             {/* Top controls row */}
-        {/* Top controls row */}
-{scanning && (
-  <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+            {scanning && (
+              <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
 
-    {/* Torch */}
-    <button
-      onClick={toggleTorch}
-      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
-        torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
-      }`}
-    >
-      🔦 {torchOn ? 'On' : 'Off'}
-    </button>
+                {/* Torch */}
+                <button
+                  onClick={toggleTorch}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
+                    torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
+                  }`}
+                >
+                  🔦 {torchOn ? 'On' : 'Off'}
+                </button>
 
-    <div className="flex items-center gap-2">
-      {/* Flip camera button — always visible on mobile, works by facingMode */}
-      {devices.length > 1 && (
-        <button
-          onClick={flipCamera}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
-          title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
-        >
-          {/* Flip icon using unicode — no extra dependency */}
-          <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
-          <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
-        </button>
-      )}
+                <div className="flex items-center gap-2">
+                  {/* Flip camera button — always visible on mobile, works by facingMode */}
+                  {devices.length > 1 && (
+                    <button
+                      onClick={flipCamera}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
+                      title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
+                    >
+                      {/* Flip icon using unicode — no extra dependency */}
+                      <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
+                      <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
+                    </button>
+                  )}
 
-      {/* Extra dropdown only shown on desktop/tablet with 3+ cameras */}
-      {devices.length > 2 && (
-        <select
-          value={activeDeviceId || ''}
-          onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
-          className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
-          style={{ maxWidth: 130 }}
-        >
-          {devices.map((d, i) => (
-            <option value={d.deviceId} key={d.deviceId}>
-              {d.label?.trim() || `Camera ${i + 1}`}
-            </option>
-          ))}
-        </select>
-      )}
-    </div>
+                  {/* Extra dropdown only shown on desktop/tablet with 3+ cameras */}
+                  {devices.length > 2 && (
+                    <select
+                      value={activeDeviceId || ''}
+                      onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
+                      className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
+                      style={{ maxWidth: 130 }}
+                    >
+                      {devices.map((d, i) => (
+                        <option value={d.deviceId} key={d.deviceId}>
+                          {d.label?.trim() || `Camera ${i + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
 
-  </div>
-)}
+              </div>
+            )}
 
             {!scanning && !error && (
               <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
