@@ -354,6 +354,27 @@ function createReader() {
   })
 }
 
+/**
+ * Helper to list video input devices.
+ * The ZXing BrowserMultiFormatReader does not always expose listVideoInputDevices in all builds/distributions,
+ * so use navigator.mediaDevices.enumerateDevices() directly to get video input devices.
+ */
+async function listVideoInputDevices() {
+  if (
+    typeof navigator === "undefined" ||
+    !navigator.mediaDevices ||
+    !navigator.mediaDevices.enumerateDevices
+  ) {
+    return []
+  }
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    return devices.filter((d) => d.kind === "videoinput")
+  } catch {
+    return []
+  }
+}
+
 export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
   const readerRef = useRef(null)
   const videoRef = useRef(null)
@@ -383,7 +404,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
       readerRef.current = createReader()
 
       // Prefer rear/environment camera for better autofocus on barcodes
-      const devices = await BrowserMultiFormatReader.listVideoInputDevices()
+      const devices = await listVideoInputDevices()
       const rear = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1]
 
       if (!rear) throw new Error('No camera found')
