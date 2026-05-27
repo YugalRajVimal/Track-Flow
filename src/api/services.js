@@ -10,6 +10,7 @@ export const usersAPI = {
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
   toggleStatus: (id, data) => api.patch(`/users/${id}/status`, data),
+ 
 }
 
 export const channelPartnersAPI = {

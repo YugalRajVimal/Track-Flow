@@ -7,6 +7,7 @@ export const awbAPI = {
   getById: (id) => api.get(`/awb/${id}`),
   update: (id, data) => api.put(`/awb/${id}`, data),
   delete: (id) => api.delete(`/awb/${id}`),
+  verifyPasscode: (passcode) => api.post('/awb/verify-passcode', { passcode }),
   exportCsv: (params) =>
     api.get('/export/awb-csv', {
       params,
