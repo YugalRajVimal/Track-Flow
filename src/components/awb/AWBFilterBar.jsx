@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { RiSearchLine, RiDownloadLine, RiRefreshLine } from 'react-icons/ri'
+import { RiSearchLine, RiDownloadLine, RiRefreshLine, RiFileDownloadLine, RiUpload2Fill } from 'react-icons/ri'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import { awbAPI } from '../../api/awb'
 import toast from 'react-hot-toast'
@@ -131,7 +131,7 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
             className={`${lightTheme.button} ${exporting ? lightTheme.buttonDisabled : ''}`}
             type="button"
           >
-            <RiDownloadLine />
+            <RiUpload2Fill/>
             {exporting ? 'Exporting...' : 'Export CSV'}
           </button>
         </div>
