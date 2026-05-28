@@ -1,6 +1,918 @@
 
 
 
+// // import React, { useEffect, useRef, useState, useCallback } from 'react'
+// // import {
+// //   BrowserMultiFormatReader,
+// //   BarcodeFormat,
+// //   DecodeHintType,
+// //   NotFoundException,
+// // } from '@zxing/library'
+// // import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
+// // import Modal from '../common/Modal'
+
+// // // ── 1D-only formats ────────────────────────────────────────────────────────
+// // const BARCODE_FORMATS = [
+// //   BarcodeFormat.CODE_128,
+// //   BarcodeFormat.CODE_39,
+// //   BarcodeFormat.CODE_93,
+// //   BarcodeFormat.EAN_13,
+// //   BarcodeFormat.EAN_8,
+// //   BarcodeFormat.UPC_A,
+// //   BarcodeFormat.UPC_E,
+// //   BarcodeFormat.ITF,
+// //   BarcodeFormat.CODABAR,
+// //   BarcodeFormat.RSS_14,
+// // ]
+
+// // const BLOCKED_2D = new Set([
+// //   BarcodeFormat.QR_CODE,
+// //   BarcodeFormat.DATA_MATRIX,
+// //   BarcodeFormat.AZTEC,
+// //   BarcodeFormat.PDF_417,
+// //   BarcodeFormat.MAXICODE,
+// // ])
+
+// // // How many consecutive identical reads before we accept the result
+// // const CONFIRM_THRESHOLD = 4
+
+// // function createReader() {
+// //   const hints = new Map()
+// //   hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
+// //   hints.set(DecodeHintType.TRY_HARDER, true)
+// //   // CHARACTER_SET helps with long CODE-128 strings like Flipkart AWB
+// //   hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
+// //   return new BrowserMultiFormatReader(hints, {
+// //     delayBetweenScanAttempts: 80,   // fast polling
+// //     delayBetweenScanSuccess: 300,
+// //   })
+// // }
+
+// // // ── Confirmation buffer ────────────────────────────────────────────────────
+// // // Accepts a result only after CONFIRM_THRESHOLD reads of the SAME value.
+// // // Also prefers the LONGEST result seen (partial reads are shorter).
+// // function createConfirmBuffer() {
+// //   const counts = {}   // value → count
+// //   let longestSeen = ''
+
+// //   return {
+// //     push(value) {
+// //       if (!value) return null
+
+// //       // Track longest candidate (partial reads produce shorter strings)
+// //       if (value.length > longestSeen.length) longestSeen = value
+
+// //       // Only count strings that are at least as long as the longest seen
+// //       // so short partial reads don't pollute the vote
+// //       const key = value.length >= longestSeen.length ? value : null
+// //       if (!key) return null
+
+// //       counts[key] = (counts[key] || 0) + 1
+// //       if (counts[key] >= CONFIRM_THRESHOLD) return key
+// //       return null
+// //     },
+// //     reset() {
+// //       Object.keys(counts).forEach(k => delete counts[k])
+// //       longestSeen = ''
+// //     },
+// //   }
+// // }
+
+// // export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
+// //   const readerRef   = useRef(null)
+// //   const videoRef    = useRef(null)
+// //   const fileInputRef = useRef(null)
+// //   const streamRef   = useRef(null)
+// //   const bufferRef   = useRef(createConfirmBuffer())
+// //   const lockedRef   = useRef(false)   // prevent double-fire after confirm
+
+// //   const [mode, setMode]       = useState('camera')
+// //   const [error, setError]     = useState(null)
+// //   const [scanning, setScanning] = useState(false)
+// //   const [torchOn, setTorchOn] = useState(false)
+// //   const [confidence, setConfidence] = useState(0)  // visual feedback 0-100
+
+// //   // New: Track the last successfully scanned barcode value for display
+// //   const [lastScannedValue, setLastScannedValue] = useState(null);
+
+// //   // With these — add facingMode tracking too:
+// //   const [devices, setDevices] = useState([])
+// //   const [activeDeviceId, setActiveDeviceId] = useState(null)
+// //   const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
+
+// //   // ── Stop camera ────────────────────────────────────────────────────────
+// //   const stopCamera = useCallback(async () => {
+// //     lockedRef.current = false
+// //     bufferRef.current.reset()
+// //     setConfidence(0)
+// //     try { readerRef.current?.reset() } catch (_) {}
+// //     streamRef.current?.getTracks().forEach(t => t.stop())
+// //     streamRef.current = null
+// //     setScanning(false)
+// //     setTorchOn(false)
+// //   }, [])
+
+// //   const startCamera = useCallback(async (preferredDeviceId = null, preferredFacing = null) => {
+// //     setError(null)
+// //     setScanning(false)
+// //     lockedRef.current = false
+// //     bufferRef.current.reset()
+// //     setConfidence(0)
+  
+// //     try {
+// //       readerRef.current = createReader()
+  
+// //       // ── Enumerate cameras ──────────────────────────────────────────────
+// //       // On mobile, labels are blank until after first getUserMedia call.
+// //       // So we request permission first with a cheap constraint, then enumerate.
+// //       let allDevices = []
+// //       try {
+// //         // Trigger permission prompt so labels get populated
+// //         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
+// //         tempStream.getTracks().forEach(t => t.stop())
+// //       } catch (_) {}
+  
+// //       allDevices = await readerRef.current.listVideoInputDevices()
+// //       setDevices(allDevices)
+  
+// //       // ── Pick device ────────────────────────────────────────────────────
+// //       let selected = null
+  
+// //       if (preferredDeviceId) {
+// //         // User explicitly switched to a device
+// //         selected = allDevices.find(d => d.deviceId === preferredDeviceId)
+// //       }
+  
+// //       if (!selected && preferredFacing) {
+// //         // Switch by facing mode (front/back toggle)
+// //         if (preferredFacing === 'environment') {
+// //           selected = allDevices.find(d => /back|rear|environment/i.test(d.label))
+// //         } else {
+// //           selected = allDevices.find(d => /front|user|facetime|selfie/i.test(d.label))
+// //         }
+// //       }
+  
+// //       if (!selected) {
+// //         // Default: rear camera
+// //         selected =
+// //           allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
+// //           allDevices[0]
+// //       }
+  
+// //       if (!selected) throw new Error('No camera found')
+  
+// //       setActiveDeviceId(selected.deviceId)
+  
+// //       // Detect facing mode from label for the flip button state
+// //       const isfront = /front|user|facetime|selfie/i.test(selected.label)
+// //       setFacingMode(isfront ? 'user' : 'environment')
+  
+// //       // ── Start stream ───────────────────────────────────────────────────
+// //       const stream = await navigator.mediaDevices.getUserMedia({
+// //         video: {
+// //           deviceId:        { exact: selected.deviceId },
+// //           width:           { ideal: 1920, min: 1280 },
+// //           height:          { ideal: 1080, min: 720 },
+// //           focusMode:       'continuous',
+// //           exposureMode:    'continuous',
+// //           whiteBalanceMode:'continuous',
+// //         },
+// //       })
+// //       streamRef.current = stream
+  
+// //       if (videoRef.current) {
+// //         videoRef.current.srcObject = stream
+// //         await videoRef.current.play()
+// //       }
+  
+// //       readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
+// //         if (!result || lockedRef.current) return
+// //         if (BLOCKED_2D.has(result.getBarcodeFormat())) return
+  
+// //         const text = result.getText()
+// //         if (!text || text.length < 4) return
+  
+// //         const confirmed = bufferRef.current.push(text)
+// //         setConfidence(prev => Math.min(100, prev + (confirmed ? 100 : 12)))
+  
+// //         if (confirmed) {
+// //           lockedRef.current = true
+// //           setConfidence(100)
+// //           setLastScannedValue(confirmed)
+// //           stopCamera().then(() => {
+// //             onScan(confirmed)
+// //             // REMOVE: onClose() so modal does not close automatically
+// //             // onClose()
+// //           })
+// //         }
+// //       })
+  
+// //       setScanning(true)
+// //     } catch (e) {
+// //       const msg = e?.message || ''
+// //       if (/permission|notallowed/i.test(msg)) {
+// //         setError('Camera permission denied. Please allow camera access and reload.')
+// //       } else if (/no camera/i.test(msg)) {
+// //         setError('No camera found on this device.')
+// //       } else {
+// //         setError('Camera failed to start. Try uploading an image instead.')
+// //         console.error(e)
+// //       }
+// //     }
+// //   }, [stopCamera, onScan /* onClose intentionally removed from deps */])
+
+// //   // Switch camera handler — stops current, restarts with new device
+// //   // Flip between front and back
+// //   const flipCamera = useCallback(async () => {
+// //     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
+// //     await stopCamera()
+// //     setTimeout(() => startCamera(null, nextFacing), 200)
+// //   }, [facingMode, stopCamera, startCamera])
+
+// //   // Switch to a specific device (for 3+ camera phones)
+// //   const switchCamera = useCallback(async (deviceId) => {
+// //     await stopCamera()
+// //     setTimeout(() => startCamera(deviceId, null), 200)
+// //   }, [stopCamera, startCamera])
+
+// //   // ── Torch toggle ──────────────────────────────────────────────────────
+// //   const toggleTorch = useCallback(async () => {
+// //     const track = streamRef.current?.getVideoTracks()[0]
+// //     if (!track) return
+// //     try {
+// //       await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
+// //       setTorchOn(t => !t)
+// //     } catch (_) {}
+// //   }, [torchOn])
+
+// //   // ── File upload scan ──────────────────────────────────────────────────
+// //   const handleFileChange = useCallback(async (e) => {
+// //     const file = e.target.files?.[0]
+// //     if (!file) return
+// //     setError(null)
+
+// //     try {
+// //       // Run the same image through the reader MULTIPLE times at different
+// //       // scales — this catches partial reads on high-res label photos
+// //       const reader = createReader()
+// //       const url    = URL.createObjectURL(file)
+
+// //       const img = new Image()
+// //       await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
+
+// //       // Try at original size, then 2×, then 0.75× scale
+// //       const canvas  = document.createElement('canvas')
+// //       const ctx     = canvas.getContext('2d')
+// //       const scales  = [1, 1.5, 2, 0.75]
+// //       const results = {}
+
+// //       for (const scale of scales) {
+// //         canvas.width  = Math.round(img.naturalWidth  * scale)
+// //         canvas.height = Math.round(img.naturalHeight * scale)
+// //         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+// //         try {
+// //           const r = await reader.decodeFromCanvas(canvas)
+// //           if (r && !BLOCKED_2D.has(r.getBarcodeFormat())) {
+// //             const t = r.getText()
+// //             results[t] = (results[t] || 0) + 1
+// //           }
+// //         } catch (_) {}
+// //       }
+
+// //       URL.revokeObjectURL(url)
+
+// //       // Pick the value seen most often (majority vote across scales)
+// //       const sorted = Object.entries(results).sort((a, b) => b[1] - a[1])
+// //       if (sorted.length === 0) {
+// //         setError('No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.')
+// //         return
+// //       }
+
+// //       // Among tied winners, prefer the longest (most complete read)
+// //       const topCount  = sorted[0][1]
+// //       const topValues = sorted.filter(([, c]) => c === topCount).map(([v]) => v)
+// //       const best      = topValues.reduce((a, b) => (a.length >= b.length ? a : b))
+
+// //       setLastScannedValue(best)
+// //       onScan(best)
+// //       // Do not close modal
+// //       // onClose()
+// //     } catch (err) {
+// //       if (err instanceof NotFoundException) {
+// //         setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
+// //       } else {
+// //         setError('Could not read image. Please try again.')
+// //         console.error(err)
+// //       }
+// //     }
+
+// //     e.target.value = ''
+// //   }, [onScan])
+
+// //   // ── Lifecycle ─────────────────────────────────────────────────────────
+// //   useEffect(() => {
+// //     if (!open) return
+// //     if (mode === 'camera') {
+// //       const t = setTimeout(() => {
+// //         // On open/camera mode, don't pass preferredDeviceId to allow default rear-camera logic
+// //         startCamera(null)
+// //       }, 300)
+// //       return () => { clearTimeout(t); stopCamera() }
+// //     } else {
+// //       stopCamera()
+// //     }
+// //   }, [open, mode, startCamera, stopCamera])
+
+// //   useEffect(() => { if (!open) stopCamera() }, [open, stopCamera])
+
+// //   const switchMode = (m) => { if (m !== mode) { setError(null); setConfidence(0); setMode(m) } }
+
+// //   return (
+// //     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
+// //       <div className="space-y-4 bg-white text-slate-800">
+
+// //         {/* Mode tabs */}
+// //         <div className="flex gap-2">
+// //           {[['camera', <RiCameraLine />, 'Camera'], ['file', <RiImageLine />, 'Upload Image']].map(([m, icon, label]) => (
+// //             <button key={m} onClick={() => switchMode(m)}
+// //               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
+// //                 mode === m ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+// //               }`}
+// //             >
+// //               {icon} {label}
+// //             </button>
+// //           ))}
+// //         </div>
+
+// //         {/* Hint */}
+// //         <div className="flex items-center gap-2 text-sm text-slate-500">
+// //           <RiBarcodeLine className="text-brand-500 shrink-0" />
+// //           <span>
+// //             {mode === 'camera'
+// //               ? 'Keep barcode fully in frame and hold steady'
+// //               : 'Upload a clear, well-lit photo of the label'}
+// //           </span>
+// //         </div>
+
+// //         {/* Error */}
+// //         {error && (
+// //           <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
+// //             {error}
+// //           </div>
+// //         )}
+
+// //         {/* Success - Last scanned value display */}
+// //         {lastScannedValue && (
+// //           <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-green-700 text-sm flex items-center gap-2">
+// //             <span className="font-semibold">Scanned:</span>
+// //             <span className="font-mono break-all">{lastScannedValue}</span>
+// //             <button
+// //               className="ml-auto px-2 py-1 rounded text-xs bg-green-200 hover:bg-green-300 text-green-800"
+// //               onClick={() => setLastScannedValue(null)}
+// //             >
+// //               Clear
+// //             </button>
+// //           </div>
+// //         )}
+
+// //         {/* Camera view with dropdown camera selector */}
+// //         {mode === 'camera' && (
+// //           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+// //             <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
+
+// //             {/* Targeting overlay */}
+// //             {scanning && (
+// //               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+// //                 <div className="absolute inset-0 bg-black/30" />
+// //                 <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
+// //                   <div className="absolute inset-x-0 h-0.5 bg-brand-400"
+// //                     style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
+// //                 </div>
+// //               </div>
+// //             )}
+
+// //             {/* Confidence bar */}
+// //             {scanning && confidence > 0 && (
+// //               <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/40">
+// //                 <div className="h-full bg-brand-400 transition-all duration-150"
+// //                   style={{ width: `${confidence}%` }} />
+// //               </div>
+// //             )}
+
+// //             {/* Top controls row */}
+// //             {scanning && (
+// //               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+
+// //                 {/* Torch */}
+// //                 <button
+// //                   onClick={toggleTorch}
+// //                   className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
+// //                     torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
+// //                   }`}
+// //                 >
+// //                   🔦 {torchOn ? 'On' : 'Off'}
+// //                 </button>
+
+// //                 <div className="flex items-center gap-2">
+// //                   {/* Flip camera button — always visible on mobile, works by facingMode */}
+// //                   {devices.length > 1 && (
+// //                     <button
+// //                       onClick={flipCamera}
+// //                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
+// //                       title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
+// //                     >
+// //                       {/* Flip icon using unicode — no extra dependency */}
+// //                       <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
+// //                       <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
+// //                     </button>
+// //                   )}
+
+// //                   {/* Extra dropdown only shown on desktop/tablet with 3+ cameras */}
+// //                   {devices.length > 2 && (
+// //                     <select
+// //                       value={activeDeviceId || ''}
+// //                       onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
+// //                       className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
+// //                       style={{ maxWidth: 130 }}
+// //                     >
+// //                       {devices.map((d, i) => (
+// //                         <option value={d.deviceId} key={d.deviceId}>
+// //                           {d.label?.trim() || `Camera ${i + 1}`}
+// //                         </option>
+// //                       ))}
+// //                     </select>
+// //                   )}
+// //                 </div>
+
+// //               </div>
+// //             )}
+
+// //             {!scanning && !error && (
+// //               <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
+// //                 Starting camera…
+// //               </div>
+// //             )}
+// //           </div>
+// //         )}
+
+// //         {/* File upload */}
+// //         {mode === 'file' && (
+// //           <>
+// //             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+// //             <button onClick={() => fileInputRef.current?.click()}
+// //               className="w-full py-10 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 hover:border-brand-400 hover:text-brand-500 transition-colors text-sm flex flex-col items-center gap-2"
+// //             >
+// //               <RiImageLine className="text-3xl" />
+// //               <span>Tap to choose a photo of the barcode</span>
+// //               <span className="text-xs text-slate-300">JPG · PNG · WebP</span>
+// //             </button>
+// //           </>
+// //         )}
+
+// //         <p className="text-xs text-slate-400 text-center">
+// //           CODE-128 · EAN-13 · UPC-A · CODE-39 and more<br />
+// //           <b>QR codes and 2D codes are always ignored</b>
+// //         </p>
+// //       </div>
+
+// //       <style>{`
+// //         @keyframes scanline {
+// //           0%   { top: 0;    opacity: 1;   }
+// //           50%  { top: 74px; opacity: 0.7; }
+// //           100% { top: 0;    opacity: 1;   }
+// //         }
+// //       `}</style>
+// //     </Modal>
+// //   )
+// // }
+
+
+
+// // import React, { useEffect, useRef, useState, useCallback } from 'react'
+// // import {
+// //   BrowserMultiFormatReader,
+// //   BarcodeFormat,
+// //   DecodeHintType,
+// //   NotFoundException,
+// // } from '@zxing/library'
+// // import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
+// // import Modal from '../common/Modal'
+
+// // // ── 1D-only formats ────────────────────────────────────────────────────────
+// // const BARCODE_FORMATS = [
+// //   BarcodeFormat.CODE_128,
+// //   BarcodeFormat.CODE_39,
+// //   BarcodeFormat.CODE_93,
+// //   BarcodeFormat.EAN_13,
+// //   BarcodeFormat.EAN_8,
+// //   BarcodeFormat.UPC_A,
+// //   BarcodeFormat.UPC_E,
+// //   BarcodeFormat.ITF,
+// //   BarcodeFormat.CODABAR,
+// //   BarcodeFormat.RSS_14,
+// // ]
+
+// // const BLOCKED_2D = new Set([
+// //   BarcodeFormat.QR_CODE,
+// //   BarcodeFormat.DATA_MATRIX,
+// //   BarcodeFormat.AZTEC,
+// //   BarcodeFormat.PDF_417,
+// //   BarcodeFormat.MAXICODE,
+// // ])
+
+// // function createReader() {
+// //   const hints = new Map()
+// //   hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
+// //   hints.set(DecodeHintType.TRY_HARDER, true)
+// //   // CHARACTER_SET helps with long CODE-128 strings like Flipkart AWB
+// //   hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
+// //   return new BrowserMultiFormatReader(hints, {
+// //     delayBetweenScanAttempts: 20,   // Make polling even FASTER
+// //     delayBetweenScanSuccess: 10,
+// //   })
+// // }
+
+// // export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
+// //   const readerRef   = useRef(null)
+// //   const videoRef    = useRef(null)
+// //   const fileInputRef = useRef(null)
+// //   const streamRef   = useRef(null)
+// //   const lockedRef   = useRef(false)   // prevent double-fire after confirm
+
+// //   const [mode, setMode]       = useState('camera')
+// //   const [error, setError]     = useState(null)
+// //   const [scanning, setScanning] = useState(false)
+// //   const [torchOn, setTorchOn] = useState(false)
+
+// //   // Removed confidence state & logic
+
+// //   const [lastScannedValue, setLastScannedValue] = useState(null);
+// //   const [devices, setDevices] = useState([])
+// //   const [activeDeviceId, setActiveDeviceId] = useState(null)
+// //   const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
+
+// //   // ── Stop camera ────────────────────────────────────────────────────────
+// //   const stopCamera = useCallback(async () => {
+// //     lockedRef.current = false
+// //     try { readerRef.current?.reset() } catch (_) {}
+// //     streamRef.current?.getTracks().forEach(t => t.stop())
+// //     streamRef.current = null
+// //     setScanning(false)
+// //     setTorchOn(false)
+// //   }, [])
+
+// //   const startCamera = useCallback(async (preferredDeviceId = null, preferredFacing = null) => {
+// //     setError(null)
+// //     setScanning(false)
+// //     lockedRef.current = false
+
+// //     try {
+// //       readerRef.current = createReader()
+
+// //       // ── Enumerate cameras ──────────────────────────────────────────────
+// //       let allDevices = []
+// //       try {
+// //         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
+// //         tempStream.getTracks().forEach(t => t.stop())
+// //       } catch (_) {}
+
+// //       allDevices = await readerRef.current.listVideoInputDevices()
+// //       setDevices(allDevices)
+
+// //       // ── Pick device ────────────────────────────────────────────────────
+// //       let selected = null
+
+// //       if (preferredDeviceId) {
+// //         selected = allDevices.find(d => d.deviceId === preferredDeviceId)
+// //       }
+
+// //       if (!selected && preferredFacing) {
+// //         if (preferredFacing === 'environment') {
+// //           selected = allDevices.find(d => /back|rear|environment/i.test(d.label))
+// //         } else {
+// //           selected = allDevices.find(d => /front|user|facetime|selfie/i.test(d.label))
+// //         }
+// //       }
+
+// //       if (!selected) {
+// //         selected =
+// //           allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
+// //           allDevices[0]
+// //       }
+
+// //       if (!selected) throw new Error('No camera found')
+
+// //       setActiveDeviceId(selected.deviceId)
+
+// //       const isfront = /front|user|facetime|selfie/i.test(selected.label)
+// //       setFacingMode(isfront ? 'user' : 'environment')
+
+// //       const stream = await navigator.mediaDevices.getUserMedia({
+// //         video: {
+// //           deviceId:        { exact: selected.deviceId },
+// //           width:           { ideal: 1920, min: 1280 },
+// //           height:          { ideal: 1080, min: 720 },
+// //           focusMode:       'continuous',
+// //           exposureMode:    'continuous',
+// //           whiteBalanceMode:'continuous',
+// //         },
+// //       })
+// //       streamRef.current = stream
+
+// //       if (videoRef.current) {
+// //         videoRef.current.srcObject = stream
+// //         await videoRef.current.play()
+// //       }
+
+// //       readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
+// //         if (!result || lockedRef.current) return
+// //         if (BLOCKED_2D.has(result.getBarcodeFormat())) return
+
+// //         const text = result.getText()
+// //         if (!text || text.length < 4) return
+
+// //         lockedRef.current = true
+// //         setLastScannedValue(text)
+// //         stopCamera().then(() => {
+// //           onScan(text)
+// //           // Don't close modal automatically
+// //         })
+// //       })
+
+// //       setScanning(true)
+// //     } catch (e) {
+// //       const msg = e?.message || ''
+// //       if (/permission|notallowed/i.test(msg)) {
+// //         setError('Camera permission denied. Please allow camera access and reload.')
+// //       } else if (/no camera/i.test(msg)) {
+// //         setError('No camera found on this device.')
+// //       } else {
+// //         setError('Camera failed to start. Try uploading an image instead.')
+// //         console.error(e)
+// //       }
+// //     }
+// //   }, [stopCamera, onScan ])
+
+// //   const flipCamera = useCallback(async () => {
+// //     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
+// //     await stopCamera()
+// //     setTimeout(() => startCamera(null, nextFacing), 200)
+// //   }, [facingMode, stopCamera, startCamera])
+
+// //   const switchCamera = useCallback(async (deviceId) => {
+// //     await stopCamera()
+// //     setTimeout(() => startCamera(deviceId, null), 200)
+// //   }, [stopCamera, startCamera])
+
+// //   // ── Torch toggle ──────────────────────────────────────────────────────
+// //   const toggleTorch = useCallback(async () => {
+// //     const track = streamRef.current?.getVideoTracks()[0]
+// //     if (!track) return
+// //     try {
+// //       await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
+// //       setTorchOn(t => !t)
+// //     } catch (_) {}
+// //   }, [torchOn])
+
+// //   // ── File upload scan ──────────────────────────────────────────────────
+// //   const handleFileChange = useCallback(async (e) => {
+// //     const file = e.target.files?.[0]
+// //     if (!file) return
+// //     setError(null)
+
+// //     try {
+// //       // Still try multiple scales, as it's not slow
+// //       const reader = createReader()
+// //       const url    = URL.createObjectURL(file)
+
+// //       const img = new Image()
+// //       await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
+
+// //       const canvas  = document.createElement('canvas')
+// //       const ctx     = canvas.getContext('2d')
+// //       const scales  = [1, 1.5, 2, 0.75]
+// //       const results = {}
+
+// //       for (const scale of scales) {
+// //         canvas.width  = Math.round(img.naturalWidth  * scale)
+// //         canvas.height = Math.round(img.naturalHeight * scale)
+// //         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+// //         try {
+// //           const r = await reader.decodeFromCanvas(canvas)
+// //           if (r && !BLOCKED_2D.has(r.getBarcodeFormat())) {
+// //             const t = r.getText()
+// //             results[t] = (results[t] || 0) + 1
+// //           }
+// //         } catch (_) {}
+// //       }
+
+// //       URL.revokeObjectURL(url)
+
+// //       const sorted = Object.entries(results).sort((a, b) => b[1] - a[1])
+// //       if (sorted.length === 0) {
+// //         setError('No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.')
+// //         return
+// //       }
+
+// //       const topCount  = sorted[0][1]
+// //       const topValues = sorted.filter(([, c]) => c === topCount).map(([v]) => v)
+// //       const best      = topValues.reduce((a, b) => (a.length >= b.length ? a : b))
+
+// //       setLastScannedValue(best)
+// //       onScan(best)
+// //       // Do not close modal
+// //     } catch (err) {
+// //       if (err instanceof NotFoundException) {
+// //         setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
+// //       } else {
+// //         setError('Could not read image. Please try again.')
+// //         console.error(err)
+// //       }
+// //     }
+
+// //     e.target.value = ''
+// //   }, [onScan])
+
+// //   // ── Lifecycle ─────────────────────────────────────────────────────────
+// //   useEffect(() => {
+// //     if (!open) return
+// //     if (mode === 'camera') {
+// //       const t = setTimeout(() => {
+// //         startCamera(null)
+// //       }, 300)
+// //       return () => { clearTimeout(t); stopCamera() }
+// //     } else {
+// //       stopCamera()
+// //     }
+// //   }, [open, mode, startCamera, stopCamera])
+
+// //   useEffect(() => { if (!open) stopCamera() }, [open, stopCamera])
+
+// //   const switchMode = (m) => { if (m !== mode) { setError(null); setMode(m) } }
+
+// //   return (
+// //     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
+// //       <div className="space-y-4 bg-white text-slate-800">
+
+// //         {/* Mode tabs */}
+// //         <div className="flex gap-2">
+// //           {[['camera', <RiCameraLine />, 'Camera'], ['file', <RiImageLine />, 'Upload Image']].map(([m, icon, label]) => (
+// //             <button key={m} onClick={() => switchMode(m)}
+// //               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
+// //                 mode === m ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+// //               }`}
+// //             >
+// //               {icon} {label}
+// //             </button>
+// //           ))}
+// //         </div>
+
+// //         {/* Hint */}
+// //         <div className="flex items-center gap-2 text-sm text-slate-500">
+// //           <RiBarcodeLine className="text-brand-500 shrink-0" />
+// //           <span>
+// //             {mode === 'camera'
+// //               ? 'Keep barcode fully in frame and hold steady'
+// //               : 'Upload a clear, well-lit photo of the label'}
+// //           </span>
+// //         </div>
+
+// //         {/* Error */}
+// //         {error && (
+// //           <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
+// //             {error}
+// //           </div>
+// //         )}
+
+// //         {/* Success - Last scanned value display */}
+// //         {lastScannedValue && (
+// //           <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-green-700 text-sm flex items-center gap-2">
+// //             <span className="font-semibold">Scanned:</span>
+// //             <span className="font-mono break-all">{lastScannedValue}</span>
+// //             <button
+// //               className="ml-auto px-2 py-1 rounded text-xs bg-green-200 hover:bg-green-300 text-green-800"
+// //               onClick={() => setLastScannedValue(null)}
+// //             >
+// //               Clear
+// //             </button>
+// //           </div>
+// //         )}
+
+// //         {/* Camera view with dropdown camera selector */}
+// //         {mode === 'camera' && (
+// //           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+// //             <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
+
+// //             {/* Targeting overlay */}
+// //             {scanning && (
+// //               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+// //                 <div className="absolute inset-0 bg-black/30" />
+// //                 <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
+// //                   <div className="absolute inset-x-0 h-0.5 bg-brand-400"
+// //                     style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
+// //                 </div>
+// //               </div>
+// //             )}
+
+// //             {/* Confidence bar REMOVED */}
+// //             {/*
+
+// //             {scanning && confidence > 0 && (
+// //               <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/40">
+// //                 <div className="h-full bg-brand-400 transition-all duration-150"
+// //                   style={{ width: `${confidence}%` }} />
+// //               </div>
+// //             )}
+// //             */}
+
+// //             {/* Top controls row */}
+// //             {scanning && (
+// //               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+
+// //                 {/* Torch */}
+// //                 <button
+// //                   onClick={toggleTorch}
+// //                   className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
+// //                     torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
+// //                   }`}
+// //                 >
+// //                   🔦 {torchOn ? 'On' : 'Off'}
+// //                 </button>
+
+// //                 <div className="flex items-center gap-2">
+// //                   {/* Flip camera button — always visible on mobile, works by facingMode */}
+// //                   {devices.length > 1 && (
+// //                     <button
+// //                       onClick={flipCamera}
+// //                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
+// //                       title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
+// //                     >
+// //                       <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
+// //                       <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
+// //                     </button>
+// //                   )}
+
+// //                   {/* Extra dropdown only shown on desktop/tablet with 3+ cameras */}
+// //                   {devices.length > 2 && (
+// //                     <select
+// //                       value={activeDeviceId || ''}
+// //                       onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
+// //                       className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
+// //                       style={{ maxWidth: 130 }}
+// //                     >
+// //                       {devices.map((d, i) => (
+// //                         <option value={d.deviceId} key={d.deviceId}>
+// //                           {d.label?.trim() || `Camera ${i + 1}`}
+// //                         </option>
+// //                       ))}
+// //                     </select>
+// //                   )}
+// //                 </div>
+
+// //               </div>
+// //             )}
+
+// //             {!scanning && !error && (
+// //               <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
+// //                 Starting camera…
+// //               </div>
+// //             )}
+// //           </div>
+// //         )}
+
+// //         {/* File upload */}
+// //         {mode === 'file' && (
+// //           <>
+// //             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+// //             <button onClick={() => fileInputRef.current?.click()}
+// //               className="w-full py-10 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 hover:border-brand-400 hover:text-brand-500 transition-colors text-sm flex flex-col items-center gap-2"
+// //             >
+// //               <RiImageLine className="text-3xl" />
+// //               <span>Tap to choose a photo of the barcode</span>
+// //               <span className="text-xs text-slate-300">JPG · PNG · WebP</span>
+// //             </button>
+// //           </>
+// //         )}
+
+// //         <p className="text-xs text-slate-400 text-center">
+// //           CODE-128 · EAN-13 · UPC-A · CODE-39 and more<br />
+// //           <b>QR codes and 2D codes are always ignored</b>
+// //         </p>
+// //       </div>
+
+// //       <style>{`
+// //         @keyframes scanline {
+// //           0%   { top: 0;    opacity: 1;   }
+// //           50%  { top: 74px; opacity: 0.7; }
+// //           100% { top: 0;    opacity: 1;   }
+// //         }
+// //       `}</style>
+// //     </Modal>
+// //   )
+// // }
+
 // import React, { useEffect, useRef, useState, useCallback } from 'react'
 // import {
 //   BrowserMultiFormatReader,
@@ -11,18 +923,16 @@
 // import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
 // import Modal from '../common/Modal'
 
-// // ── 1D-only formats ────────────────────────────────────────────────────────
+// // ── Only the most common 1D formats (fewer = faster decode) ───────────────
 // const BARCODE_FORMATS = [
-//   BarcodeFormat.CODE_128,
-//   BarcodeFormat.CODE_39,
-//   BarcodeFormat.CODE_93,
-//   BarcodeFormat.EAN_13,
+//   BarcodeFormat.CODE_128,   // Most common shipping/warehouse
+//   BarcodeFormat.EAN_13,     // Retail
 //   BarcodeFormat.EAN_8,
 //   BarcodeFormat.UPC_A,
 //   BarcodeFormat.UPC_E,
+//   BarcodeFormat.CODE_39,
 //   BarcodeFormat.ITF,
 //   BarcodeFormat.CODABAR,
-//   BarcodeFormat.RSS_14,
 // ]
 
 // const BLOCKED_2D = new Set([
@@ -33,725 +943,314 @@
 //   BarcodeFormat.MAXICODE,
 // ])
 
-// // How many consecutive identical reads before we accept the result
-// const CONFIRM_THRESHOLD = 4
-
-// function createReader() {
+// // ── Two readers: fast (camera) and thorough (file upload) ─────────────────
+// function createCameraReader() {
+//   console.log('[BarcodeScanner] createCameraReader')
+//   const hints = new Map()
+//   hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
+//   hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
+//   return new BrowserMultiFormatReader(hints, {
+//     delayBetweenScanAttempts: 10,
+//     delayBetweenScanSuccess: 500,
+//   })
+// }
+// function createFileReader() {
+//   console.log('[BarcodeScanner] createFileReader')
 //   const hints = new Map()
 //   hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
 //   hints.set(DecodeHintType.TRY_HARDER, true)
-//   // CHARACTER_SET helps with long CODE-128 strings like Flipkart AWB
 //   hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
-//   return new BrowserMultiFormatReader(hints, {
-//     delayBetweenScanAttempts: 80,   // fast polling
-//     delayBetweenScanSuccess: 300,
-//   })
-// }
-
-// // ── Confirmation buffer ────────────────────────────────────────────────────
-// // Accepts a result only after CONFIRM_THRESHOLD reads of the SAME value.
-// // Also prefers the LONGEST result seen (partial reads are shorter).
-// function createConfirmBuffer() {
-//   const counts = {}   // value → count
-//   let longestSeen = ''
-
-//   return {
-//     push(value) {
-//       if (!value) return null
-
-//       // Track longest candidate (partial reads produce shorter strings)
-//       if (value.length > longestSeen.length) longestSeen = value
-
-//       // Only count strings that are at least as long as the longest seen
-//       // so short partial reads don't pollute the vote
-//       const key = value.length >= longestSeen.length ? value : null
-//       if (!key) return null
-
-//       counts[key] = (counts[key] || 0) + 1
-//       if (counts[key] >= CONFIRM_THRESHOLD) return key
-//       return null
-//     },
-//     reset() {
-//       Object.keys(counts).forEach(k => delete counts[k])
-//       longestSeen = ''
-//     },
-//   }
+//   return new BrowserMultiFormatReader(hints)
 // }
 
 // export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
-//   const readerRef   = useRef(null)
-//   const videoRef    = useRef(null)
-//   const fileInputRef = useRef(null)
-//   const streamRef   = useRef(null)
-//   const bufferRef   = useRef(createConfirmBuffer())
-//   const lockedRef   = useRef(false)   // prevent double-fire after confirm
+//   console.log('[BarcodeScanner] render start')
+//   const cameraReaderRef = useRef(null)
+//   const videoRef        = useRef(null)
+//   const fileInputRef    = useRef(null)
+//   const lockedRef       = useRef(false)
 
-//   const [mode, setMode]       = useState('camera')
-//   const [error, setError]     = useState(null)
-//   const [scanning, setScanning] = useState(false)
-//   const [torchOn, setTorchOn] = useState(false)
-//   const [confidence, setConfidence] = useState(0)  // visual feedback 0-100
-
-//   // New: Track the last successfully scanned barcode value for display
-//   const [lastScannedValue, setLastScannedValue] = useState(null);
-
-//   // With these — add facingMode tracking too:
-//   const [devices, setDevices] = useState([])
+//   const [mode, setMode]             = useState('camera')
+//   const [error, setError]           = useState(null)
+//   const [scanning, setScanning]     = useState(false)
+//   const [torchOn, setTorchOn]       = useState(false)
+//   const [lastScannedValue, setLastScannedValue] = useState(null)
+//   const [devices, setDevices]       = useState([])
 //   const [activeDeviceId, setActiveDeviceId] = useState(null)
-//   const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
+//   const [facingMode, setFacingMode] = useState('environment')
 
-//   // ── Stop camera ────────────────────────────────────────────────────────
-//   const stopCamera = useCallback(async () => {
+//   const getReader = useCallback(() => {
+//     console.log('[BarcodeScanner] getReader')
+//     if (!cameraReaderRef.current) {
+//       console.log('[BarcodeScanner] Creating camera reader')
+//       cameraReaderRef.current = createCameraReader()
+//     }
+//     return cameraReaderRef.current
+//   }, [])
+
+//   const stopCamera = useCallback(() => {
+//     console.log('[BarcodeScanner] stopCamera')
 //     lockedRef.current = false
-//     bufferRef.current.reset()
-//     setConfidence(0)
-//     try { readerRef.current?.reset() } catch (_) {}
-//     streamRef.current?.getTracks().forEach(t => t.stop())
-//     streamRef.current = null
+//     try { cameraReaderRef.current?.reset() } catch (e) {console.log('[BarcodeScanner] stopCamera reset error', e)}
 //     setScanning(false)
 //     setTorchOn(false)
 //   }, [])
 
 //   const startCamera = useCallback(async (preferredDeviceId = null, preferredFacing = null) => {
+//     console.log('[BarcodeScanner] startCamera', { preferredDeviceId, preferredFacing })
 //     setError(null)
 //     setScanning(false)
 //     lockedRef.current = false
-//     bufferRef.current.reset()
-//     setConfidence(0)
-  
+
 //     try {
-//       readerRef.current = createReader()
-  
-//       // ── Enumerate cameras ──────────────────────────────────────────────
-//       // On mobile, labels are blank until after first getUserMedia call.
-//       // So we request permission first with a cheap constraint, then enumerate.
-//       let allDevices = []
-//       try {
-//         // Trigger permission prompt so labels get populated
-//         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
-//         tempStream.getTracks().forEach(t => t.stop())
-//       } catch (_) {}
-  
-//       allDevices = await readerRef.current.listVideoInputDevices()
+//       console.log('[BarcodeScanner] Getting reader')
+//       const reader = getReader()
+
+//       console.log('[BarcodeScanner] Listing video input devices')
+//       // const allDevices = await BrowserMultiFormatReader.listVideoInputDevices()
+
+//       await navigator.mediaDevices.getUserMedia({ video: true }) // ensure permission before enumerating
+//       const allMediaDevices = await navigator.mediaDevices.enumerateDevices()
+//       const allDevices = allMediaDevices
+//         .filter(d => d.kind === 'videoinput')
+//         .map(d => ({ deviceId: d.deviceId, label: d.label }))
+
+//       console.log('[BarcodeScanner] Available devices', allDevices)
 //       setDevices(allDevices)
-  
-//       // ── Pick device ────────────────────────────────────────────────────
+
+//       if (allDevices.length === 0) {
+//         console.log('[BarcodeScanner] No camera found')
+//         throw new Error('No camera found')
+//       }
+
 //       let selected = null
-  
 //       if (preferredDeviceId) {
-//         // User explicitly switched to a device
 //         selected = allDevices.find(d => d.deviceId === preferredDeviceId)
+//         console.log('[BarcodeScanner] preferredDeviceId selected:', selected)
 //       }
-  
 //       if (!selected && preferredFacing) {
-//         // Switch by facing mode (front/back toggle)
-//         if (preferredFacing === 'environment') {
-//           selected = allDevices.find(d => /back|rear|environment/i.test(d.label))
-//         } else {
-//           selected = allDevices.find(d => /front|user|facetime|selfie/i.test(d.label))
-//         }
+//         const re = preferredFacing === 'environment'
+//           ? /back|rear|environment/i
+//           : /front|user|facetime|selfie/i
+//         selected = allDevices.find(d => re.test(d.label))
+//         console.log('[BarcodeScanner] preferredFacing selected:', selected)
 //       }
-  
 //       if (!selected) {
-//         // Default: rear camera
 //         selected =
 //           allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
 //           allDevices[0]
+//         console.log('[BarcodeScanner] default selected:', selected)
 //       }
-  
-//       if (!selected) throw new Error('No camera found')
-  
+
 //       setActiveDeviceId(selected.deviceId)
-  
-//       // Detect facing mode from label for the flip button state
-//       const isfront = /front|user|facetime|selfie/i.test(selected.label)
-//       setFacingMode(isfront ? 'user' : 'environment')
-  
-//       // ── Start stream ───────────────────────────────────────────────────
-//       const stream = await navigator.mediaDevices.getUserMedia({
-//         video: {
-//           deviceId:        { exact: selected.deviceId },
-//           width:           { ideal: 1920, min: 1280 },
-//           height:          { ideal: 1080, min: 720 },
-//           focusMode:       'continuous',
-//           exposureMode:    'continuous',
-//           whiteBalanceMode:'continuous',
-//         },
-//       })
-//       streamRef.current = stream
-  
-//       if (videoRef.current) {
-//         videoRef.current.srcObject = stream
-//         await videoRef.current.play()
-//       }
-  
-//       readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
-//         if (!result || lockedRef.current) return
-//         if (BLOCKED_2D.has(result.getBarcodeFormat())) return
-  
-//         const text = result.getText()
-//         if (!text || text.length < 4) return
-  
-//         const confirmed = bufferRef.current.push(text)
-//         setConfidence(prev => Math.min(100, prev + (confirmed ? 100 : 12)))
-  
-//         if (confirmed) {
+//       setFacingMode(/front|user|facetime|selfie/i.test(selected.label) ? 'user' : 'environment')
+//       console.log('[BarcodeScanner] setActiveDeviceId:', selected.deviceId)
+//       console.log('[BarcodeScanner] setFacingMode:', /front|user|facetime|selfie/i.test(selected.label) ? 'user' : 'environment')
+
+//       await reader.decodeFromVideoDevice(
+//         selected.deviceId,
+//         videoRef.current,
+//         (result, err) => {
+//           console.log('[BarcodeScanner] decodeFromVideoDevice callback', { locked: lockedRef.current, result, err })
+//           if (lockedRef.current) {
+//             console.log('[BarcodeScanner] decodeFromVideoDevice: locked')
+//             return
+//           }
+//           if (!result) {
+//             // err is NotFoundException on every frame
+//             return
+//           }
+//           if (BLOCKED_2D.has(result.getBarcodeFormat())) {
+//             console.log('[BarcodeScanner] Skipping 2D barcode (blocked format):', result.getBarcodeFormat())
+//             return
+//           }
+//           const text = result.getText()
+//           if (!text || text.length < 4) {
+//             console.log('[BarcodeScanner] Skipping result (too short):', text)
+//             return
+//           }
 //           lockedRef.current = true
-//           setConfidence(100)
-//           setLastScannedValue(confirmed)
-//           stopCamera().then(() => {
-//             onScan(confirmed)
-//             // REMOVE: onClose() so modal does not close automatically
-//             // onClose()
-//           })
+//           setLastScannedValue(text)
+//           console.log('[BarcodeScanner] Scanned barcode:', text)
+//           stopCamera()
+//           onScan(text)
 //         }
-//       })
-  
+//       )
+
 //       setScanning(true)
+//       console.log('[BarcodeScanner] setScanning(true)')
 //     } catch (e) {
 //       const msg = e?.message || ''
 //       if (/permission|notallowed/i.test(msg)) {
 //         setError('Camera permission denied. Please allow camera access and reload.')
+//         console.log('[BarcodeScanner] Camera permission denied.')
 //       } else if (/no camera/i.test(msg)) {
 //         setError('No camera found on this device.')
+//         console.log('[BarcodeScanner] No camera found on this device.')
 //       } else {
 //         setError('Camera failed to start. Try uploading an image instead.')
-//         console.error(e)
+//         console.error('[BarcodeScanner] Camera failed to start.', e)
 //       }
 //     }
-//   }, [stopCamera, onScan /* onClose intentionally removed from deps */])
+//   }, [getReader, stopCamera, onScan])
 
-//   // Switch camera handler — stops current, restarts with new device
-//   // Flip between front and back
 //   const flipCamera = useCallback(async () => {
+//     console.log('[BarcodeScanner] flipCamera')
 //     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
-//     await stopCamera()
-//     setTimeout(() => startCamera(null, nextFacing), 200)
+//     stopCamera()
+//     setTimeout(() => {
+//       console.log('[BarcodeScanner] flipCamera triggering startCamera')
+//       startCamera(null, nextFacing)
+//     }, 150)
 //   }, [facingMode, stopCamera, startCamera])
 
-//   // Switch to a specific device (for 3+ camera phones)
 //   const switchCamera = useCallback(async (deviceId) => {
-//     await stopCamera()
-//     setTimeout(() => startCamera(deviceId, null), 200)
+//     console.log('[BarcodeScanner] switchCamera', deviceId)
+//     stopCamera()
+//     setTimeout(() => {
+//       console.log('[BarcodeScanner] switchCamera triggering startCamera')
+//       startCamera(deviceId, null)
+//     }, 150)
 //   }, [stopCamera, startCamera])
 
-//   // ── Torch toggle ──────────────────────────────────────────────────────
+//   // ── Torch ─────────────────────────────────────────────────────────────
 //   const toggleTorch = useCallback(async () => {
-//     const track = streamRef.current?.getVideoTracks()[0]
-//     if (!track) return
+//     console.log('[BarcodeScanner] toggleTorch')
+//     const track = videoRef.current?.srcObject?.getVideoTracks()[0]
+//     if (!track) {
+//       console.log('[BarcodeScanner] toggleTorch: no video track')
+//       return
+//     }
 //     try {
 //       await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
+//       console.log('[BarcodeScanner] Torch toggled to', !torchOn)
 //       setTorchOn(t => !t)
-//     } catch (_) {}
+//     } catch (e) {
+//       console.log('[BarcodeScanner] toggleTorch applyConstraints error', e)
+//     }
 //   }, [torchOn])
 
 //   // ── File upload scan ──────────────────────────────────────────────────
 //   const handleFileChange = useCallback(async (e) => {
+//     console.log('[BarcodeScanner] handleFileChange', e)
 //     const file = e.target.files?.[0]
-//     if (!file) return
+//     if (!file) {
+//       console.log('[BarcodeScanner] No file selected')
+//       return
+//     }
 //     setError(null)
 
 //     try {
-//       // Run the same image through the reader MULTIPLE times at different
-//       // scales — this catches partial reads on high-res label photos
-//       const reader = createReader()
+//       console.log('[BarcodeScanner] Creating file reader')
+//       const reader = createFileReader()
 //       const url    = URL.createObjectURL(file)
-
-//       const img = new Image()
+//       const img    = new Image()
+//       console.log('[BarcodeScanner] Image src loading:', url)
 //       await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
 
-//       // Try at original size, then 2×, then 0.75× scale
-//       const canvas  = document.createElement('canvas')
-//       const ctx     = canvas.getContext('2d')
+//       const canvas = document.createElement('canvas')
+//       const ctx    = canvas.getContext('2d')
 //       const scales  = [1, 1.5, 2, 0.75]
 //       const results = {}
+//       console.log('[BarcodeScanner] Starting scan for scales', scales)
 
 //       for (const scale of scales) {
 //         canvas.width  = Math.round(img.naturalWidth  * scale)
 //         canvas.height = Math.round(img.naturalHeight * scale)
 //         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
 //         try {
 //           const r = await reader.decodeFromCanvas(canvas)
 //           if (r && !BLOCKED_2D.has(r.getBarcodeFormat())) {
 //             const t = r.getText()
 //             results[t] = (results[t] || 0) + 1
+//             console.log(`[BarcodeScanner] Found barcode "${t}" at scale ${scale}`)
+//           } else if (r) {
+//             console.log(`[BarcodeScanner] Skipping 2D format "${r.getBarcodeFormat()}" at scale ${scale}`)
 //           }
-//         } catch (_) {}
+//         } catch (scanErr) {
+//           // ignore NotFoundException for individual canvas tries
+//           console.log(`[BarcodeScanner] No barcode found at scale ${scale}`)
+//         }
 //       }
 
 //       URL.revokeObjectURL(url)
+//       console.log('[BarcodeScanner] Results after scanning:', results)
 
-//       // Pick the value seen most often (majority vote across scales)
 //       const sorted = Object.entries(results).sort((a, b) => b[1] - a[1])
 //       if (sorted.length === 0) {
 //         setError('No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.')
+//         console.log('[BarcodeScanner] No barcode found in any scale')
 //         return
 //       }
 
-//       // Among tied winners, prefer the longest (most complete read)
 //       const topCount  = sorted[0][1]
-//       const topValues = sorted.filter(([, c]) => c === topCount).map(([v]) => v)
-//       const best      = topValues.reduce((a, b) => (a.length >= b.length ? a : b))
-
+//       const best      = sorted
+//         .filter(([, c]) => c === topCount)
+//         .map(([v]) => v)
+//         .reduce((a, b) => (a.length >= b.length ? a : b))
+//       console.log('[BarcodeScanner] Most frequent scanned value:', best)
 //       setLastScannedValue(best)
 //       onScan(best)
-//       // Do not close modal
-//       // onClose()
 //     } catch (err) {
 //       if (err instanceof NotFoundException) {
 //         setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
+//         console.log('[BarcodeScanner] NotFoundException:', err)
 //       } else {
 //         setError('Could not read image. Please try again.')
-//         console.error(err)
+//         console.error('[BarcodeScanner] Could not read image.', err)
 //       }
 //     }
 
 //     e.target.value = ''
 //   }, [onScan])
 
-//   // ── Lifecycle ─────────────────────────────────────────────────────────
 //   useEffect(() => {
-//     if (!open) return
+//     console.log('[BarcodeScanner] useEffect: open=', open, 'mode=', mode)
+//     if (!open) {
+//       console.log('[BarcodeScanner] useEffect: Not open. return.')
+//       return
+//     }
 //     if (mode === 'camera') {
-//       const t = setTimeout(() => {
-//         // On open/camera mode, don't pass preferredDeviceId to allow default rear-camera logic
-//         startCamera(null)
-//       }, 300)
-//       return () => { clearTimeout(t); stopCamera() }
+//       console.log('[BarcodeScanner] useEffect: Camera mode. Starting camera.')
+//       const t = setTimeout(() => startCamera(null), 300)
+//       return () => { 
+//         console.log('[BarcodeScanner] useEffect cleanup: clearTimeout + stopCamera')
+//         clearTimeout(t); stopCamera() 
+//       }
 //     } else {
+//       console.log('[BarcodeScanner] useEffect: Not camera mode. Stopping camera.')
 //       stopCamera()
 //     }
-//   }, [open, mode, startCamera, stopCamera])
+//   }, [open, mode])  
 
-//   useEffect(() => { if (!open) stopCamera() }, [open, stopCamera])
+//   useEffect(() => { 
+//     console.log('[BarcodeScanner] useEffect[open]: open =', open)
+//     if (!open) {
+//       console.log('[BarcodeScanner] useEffect[open]: stopCamera()')
+//       stopCamera() 
+//     }
+//   }, [open])
 
-//   const switchMode = (m) => { if (m !== mode) { setError(null); setConfidence(0); setMode(m) } }
-
-//   return (
-//     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
-//       <div className="space-y-4 bg-white text-slate-800">
-
-//         {/* Mode tabs */}
-//         <div className="flex gap-2">
-//           {[['camera', <RiCameraLine />, 'Camera'], ['file', <RiImageLine />, 'Upload Image']].map(([m, icon, label]) => (
-//             <button key={m} onClick={() => switchMode(m)}
-//               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
-//                 mode === m ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-//               }`}
-//             >
-//               {icon} {label}
-//             </button>
-//           ))}
-//         </div>
-
-//         {/* Hint */}
-//         <div className="flex items-center gap-2 text-sm text-slate-500">
-//           <RiBarcodeLine className="text-brand-500 shrink-0" />
-//           <span>
-//             {mode === 'camera'
-//               ? 'Keep barcode fully in frame and hold steady'
-//               : 'Upload a clear, well-lit photo of the label'}
-//           </span>
-//         </div>
-
-//         {/* Error */}
-//         {error && (
-//           <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
-//             {error}
-//           </div>
-//         )}
-
-//         {/* Success - Last scanned value display */}
-//         {lastScannedValue && (
-//           <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-green-700 text-sm flex items-center gap-2">
-//             <span className="font-semibold">Scanned:</span>
-//             <span className="font-mono break-all">{lastScannedValue}</span>
-//             <button
-//               className="ml-auto px-2 py-1 rounded text-xs bg-green-200 hover:bg-green-300 text-green-800"
-//               onClick={() => setLastScannedValue(null)}
-//             >
-//               Clear
-//             </button>
-//           </div>
-//         )}
-
-//         {/* Camera view with dropdown camera selector */}
-//         {mode === 'camera' && (
-//           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-//             <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
-
-//             {/* Targeting overlay */}
-//             {scanning && (
-//               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-//                 <div className="absolute inset-0 bg-black/30" />
-//                 <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
-//                   <div className="absolute inset-x-0 h-0.5 bg-brand-400"
-//                     style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
-//                 </div>
-//               </div>
-//             )}
-
-//             {/* Confidence bar */}
-//             {scanning && confidence > 0 && (
-//               <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/40">
-//                 <div className="h-full bg-brand-400 transition-all duration-150"
-//                   style={{ width: `${confidence}%` }} />
-//               </div>
-//             )}
-
-//             {/* Top controls row */}
-//             {scanning && (
-//               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-
-//                 {/* Torch */}
-//                 <button
-//                   onClick={toggleTorch}
-//                   className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
-//                     torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
-//                   }`}
-//                 >
-//                   🔦 {torchOn ? 'On' : 'Off'}
-//                 </button>
-
-//                 <div className="flex items-center gap-2">
-//                   {/* Flip camera button — always visible on mobile, works by facingMode */}
-//                   {devices.length > 1 && (
-//                     <button
-//                       onClick={flipCamera}
-//                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
-//                       title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
-//                     >
-//                       {/* Flip icon using unicode — no extra dependency */}
-//                       <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
-//                       <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
-//                     </button>
-//                   )}
-
-//                   {/* Extra dropdown only shown on desktop/tablet with 3+ cameras */}
-//                   {devices.length > 2 && (
-//                     <select
-//                       value={activeDeviceId || ''}
-//                       onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
-//                       className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
-//                       style={{ maxWidth: 130 }}
-//                     >
-//                       {devices.map((d, i) => (
-//                         <option value={d.deviceId} key={d.deviceId}>
-//                           {d.label?.trim() || `Camera ${i + 1}`}
-//                         </option>
-//                       ))}
-//                     </select>
-//                   )}
-//                 </div>
-
-//               </div>
-//             )}
-
-//             {!scanning && !error && (
-//               <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
-//                 Starting camera…
-//               </div>
-//             )}
-//           </div>
-//         )}
-
-//         {/* File upload */}
-//         {mode === 'file' && (
-//           <>
-//             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-//             <button onClick={() => fileInputRef.current?.click()}
-//               className="w-full py-10 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 hover:border-brand-400 hover:text-brand-500 transition-colors text-sm flex flex-col items-center gap-2"
-//             >
-//               <RiImageLine className="text-3xl" />
-//               <span>Tap to choose a photo of the barcode</span>
-//               <span className="text-xs text-slate-300">JPG · PNG · WebP</span>
-//             </button>
-//           </>
-//         )}
-
-//         <p className="text-xs text-slate-400 text-center">
-//           CODE-128 · EAN-13 · UPC-A · CODE-39 and more<br />
-//           <b>QR codes and 2D codes are always ignored</b>
-//         </p>
-//       </div>
-
-//       <style>{`
-//         @keyframes scanline {
-//           0%   { top: 0;    opacity: 1;   }
-//           50%  { top: 74px; opacity: 0.7; }
-//           100% { top: 0;    opacity: 1;   }
-//         }
-//       `}</style>
-//     </Modal>
-//   )
-// }
-
-
-
-// import React, { useEffect, useRef, useState, useCallback } from 'react'
-// import {
-//   BrowserMultiFormatReader,
-//   BarcodeFormat,
-//   DecodeHintType,
-//   NotFoundException,
-// } from '@zxing/library'
-// import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
-// import Modal from '../common/Modal'
-
-// // ── 1D-only formats ────────────────────────────────────────────────────────
-// const BARCODE_FORMATS = [
-//   BarcodeFormat.CODE_128,
-//   BarcodeFormat.CODE_39,
-//   BarcodeFormat.CODE_93,
-//   BarcodeFormat.EAN_13,
-//   BarcodeFormat.EAN_8,
-//   BarcodeFormat.UPC_A,
-//   BarcodeFormat.UPC_E,
-//   BarcodeFormat.ITF,
-//   BarcodeFormat.CODABAR,
-//   BarcodeFormat.RSS_14,
-// ]
-
-// const BLOCKED_2D = new Set([
-//   BarcodeFormat.QR_CODE,
-//   BarcodeFormat.DATA_MATRIX,
-//   BarcodeFormat.AZTEC,
-//   BarcodeFormat.PDF_417,
-//   BarcodeFormat.MAXICODE,
-// ])
-
-// function createReader() {
-//   const hints = new Map()
-//   hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
-//   hints.set(DecodeHintType.TRY_HARDER, true)
-//   // CHARACTER_SET helps with long CODE-128 strings like Flipkart AWB
-//   hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
-//   return new BrowserMultiFormatReader(hints, {
-//     delayBetweenScanAttempts: 20,   // Make polling even FASTER
-//     delayBetweenScanSuccess: 10,
-//   })
-// }
-
-// export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
-//   const readerRef   = useRef(null)
-//   const videoRef    = useRef(null)
-//   const fileInputRef = useRef(null)
-//   const streamRef   = useRef(null)
-//   const lockedRef   = useRef(false)   // prevent double-fire after confirm
-
-//   const [mode, setMode]       = useState('camera')
-//   const [error, setError]     = useState(null)
-//   const [scanning, setScanning] = useState(false)
-//   const [torchOn, setTorchOn] = useState(false)
-
-//   // Removed confidence state & logic
-
-//   const [lastScannedValue, setLastScannedValue] = useState(null);
-//   const [devices, setDevices] = useState([])
-//   const [activeDeviceId, setActiveDeviceId] = useState(null)
-//   const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
-
-//   // ── Stop camera ────────────────────────────────────────────────────────
-//   const stopCamera = useCallback(async () => {
-//     lockedRef.current = false
-//     try { readerRef.current?.reset() } catch (_) {}
-//     streamRef.current?.getTracks().forEach(t => t.stop())
-//     streamRef.current = null
-//     setScanning(false)
-//     setTorchOn(false)
+//   useEffect(() => {
+//     console.log('[BarcodeScanner] useEffect[]: unmount cleanup')
+//     return () => {
+//       try { 
+//         cameraReaderRef.current?.reset() 
+//         console.log('[BarcodeScanner] Reader reset on unmount') 
+//       } catch (e) { 
+//         console.log('[BarcodeScanner] Reader reset error on unmount', e)
+//       }
+//       cameraReaderRef.current = null
+//       console.log('[BarcodeScanner] cameraReaderRef nulled on unmount')
+//     }
 //   }, [])
 
-//   const startCamera = useCallback(async (preferredDeviceId = null, preferredFacing = null) => {
-//     setError(null)
-//     setScanning(false)
-//     lockedRef.current = false
+//   const switchMode = (m) => { 
+//     console.log('[BarcodeScanner] switchMode', m)
+//     if (m !== mode) { setError(null); setMode(m) } 
+//   }
 
-//     try {
-//       readerRef.current = createReader()
-
-//       // ── Enumerate cameras ──────────────────────────────────────────────
-//       let allDevices = []
-//       try {
-//         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
-//         tempStream.getTracks().forEach(t => t.stop())
-//       } catch (_) {}
-
-//       allDevices = await readerRef.current.listVideoInputDevices()
-//       setDevices(allDevices)
-
-//       // ── Pick device ────────────────────────────────────────────────────
-//       let selected = null
-
-//       if (preferredDeviceId) {
-//         selected = allDevices.find(d => d.deviceId === preferredDeviceId)
-//       }
-
-//       if (!selected && preferredFacing) {
-//         if (preferredFacing === 'environment') {
-//           selected = allDevices.find(d => /back|rear|environment/i.test(d.label))
-//         } else {
-//           selected = allDevices.find(d => /front|user|facetime|selfie/i.test(d.label))
-//         }
-//       }
-
-//       if (!selected) {
-//         selected =
-//           allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
-//           allDevices[0]
-//       }
-
-//       if (!selected) throw new Error('No camera found')
-
-//       setActiveDeviceId(selected.deviceId)
-
-//       const isfront = /front|user|facetime|selfie/i.test(selected.label)
-//       setFacingMode(isfront ? 'user' : 'environment')
-
-//       const stream = await navigator.mediaDevices.getUserMedia({
-//         video: {
-//           deviceId:        { exact: selected.deviceId },
-//           width:           { ideal: 1920, min: 1280 },
-//           height:          { ideal: 1080, min: 720 },
-//           focusMode:       'continuous',
-//           exposureMode:    'continuous',
-//           whiteBalanceMode:'continuous',
-//         },
-//       })
-//       streamRef.current = stream
-
-//       if (videoRef.current) {
-//         videoRef.current.srcObject = stream
-//         await videoRef.current.play()
-//       }
-
-//       readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
-//         if (!result || lockedRef.current) return
-//         if (BLOCKED_2D.has(result.getBarcodeFormat())) return
-
-//         const text = result.getText()
-//         if (!text || text.length < 4) return
-
-//         lockedRef.current = true
-//         setLastScannedValue(text)
-//         stopCamera().then(() => {
-//           onScan(text)
-//           // Don't close modal automatically
-//         })
-//       })
-
-//       setScanning(true)
-//     } catch (e) {
-//       const msg = e?.message || ''
-//       if (/permission|notallowed/i.test(msg)) {
-//         setError('Camera permission denied. Please allow camera access and reload.')
-//       } else if (/no camera/i.test(msg)) {
-//         setError('No camera found on this device.')
-//       } else {
-//         setError('Camera failed to start. Try uploading an image instead.')
-//         console.error(e)
-//       }
-//     }
-//   }, [stopCamera, onScan ])
-
-//   const flipCamera = useCallback(async () => {
-//     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
-//     await stopCamera()
-//     setTimeout(() => startCamera(null, nextFacing), 200)
-//   }, [facingMode, stopCamera, startCamera])
-
-//   const switchCamera = useCallback(async (deviceId) => {
-//     await stopCamera()
-//     setTimeout(() => startCamera(deviceId, null), 200)
-//   }, [stopCamera, startCamera])
-
-//   // ── Torch toggle ──────────────────────────────────────────────────────
-//   const toggleTorch = useCallback(async () => {
-//     const track = streamRef.current?.getVideoTracks()[0]
-//     if (!track) return
-//     try {
-//       await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
-//       setTorchOn(t => !t)
-//     } catch (_) {}
-//   }, [torchOn])
-
-//   // ── File upload scan ──────────────────────────────────────────────────
-//   const handleFileChange = useCallback(async (e) => {
-//     const file = e.target.files?.[0]
-//     if (!file) return
-//     setError(null)
-
-//     try {
-//       // Still try multiple scales, as it's not slow
-//       const reader = createReader()
-//       const url    = URL.createObjectURL(file)
-
-//       const img = new Image()
-//       await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
-
-//       const canvas  = document.createElement('canvas')
-//       const ctx     = canvas.getContext('2d')
-//       const scales  = [1, 1.5, 2, 0.75]
-//       const results = {}
-
-//       for (const scale of scales) {
-//         canvas.width  = Math.round(img.naturalWidth  * scale)
-//         canvas.height = Math.round(img.naturalHeight * scale)
-//         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-//         try {
-//           const r = await reader.decodeFromCanvas(canvas)
-//           if (r && !BLOCKED_2D.has(r.getBarcodeFormat())) {
-//             const t = r.getText()
-//             results[t] = (results[t] || 0) + 1
-//           }
-//         } catch (_) {}
-//       }
-
-//       URL.revokeObjectURL(url)
-
-//       const sorted = Object.entries(results).sort((a, b) => b[1] - a[1])
-//       if (sorted.length === 0) {
-//         setError('No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.')
-//         return
-//       }
-
-//       const topCount  = sorted[0][1]
-//       const topValues = sorted.filter(([, c]) => c === topCount).map(([v]) => v)
-//       const best      = topValues.reduce((a, b) => (a.length >= b.length ? a : b))
-
-//       setLastScannedValue(best)
-//       onScan(best)
-//       // Do not close modal
-//     } catch (err) {
-//       if (err instanceof NotFoundException) {
-//         setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
-//       } else {
-//         setError('Could not read image. Please try again.')
-//         console.error(err)
-//       }
-//     }
-
-//     e.target.value = ''
-//   }, [onScan])
-
-//   // ── Lifecycle ─────────────────────────────────────────────────────────
-//   useEffect(() => {
-//     if (!open) return
-//     if (mode === 'camera') {
-//       const t = setTimeout(() => {
-//         startCamera(null)
-//       }, 300)
-//       return () => { clearTimeout(t); stopCamera() }
-//     } else {
-//       stopCamera()
-//     }
-//   }, [open, mode, startCamera, stopCamera])
-
-//   useEffect(() => { if (!open) stopCamera() }, [open, stopCamera])
-
-//   const switchMode = (m) => { if (m !== mode) { setError(null); setMode(m) } }
-
+//   console.log('[BarcodeScanner] render complete')
 //   return (
 //     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
 //       <div className="space-y-4 bg-white text-slate-800">
@@ -759,7 +1258,7 @@
 //         {/* Mode tabs */}
 //         <div className="flex gap-2">
 //           {[['camera', <RiCameraLine />, 'Camera'], ['file', <RiImageLine />, 'Upload Image']].map(([m, icon, label]) => (
-//             <button key={m} onClick={() => switchMode(m)}
+//             <button key={m} onClick={() => { console.log(`[BarcodeScanner] Tab button click: ${m}`); switchMode(m) }}
 //               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
 //                 mode === m ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
 //               }`}
@@ -786,26 +1285,25 @@
 //           </div>
 //         )}
 
-//         {/* Success - Last scanned value display */}
+//         {/* Success */}
 //         {lastScannedValue && (
 //           <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-green-700 text-sm flex items-center gap-2">
 //             <span className="font-semibold">Scanned:</span>
 //             <span className="font-mono break-all">{lastScannedValue}</span>
 //             <button
 //               className="ml-auto px-2 py-1 rounded text-xs bg-green-200 hover:bg-green-300 text-green-800"
-//               onClick={() => setLastScannedValue(null)}
+//               onClick={() => { console.log('[BarcodeScanner] Clear scanned value click'); setLastScannedValue(null) }}
 //             >
 //               Clear
 //             </button>
 //           </div>
 //         )}
 
-//         {/* Camera view with dropdown camera selector */}
+//         {/* Camera view */}
 //         {mode === 'camera' && (
 //           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
 //             <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
 
-//             {/* Targeting overlay */}
 //             {scanning && (
 //               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
 //                 <div className="absolute inset-0 bg-black/30" />
@@ -816,24 +1314,10 @@
 //               </div>
 //             )}
 
-//             {/* Confidence bar REMOVED */}
-//             {/*
-
-//             {scanning && confidence > 0 && (
-//               <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/40">
-//                 <div className="h-full bg-brand-400 transition-all duration-150"
-//                   style={{ width: `${confidence}%` }} />
-//               </div>
-//             )}
-//             */}
-
-//             {/* Top controls row */}
 //             {scanning && (
 //               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-
-//                 {/* Torch */}
 //                 <button
-//                   onClick={toggleTorch}
+//                   onClick={() => { console.log('[BarcodeScanner] Torch button clicked'); toggleTorch() }}
 //                   className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
 //                     torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
 //                   }`}
@@ -842,23 +1326,22 @@
 //                 </button>
 
 //                 <div className="flex items-center gap-2">
-//                   {/* Flip camera button — always visible on mobile, works by facingMode */}
 //                   {devices.length > 1 && (
 //                     <button
-//                       onClick={flipCamera}
+//                       onClick={() => { console.log('[BarcodeScanner] Flip camera button clicked'); flipCamera() }}
 //                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
-//                       title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
 //                     >
-//                       <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
+//                       <span style={{ fontSize: 15 }}>🔄</span>
 //                       <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
 //                     </button>
 //                   )}
-
-//                   {/* Extra dropdown only shown on desktop/tablet with 3+ cameras */}
 //                   {devices.length > 2 && (
 //                     <select
 //                       value={activeDeviceId || ''}
-//                       onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
+//                       onChange={e => { 
+//                         console.log('[BarcodeScanner] Camera select change', e.target.value)
+//                         if (e.target.value !== activeDeviceId) switchCamera(e.target.value) 
+//                       }}
 //                       className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
 //                       style={{ maxWidth: 130 }}
 //                     >
@@ -870,7 +1353,6 @@
 //                     </select>
 //                   )}
 //                 </div>
-
 //               </div>
 //             )}
 
@@ -886,7 +1368,10 @@
 //         {mode === 'file' && (
 //           <>
 //             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-//             <button onClick={() => fileInputRef.current?.click()}
+//             <button onClick={() => { 
+//                 console.log('[BarcodeScanner] File upload button clicked'); 
+//                 fileInputRef.current?.click() 
+//               }}
 //               className="w-full py-10 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 hover:border-brand-400 hover:text-brand-500 transition-colors text-sm flex flex-col items-center gap-2"
 //             >
 //               <RiImageLine className="text-3xl" />
@@ -954,6 +1439,7 @@ function createCameraReader() {
     delayBetweenScanSuccess: 500,
   })
 }
+
 function createFileReader() {
   console.log('[BarcodeScanner] createFileReader')
   const hints = new Map()
@@ -965,10 +1451,17 @@ function createFileReader() {
 
 export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
   console.log('[BarcodeScanner] render start')
+
   const cameraReaderRef = useRef(null)
   const videoRef        = useRef(null)
   const fileInputRef    = useRef(null)
   const lockedRef       = useRef(false)
+
+  // ── Stable ref for onScan — prevents startCamera from being recreated
+  //    on every parent re-render, which was causing the camera to restart
+  //    after each successful scan.
+  const onScanRef = useRef(onScan)
+  useEffect(() => { onScanRef.current = onScan }, [onScan])
 
   const [mode, setMode]             = useState('camera')
   const [error, setError]           = useState(null)
@@ -991,7 +1484,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
   const stopCamera = useCallback(() => {
     console.log('[BarcodeScanner] stopCamera')
     lockedRef.current = false
-    try { cameraReaderRef.current?.reset() } catch (e) {console.log('[BarcodeScanner] stopCamera reset error', e)}
+    try { cameraReaderRef.current?.reset() } catch (e) { console.log('[BarcodeScanner] stopCamera reset error', e) }
     setScanning(false)
     setTorchOn(false)
   }, [])
@@ -1007,14 +1500,11 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
       const reader = getReader()
 
       console.log('[BarcodeScanner] Listing video input devices')
-      // const allDevices = await BrowserMultiFormatReader.listVideoInputDevices()
-
       await navigator.mediaDevices.getUserMedia({ video: true }) // ensure permission before enumerating
       const allMediaDevices = await navigator.mediaDevices.enumerateDevices()
       const allDevices = allMediaDevices
         .filter(d => d.kind === 'videoinput')
         .map(d => ({ deviceId: d.deviceId, label: d.label }))
-
       console.log('[BarcodeScanner] Available devices', allDevices)
       setDevices(allDevices)
 
@@ -1057,7 +1547,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
             return
           }
           if (!result) {
-            // err is NotFoundException on every frame
+            // err is NotFoundException on every frame with no barcode — expected
             return
           }
           if (BLOCKED_2D.has(result.getBarcodeFormat())) {
@@ -1073,7 +1563,9 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
           setLastScannedValue(text)
           console.log('[BarcodeScanner] Scanned barcode:', text)
           stopCamera()
-          onScan(text)
+          // Use the ref so this callback never closes over a stale onScan,
+          // and startCamera is never recreated just because onScan changed.
+          onScanRef.current(text)
         }
       )
 
@@ -1092,7 +1584,8 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         console.error('[BarcodeScanner] Camera failed to start.', e)
       }
     }
-  }, [getReader, stopCamera, onScan])
+  // onScan intentionally excluded — use onScanRef.current instead
+  }, [getReader, stopCamera]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const flipCamera = useCallback(async () => {
     console.log('[BarcodeScanner] flipCamera')
@@ -1148,8 +1641,8 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
       console.log('[BarcodeScanner] Image src loading:', url)
       await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
 
-      const canvas = document.createElement('canvas')
-      const ctx    = canvas.getContext('2d')
+      const canvas  = document.createElement('canvas')
+      const ctx     = canvas.getContext('2d')
       const scales  = [1, 1.5, 2, 0.75]
       const results = {}
       console.log('[BarcodeScanner] Starting scan for scales', scales)
@@ -1168,7 +1661,6 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
             console.log(`[BarcodeScanner] Skipping 2D format "${r.getBarcodeFormat()}" at scale ${scale}`)
           }
         } catch (scanErr) {
-          // ignore NotFoundException for individual canvas tries
           console.log(`[BarcodeScanner] No barcode found at scale ${scale}`)
         }
       }
@@ -1183,14 +1675,14 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         return
       }
 
-      const topCount  = sorted[0][1]
-      const best      = sorted
+      const topCount = sorted[0][1]
+      const best     = sorted
         .filter(([, c]) => c === topCount)
         .map(([v]) => v)
         .reduce((a, b) => (a.length >= b.length ? a : b))
       console.log('[BarcodeScanner] Most frequent scanned value:', best)
       setLastScannedValue(best)
-      onScan(best)
+      onScanRef.current(best)
     } catch (err) {
       if (err instanceof NotFoundException) {
         setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
@@ -1202,8 +1694,11 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
     }
 
     e.target.value = ''
-  }, [onScan])
+  }, []) // onScan accessed via onScanRef — no dep needed
 
+  // ── Start / stop camera when modal opens/closes or mode changes ───────
+  // Only [open, mode] in deps — startCamera is stable now that onScan is
+  // accessed via ref, so this effect will never fire spuriously after a scan.
   useEffect(() => {
     console.log('[BarcodeScanner] useEffect: open=', open, 'mode=', mode)
     if (!open) {
@@ -1213,31 +1708,32 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
     if (mode === 'camera') {
       console.log('[BarcodeScanner] useEffect: Camera mode. Starting camera.')
       const t = setTimeout(() => startCamera(null), 300)
-      return () => { 
+      return () => {
         console.log('[BarcodeScanner] useEffect cleanup: clearTimeout + stopCamera')
-        clearTimeout(t); stopCamera() 
+        clearTimeout(t)
+        stopCamera()
       }
     } else {
       console.log('[BarcodeScanner] useEffect: Not camera mode. Stopping camera.')
       stopCamera()
     }
-  }, [open, mode])  
+  }, [open, mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { 
+  useEffect(() => {
     console.log('[BarcodeScanner] useEffect[open]: open =', open)
     if (!open) {
       console.log('[BarcodeScanner] useEffect[open]: stopCamera()')
-      stopCamera() 
+      stopCamera()
     }
-  }, [open])
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     console.log('[BarcodeScanner] useEffect[]: unmount cleanup')
     return () => {
-      try { 
-        cameraReaderRef.current?.reset() 
-        console.log('[BarcodeScanner] Reader reset on unmount') 
-      } catch (e) { 
+      try {
+        cameraReaderRef.current?.reset()
+        console.log('[BarcodeScanner] Reader reset on unmount')
+      } catch (e) {
         console.log('[BarcodeScanner] Reader reset error on unmount', e)
       }
       cameraReaderRef.current = null
@@ -1245,9 +1741,9 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
     }
   }, [])
 
-  const switchMode = (m) => { 
+  const switchMode = (m) => {
     console.log('[BarcodeScanner] switchMode', m)
-    if (m !== mode) { setError(null); setMode(m) } 
+    if (m !== mode) { setError(null); setMode(m) }
   }
 
   console.log('[BarcodeScanner] render complete')
@@ -1258,7 +1754,9 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         {/* Mode tabs */}
         <div className="flex gap-2">
           {[['camera', <RiCameraLine />, 'Camera'], ['file', <RiImageLine />, 'Upload Image']].map(([m, icon, label]) => (
-            <button key={m} onClick={() => { console.log(`[BarcodeScanner] Tab button click: ${m}`); switchMode(m) }}
+            <button
+              key={m}
+              onClick={() => { console.log(`[BarcodeScanner] Tab button click: ${m}`); switchMode(m) }}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
                 mode === m ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
@@ -1308,8 +1806,10 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="absolute inset-0 bg-black/30" />
                 <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
-                  <div className="absolute inset-x-0 h-0.5 bg-brand-400"
-                    style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
+                  <div
+                    className="absolute inset-x-0 h-0.5 bg-brand-400"
+                    style={{ animation: 'scanline 1.4s ease-in-out infinite' }}
+                  />
                 </div>
               </div>
             )}
@@ -1338,9 +1838,9 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
                   {devices.length > 2 && (
                     <select
                       value={activeDeviceId || ''}
-                      onChange={e => { 
+                      onChange={e => {
                         console.log('[BarcodeScanner] Camera select change', e.target.value)
-                        if (e.target.value !== activeDeviceId) switchCamera(e.target.value) 
+                        if (e.target.value !== activeDeviceId) switchCamera(e.target.value)
                       }}
                       className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
                       style={{ maxWidth: 130 }}
@@ -1368,9 +1868,10 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         {mode === 'file' && (
           <>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-            <button onClick={() => { 
-                console.log('[BarcodeScanner] File upload button clicked'); 
-                fileInputRef.current?.click() 
+            <button
+              onClick={() => {
+                console.log('[BarcodeScanner] File upload button clicked')
+                fileInputRef.current?.click()
               }}
               className="w-full py-10 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 hover:border-brand-400 hover:text-brand-500 transition-colors text-sm flex flex-col items-center gap-2"
             >
