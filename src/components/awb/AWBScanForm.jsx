@@ -160,7 +160,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { RiBarcodeLine, RiQrScanLine, RiSendPlane2Line, RiLoader4Line } from 'react-icons/ri'
-import { returnAPI } from '../../api/return'
+import { awbAPI } from '../../api/awb'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
 
@@ -267,7 +267,7 @@ export default function AWBScanForm({ onSuccess }) {
     try {
       setSubmitting(true)
       console.log('[AWBScanForm] Submitting scan to API')
-      const res = await returnAPI.scan({ channelPartnerId, brandId, awbId })
+      const res = await awbAPI.scan({ channelPartnerId, brandId, awbId })
       console.log('[AWBScanForm] Received API response:', res)
       if (res.data?.success) {
         console.log('[AWBScanForm] Scan successful, showing success toast')
