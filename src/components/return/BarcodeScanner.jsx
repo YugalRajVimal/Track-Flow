@@ -489,169 +489,166 @@
 
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import {
-  BrowserMultiFormatReader,
-  BarcodeFormat,
-  DecodeHintType,
-  NotFoundException,
-} from '@zxing/library'
 import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
 import Modal from '../common/Modal'
+import Quagga from 'quagga'
 
-// ── 1D-only formats ────────────────────────────────────────────────────────
-const BARCODE_FORMATS = [
-  BarcodeFormat.CODE_128,
-  BarcodeFormat.CODE_39,
-  BarcodeFormat.CODE_93,
-  BarcodeFormat.EAN_13,
-  BarcodeFormat.EAN_8,
-  BarcodeFormat.UPC_A,
-  BarcodeFormat.UPC_E,
-  BarcodeFormat.ITF,
-  BarcodeFormat.CODABAR,
-  BarcodeFormat.RSS_14,
+// Only support 1D barcode types; Quagga supports CODE_128, EAN, CODE_39, etc.
+const BARCODE_TYPES = [
+  'code_128',
+  'code_39',
+  'code_39_vin',
+  'ean',
+  'ean_8',
+  'upc',
+  'upc_e',
+  'codabar',
+  'i2of5',
+  '2of5',
+  'code_93'
 ]
 
-const BLOCKED_2D = new Set([
-  BarcodeFormat.QR_CODE,
-  BarcodeFormat.DATA_MATRIX,
-  BarcodeFormat.AZTEC,
-  BarcodeFormat.PDF_417,
-  BarcodeFormat.MAXICODE,
-])
+// Useful for code hints (display, etc)
+const DISPLAY_FORMATS = [
+  'CODE-128', 'EAN-13', 'UPC-A', 'CODE-39', 'EAN-8', 'UPC-E', 'CODABAR', 'ITF', 'CODE-93'
+]
 
-function createReader() {
-  const hints = new Map()
-  hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
-  hints.set(DecodeHintType.TRY_HARDER, true)
-  // CHARACTER_SET helps with long CODE-128 strings like Flipkart AWB
-  hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
-  return new BrowserMultiFormatReader(hints, {
-    delayBetweenScanAttempts: 80,   // fast polling
-    delayBetweenScanSuccess: 300,
-  })
+// Quagga does not decode QR/2D; but as docs warn, don't enable 'reader' for those
+function quaggaConfig(deviceId = undefined, facingMode = 'environment') {
+  // Use facingMode if deviceId is not specified (mobile-friendly)
+  return {
+    inputStream: {
+      type: 'LiveStream',
+      constraints: {
+        ...(deviceId
+          ? { deviceId: { exact: deviceId } }
+          : { facingMode: { exact: facingMode } }),
+        width: { min: 640, ideal: 1920 },
+        height: { min: 480, ideal: 1080 },
+        aspectRatio: { min: 1, max: 2 },
+      },
+      area: { // 80% centered window (quagga scans entire, but can guide UX overlay)
+        top: '10%',
+        right: '10%',
+        left: '10%',
+        bottom: '10%',
+      },
+      singleChannel: false
+    },
+    locator: {
+      patchSize: 'medium',
+      halfSample: true,
+    },
+    numOfWorkers: 2,
+    frequency: 5,
+    decoder: {
+      readers: BARCODE_TYPES.map(t => `${t}_reader`)
+    },
+    locate: true,
+  }
+}
+
+function stopQuagga() {
+  try { Quagga.offDetected(); Quagga.stop(); } catch (_) {}
 }
 
 export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
-  const readerRef   = useRef(null)
-  const videoRef    = useRef(null)
   const fileInputRef = useRef(null)
-  const streamRef   = useRef(null)
-  const lockedRef   = useRef(false)   // prevent double-fire after confirm
+  const streamRef = useRef(null)
+  const videoContainerRef = useRef(null)
+  const lockedRef = useRef(false)
+  const lastResultRef = useRef(null)
 
-  const [mode, setMode]       = useState('camera')
-  const [error, setError]     = useState(null)
-  const [scanning, setScanning] = useState(false)
-  const [torchOn, setTorchOn] = useState(false)
-  const [confidence, setConfidence] = useState(0)  // visual feedback 0-100
-
-  // New: Track the last successfully scanned barcode value for display
-  const [lastScannedValue, setLastScannedValue] = useState(null);
-
-  // With these — add facingMode tracking too:
+  const [mode, setMode] = useState('camera')
   const [devices, setDevices] = useState([])
   const [activeDeviceId, setActiveDeviceId] = useState(null)
-  const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
+  const [facingMode, setFacingMode] = useState('environment')
+  const [error, setError] = useState(null)
+  const [scanning, setScanning] = useState(false)
+  const [torchOn] = useState(false) // Torch not supported by Quagga
+  const [confidence, setConfidence] = useState(0)
+  const [lastScannedValue, setLastScannedValue] = useState(null)
 
-  // ── Stop camera ────────────────────────────────────────────────────────
+  // Stop camera stream + Quagga
   const stopCamera = useCallback(async () => {
     lockedRef.current = false
     setConfidence(0)
-    try { readerRef.current?.reset() } catch (_) {}
-    streamRef.current?.getTracks().forEach(t => t.stop())
-    streamRef.current = null
+    stopQuagga()
     setScanning(false)
-    setTorchOn(false)
   }, [])
 
+  const enumerateVideoDevices = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      return devices.filter(device => device.kind === 'videoinput')
+    } catch {
+      return []
+    }
+  }, [])
+
+  // Start camera & attach Quagga for scanning
   const startCamera = useCallback(async (preferredDeviceId = null, preferredFacing = null) => {
     setError(null)
     setScanning(false)
-    lockedRef.current = false
     setConfidence(0)
-  
+    lockedRef.current = false
+    stopQuagga()
+
     try {
-      readerRef.current = createReader()
-  
-      // ── Enumerate cameras ──────────────────────────────────────────────
-      // On mobile, labels are blank until after first getUserMedia call.
-      // So we request permission first with a cheap constraint, then enumerate.
-      let allDevices = []
-      try {
-        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
-        tempStream.getTracks().forEach(t => t.stop())
-      } catch (_) {}
-  
-      allDevices = await readerRef.current.listVideoInputDevices()
-      setDevices(allDevices)
-  
-      // ── Pick device ────────────────────────────────────────────────────
+      // Get video devices
+      let videoDevices = await enumerateVideoDevices()
+      setDevices(videoDevices)
+
+      // Pick device by id, or facing mode, or first device
       let selected = null
-
       if (preferredDeviceId) {
-        // User explicitly switched to a device
-        selected = allDevices.find(d => d.deviceId === preferredDeviceId)
+        selected = videoDevices.find(d => d.deviceId === preferredDeviceId)
       }
-
       if (!selected && preferredFacing) {
-        if (preferredFacing === 'environment') {
-          selected = allDevices.find(d => /back|rear|environment/i.test(d.label))
-        } else {
-          selected = allDevices.find(d => /front|user|facetime|selfie/i.test(d.label))
-        }
+        if (preferredFacing === 'environment')
+          selected = videoDevices.find(d => /back|rear|environment/i.test(d.label))
+        else
+          selected = videoDevices.find(d => /front|user|facetime|selfie/i.test(d.label))
       }
-
-      if (!selected) {
-        selected =
-          allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
-          allDevices[0]
-      }
+      if (!selected)
+        selected = videoDevices.find(d => /back|rear|environment/i.test(d.label)) || videoDevices[0]
 
       if (!selected) throw new Error('No camera found')
-
       setActiveDeviceId(selected.deviceId)
+      setFacingMode(/front|user|facetime|selfie/i.test(selected.label) ? 'user' : 'environment')
 
-      // Detect facing mode from label for the flip button state
-      const isfront = /front|user|facetime|selfie/i.test(selected.label)
-      setFacingMode(isfront ? 'user' : 'environment')
+      // Wait until video container present
+      await new Promise(res => setTimeout(res, 50))
 
-      // ── Start stream ───────────────────────────────────────────────────
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId:        { exact: selected.deviceId },
-          width:           { ideal: 1920, min: 1280 },
-          height:          { ideal: 1080, min: 720 },
-          focusMode:       'continuous',
-          exposureMode:    'continuous',
-          whiteBalanceMode:'continuous',
-        },
+      // Start Quagga for live video scanning
+      const config = quaggaConfig(selected.deviceId, facingMode)
+      config.inputStream.target = videoContainerRef.current
+      Quagga.init(config, (err) => {
+        if (err) {
+          setError('Camera failed to start. Try uploading an image instead.')
+          return
+        }
+        Quagga.start()
+        setScanning(true)
       })
-      streamRef.current = stream
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-
-      readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
+      Quagga.onDetected(result => {
         if (!result || lockedRef.current) return
-        if (BLOCKED_2D.has(result.getBarcodeFormat())) return
+        // Only accept good results (valid code, probably, with 1D type)
+        const code = result.codeResult && result.codeResult.code
+        const format = result.codeResult && result.codeResult.format
+        if (!code || code.length < 4) return
+        // Quagga only returns 1D so no BLOCKED_2D needed
+        // Accept only supported formats
+        if (!DISPLAY_FORMATS.some(f => format && f.toLowerCase().replace('-', '') === format.toLowerCase().replace('_', ''))) return
 
-        const text = result.getText()
-        if (!text || text.length < 4) return
-
-        // Accept scan immediately (no CONFIRM_THRESHOLD buffer)
         lockedRef.current = true
         setConfidence(100)
-        setLastScannedValue(text)
+        setLastScannedValue(code)
         stopCamera().then(() => {
-          onScan(text)
-          // REMOVE: onClose() so modal does not close automatically
-          // onClose()
+          onScan(code)
         })
       })
-
-      setScanning(true)
     } catch (e) {
       const msg = e?.message || ''
       if (/permission|notallowed/i.test(msg)) {
@@ -663,70 +660,65 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         console.error(e)
       }
     }
-  }, [stopCamera, onScan /* onClose intentionally removed from deps */])
+  }, [enumerateVideoDevices, stopCamera, onScan, facingMode])
 
-  // Switch camera handler — stops current, restarts with new device
-  // Flip between front and back
+  // Flip camera handler
   const flipCamera = useCallback(async () => {
     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
     await stopCamera()
     setTimeout(() => startCamera(null, nextFacing), 200)
   }, [facingMode, stopCamera, startCamera])
 
-  // Switch to a specific device (for 3+ camera phones)
+  // Switch specific device
   const switchCamera = useCallback(async (deviceId) => {
     await stopCamera()
     setTimeout(() => startCamera(deviceId, null), 200)
   }, [stopCamera, startCamera])
 
-  // ── Torch toggle ──────────────────────────────────────────────────────
-  const toggleTorch = useCallback(async () => {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track) return
-    try {
-      await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
-      setTorchOn(t => !t)
-    } catch (_) {}
-  }, [torchOn])
+  // Torch toggle (not supported by Quagga, dummy function)
+  const toggleTorch = useCallback(async () => {}, [])
 
-  // ── File upload scan ──────────────────────────────────────────────────
+  // Handle file/image upload
   const handleFileChange = useCallback(async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
-
     try {
-      // Run the same image through the reader MULTIPLE times at different
-      // scales — this catches partial reads on high-res label photos
-      const reader = createReader()
-      const url    = URL.createObjectURL(file)
-
-      const img = new Image()
+      // Read image as DataURL
+      const url = URL.createObjectURL(file)
+      const img = new window.Image()
       await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
 
-      // Try at original size, then 2×, then 0.75× scale
-      const canvas  = document.createElement('canvas')
-      const ctx     = canvas.getContext('2d')
-      const scales  = [1, 1.5, 2, 0.75]
+      // Create canvas (scale attempts like before)
+      const scales = [1, 1.5, 2, 0.75]
       const results = {}
 
       for (const scale of scales) {
-        canvas.width  = Math.round(img.naturalWidth  * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.naturalWidth * scale)
         canvas.height = Math.round(img.naturalHeight * scale)
+        const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
-        try {
-          const r = await reader.decodeFromCanvas(canvas)
-          if (r && !BLOCKED_2D.has(r.getBarcodeFormat())) {
-            const t = r.getText()
-            results[t] = (results[t] || 0) + 1
-          }
-        } catch (_) {}
+        await new Promise(resolve => {
+          Quagga.decodeSingle({
+            src: canvas.toDataURL('image/png'),
+            ...quaggaConfig(),
+            inputStream: { size: 800 },
+            locator: { patchSize: 'medium', halfSample: true },
+            decoder: { readers: BARCODE_TYPES.map(t => `${t}_reader`) }
+          }, res => {
+            if (res && res.codeResult && res.codeResult.code) {
+              const text = res.codeResult.code
+              results[text] = (results[text] || 0) + 1
+            }
+            resolve()
+          })
+        })
       }
 
       URL.revokeObjectURL(url)
 
-      // Pick the value seen most often (majority vote across scales)
       const sorted = Object.entries(results).sort((a, b) => b[1] - a[1])
       if (sorted.length === 0) {
         setError('No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.')
@@ -737,29 +729,20 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
       const topCount  = sorted[0][1]
       const topValues = sorted.filter(([, c]) => c === topCount).map(([v]) => v)
       const best      = topValues.reduce((a, b) => (a.length >= b.length ? a : b))
-
       setLastScannedValue(best)
       onScan(best)
-      // Do not close modal
-      // onClose()
     } catch (err) {
-      if (err instanceof NotFoundException) {
-        setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
-      } else {
-        setError('Could not read image. Please try again.')
-        console.error(err)
-      }
+      setError('Could not read image. Please try again.')
+      console.error(err)
     }
-
     e.target.value = ''
   }, [onScan])
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────
+  // Lifecycle -- start/stop camera
   useEffect(() => {
     if (!open) return
     if (mode === 'camera') {
       const t = setTimeout(() => {
-        // On open/camera mode, don't pass preferredDeviceId to allow default rear-camera logic
         startCamera(null)
       }, 300)
       return () => { clearTimeout(t); stopCamera() }
@@ -823,7 +806,8 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         {/* Camera view with dropdown camera selector */}
         {mode === 'camera' && (
           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-            <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
+            {/* Camera video stream rendered into this div by Quagga */}
+            <div ref={videoContainerRef} className="w-full h-full" style={{ minHeight: 200, background: "#000" }} />
 
             {/* Targeting overlay */}
             {scanning && (
@@ -847,32 +831,27 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
             {/* Top controls row */}
             {scanning && (
               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-
-                {/* Torch */}
+                {/* Torch - not available */}
                 <button
                   onClick={toggleTorch}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
-                    torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'}`}
+                  disabled
                 >
-                  🔦 {torchOn ? 'On' : 'Off'}
+                  🔦 N/A
                 </button>
-
                 <div className="flex items-center gap-2">
-                  {/* Flip camera button — always visible on mobile, works by facingMode */}
+                  {/* Flip camera button */}
                   {devices.length > 1 && (
                     <button
                       onClick={flipCamera}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
                       title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
                     >
-                      {/* Flip icon using unicode — no extra dependency */}
                       <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
                       <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
                     </button>
                   )}
-
-                  {/* Extra dropdown only shown on desktop/tablet with 3+ cameras */}
+                  {/* Dropdown camera selector for 3+ cameras */}
                   {devices.length > 2 && (
                     <select
                       value={activeDeviceId || ''}
@@ -888,10 +867,8 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
                     </select>
                   )}
                 </div>
-
               </div>
             )}
-
             {!scanning && !error && (
               <div className="absolute inset-0 flex items-center justify-center text-white text-sm bg-black/50">
                 Starting camera…
@@ -919,7 +896,6 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
           <b>QR codes and 2D codes are always ignored</b>
         </p>
       </div>
-
       <style>{`
         @keyframes scanline {
           0%   { top: 0;    opacity: 1;   }
