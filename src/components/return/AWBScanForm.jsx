@@ -460,6 +460,19 @@ export default function AWBScanForm({ onSuccess }) {
   }, [selectedPartner])
 
   // ── Clear AWB and refocus ─────────────────────────────────────────────
+  // const clearAWB = () => {
+  //   console.log('[AWBScanForm] clearAWB called')
+  //   setValue('awbId', '', { shouldValidate: false, shouldDirty: false })
+  //   clearErrors('awbId')
+  //   if (awbInputRef.current) {
+  //     console.log('[AWBScanForm] Clearing and focusing AWB input')
+  //     awbInputRef.current.value = ''
+  //     // awbInputRef.current.focus()
+  //     setTimeout(() => {
+  //       awbInputRef.current?.focus()
+  //     }, 0)
+  //   }
+  // }
   const clearAWB = () => {
     console.log('[AWBScanForm] clearAWB called')
     setValue('awbId', '', { shouldValidate: false, shouldDirty: false })
@@ -467,7 +480,10 @@ export default function AWBScanForm({ onSuccess }) {
     if (awbInputRef.current) {
       console.log('[AWBScanForm] Clearing and focusing AWB input')
       awbInputRef.current.value = ''
-      awbInputRef.current.focus()
+      // Defer focus until after React re-enables the input (submitting → false)
+      setTimeout(() => {
+        awbInputRef.current?.focus()
+      }, 0)
     }
   }
 
