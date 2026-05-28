@@ -488,76 +488,68 @@
 // }
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import {
-  BrowserMultiFormatReader,
-  BarcodeFormat,
-  DecodeHintType,
-  NotFoundException,
-} from '@zxing/library'
 import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
 import Modal from '../common/Modal'
+import { Html5Qrcode, Html5QrcodeSupportedFormats, Html5QrcodeScanner } from 'html5-qrcode'
 
-// ── 1D-only formats ────────────────────────────────────────────────────────
+// 1D-only supported formats by html5-qrcode
 const BARCODE_FORMATS = [
-  BarcodeFormat.CODE_128,
-  BarcodeFormat.CODE_39,
-  BarcodeFormat.CODE_93,
-  BarcodeFormat.EAN_13,
-  BarcodeFormat.EAN_8,
-  BarcodeFormat.UPC_A,
-  BarcodeFormat.UPC_E,
-  BarcodeFormat.ITF,
-  BarcodeFormat.CODABAR,
-  BarcodeFormat.RSS_14,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.CODE_93,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.ITF,
+  Html5QrcodeSupportedFormats.CODABAR,
+  // Rss14 is not supported in html5-qrcode as of now
 ]
 
 const BLOCKED_2D = new Set([
-  BarcodeFormat.QR_CODE,
-  BarcodeFormat.DATA_MATRIX,
-  BarcodeFormat.AZTEC,
-  BarcodeFormat.PDF_417,
-  BarcodeFormat.MAXICODE,
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.AZTEC,
+  Html5QrcodeSupportedFormats.DATA_MATRIX,
+  Html5QrcodeSupportedFormats.PDF_417,
+  Html5QrcodeSupportedFormats.MAXICODE,
 ])
 
-function createReader() {
-  const hints = new Map()
-  hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
-  hints.set(DecodeHintType.TRY_HARDER, true)
-  // CHARACTER_SET helps with long CODE-128 strings like Flipkart AWB
-  hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
-  return new BrowserMultiFormatReader(hints, {
-    delayBetweenScanAttempts: 20,   // Make polling even FASTER
-    delayBetweenScanSuccess: 10,
-  })
+function isBlockedFormat(format) {
+  // format can be number (Html5QrcodeSupportedFormats value) or string
+  return BLOCKED_2D.has(format)
 }
 
 export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
-  const readerRef   = useRef(null)
-  const videoRef    = useRef(null)
+  const scannerRef = useRef(null)
+  const camerasRef = useRef([])
+  const html5QrCodeRef = useRef(null)
   const fileInputRef = useRef(null)
-  const streamRef   = useRef(null)
-  const lockedRef   = useRef(false)   // prevent double-fire after confirm
-
-  const [mode, setMode]       = useState('camera')
-  const [error, setError]     = useState(null)
+  const lockedRef = useRef(false)
+  const [mode, setMode] = useState('camera')
+  const [error, setError] = useState(null)
   const [scanning, setScanning] = useState(false)
+  const [lastScannedValue, setLastScannedValue] = useState(null)
   const [torchOn, setTorchOn] = useState(false)
-
-  // Removed confidence state & logic
-
-  const [lastScannedValue, setLastScannedValue] = useState(null);
   const [devices, setDevices] = useState([])
   const [activeDeviceId, setActiveDeviceId] = useState(null)
-  const [facingMode, setFacingMode] = useState('environment') // 'environment'=rear, 'user'=front
+  const [facingMode, setFacingMode] = useState('environment')
+  const [isScannerReady, setIsScannerReady] = useState(false)
 
-  // ── Stop camera ────────────────────────────────────────────────────────
-  const stopCamera = useCallback(async () => {
+  // Helper
+  const resetScanner = useCallback(async () => {
     lockedRef.current = false
-    try { readerRef.current?.reset() } catch (_) {}
-    streamRef.current?.getTracks().forEach(t => t.stop())
-    streamRef.current = null
     setScanning(false)
     setTorchOn(false)
+    setIsScannerReady(false)
+    try {
+      if (html5QrCodeRef.current) {
+        await html5QrCodeRef.current.stop()
+        await html5QrCodeRef.current.clear()
+        html5QrCodeRef.current = null
+      }
+    } catch (e) {
+      // ignore
+    }
   }, [])
 
   const startCamera = useCallback(async (preferredDeviceId = null, preferredFacing = null) => {
@@ -566,187 +558,158 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
     lockedRef.current = false
 
     try {
-      readerRef.current = createReader()
-
-      // ── Enumerate cameras ──────────────────────────────────────────────
-      let allDevices = []
-      try {
-        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true })
-        tempStream.getTracks().forEach(t => t.stop())
-      } catch (_) {}
-
-      allDevices = await readerRef.current.listVideoInputDevices()
-      setDevices(allDevices)
-
-      // ── Pick device ────────────────────────────────────────────────────
-      let selected = null
-
-      if (preferredDeviceId) {
-        selected = allDevices.find(d => d.deviceId === preferredDeviceId)
+      if (!Html5Qrcode.getCameras) {
+        setError('This device does not support html5-qrcode.')
+        return
       }
+      const cameras = await Html5Qrcode.getCameras()
+      setDevices(cameras)
 
+      // Pick device by facing, id, etc
+      let selected = null
+      if (preferredDeviceId && cameras.find(d => d.id === preferredDeviceId))
+        selected = cameras.find(d => d.id === preferredDeviceId)
       if (!selected && preferredFacing) {
-        if (preferredFacing === 'environment') {
-          selected = allDevices.find(d => /back|rear|environment/i.test(d.label))
-        } else {
-          selected = allDevices.find(d => /front|user|facetime|selfie/i.test(d.label))
+        if (preferredFacing === 'environment')
+          selected = cameras.find(d => /back|environment|rear/i.test(d.label))
+        else
+          selected = cameras.find(d => /front|user|facetime|selfie/i.test(d.label))
+      }
+      if (!selected)
+        selected = cameras.find(d => /back|environment|rear/i.test(d.label)) || cameras[0]
+      if (!selected) throw new Error('No camera found')
+
+      setActiveDeviceId(selected.id)
+      setFacingMode(/front|user|facetime|selfie/i.test(selected.label) ? 'user' : 'environment')
+
+      // Prepare scanner
+      if (!scannerRef.current) return
+      if (html5QrCodeRef.current) {
+        try { await html5QrCodeRef.current.stop(); await html5QrCodeRef.current.clear(); } catch {}
+      }
+      html5QrCodeRef.current = new Html5Qrcode(scannerRef.current.id, /* verbose= */false)
+
+      // Only allow 1D formats
+      const qrConfig = {
+        fps: 25,
+        disableFlip: false,
+        formatsToSupport: BARCODE_FORMATS,
+        videoConstraints: {
+          deviceId: { exact: selected.id },
+          facingMode: preferredFacing || facingMode,
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
         }
       }
 
-      if (!selected) {
-        selected =
-          allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
-          allDevices[0]
-      }
+      setIsScannerReady(true)
 
-      if (!selected) throw new Error('No camera found')
+      await html5QrCodeRef.current.start(
+        selected.id,
+        qrConfig,
+        (decodedText, result) => {
+          // result.format is a number
+          if (lockedRef.current) return
+          if (isBlockedFormat(result.format)) return
+          if (!decodedText || decodedText.length < 4) return
 
-      setActiveDeviceId(selected.deviceId)
-
-      const isfront = /front|user|facetime|selfie/i.test(selected.label)
-      setFacingMode(isfront ? 'user' : 'environment')
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId:        { exact: selected.deviceId },
-          width:           { ideal: 1920, min: 1280 },
-          height:          { ideal: 1080, min: 720 },
-          focusMode:       'continuous',
-          exposureMode:    'continuous',
-          whiteBalanceMode:'continuous',
+          lockedRef.current = true
+          setLastScannedValue(decodedText)
+          resetScanner().then(() => {
+            onScan(decodedText)
+            // Don't close modal automatically
+          })
         },
-      })
-      streamRef.current = stream
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-
-      readerRef.current.decodeFromStream(stream, videoRef.current, (result) => {
-        if (!result || lockedRef.current) return
-        if (BLOCKED_2D.has(result.getBarcodeFormat())) return
-
-        const text = result.getText()
-        if (!text || text.length < 4) return
-
-        lockedRef.current = true
-        setLastScannedValue(text)
-        stopCamera().then(() => {
-          onScan(text)
-          // Don't close modal automatically
-        })
-      })
-
+        err => {
+          // Failure callback for scan attempt, do nothing
+        }
+      )
       setScanning(true)
     } catch (e) {
-      const msg = e?.message || ''
-      if (/permission|notallowed/i.test(msg)) {
+      if (/permission|notallowed/i.test(e?.message || "")) {
         setError('Camera permission denied. Please allow camera access and reload.')
-      } else if (/no camera/i.test(msg)) {
+      } else if (/no camera/i.test(e?.message || "")) {
         setError('No camera found on this device.')
       } else {
         setError('Camera failed to start. Try uploading an image instead.')
         console.error(e)
       }
+      setIsScannerReady(false)
     }
-  }, [stopCamera, onScan ])
+  }, [facingMode, onScan, resetScanner])
 
   const flipCamera = useCallback(async () => {
     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
-    await stopCamera()
+    await resetScanner()
     setTimeout(() => startCamera(null, nextFacing), 200)
-  }, [facingMode, stopCamera, startCamera])
+  }, [facingMode, resetScanner, startCamera])
 
   const switchCamera = useCallback(async (deviceId) => {
-    await stopCamera()
+    await resetScanner()
     setTimeout(() => startCamera(deviceId, null), 200)
-  }, [stopCamera, startCamera])
+  }, [resetScanner, startCamera])
 
-  // ── Torch toggle ──────────────────────────────────────────────────────
+  // Torch toggle (html5-qrcode supports it via applyVideoConstraints)
   const toggleTorch = useCallback(async () => {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track) return
+    if (!html5QrCodeRef.current) return
     try {
-      await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
-      setTorchOn(t => !t)
-    } catch (_) {}
+      const stream = html5QrCodeRef.current.getRunningTrack()
+      if (stream && stream.applyConstraints) {
+        await stream.applyConstraints({
+          advanced: [{ torch: !torchOn }]
+        })
+        setTorchOn(v => !v)
+      }
+    } catch {
+      // ignore
+    }
   }, [torchOn])
 
-  // ── File upload scan ──────────────────────────────────────────────────
+  // File upload image scan
   const handleFileChange = useCallback(async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
-
     try {
-      // Still try multiple scales, as it's not slow
-      const reader = createReader()
-      const url    = URL.createObjectURL(file)
-
-      const img = new Image()
-      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
-
-      const canvas  = document.createElement('canvas')
-      const ctx     = canvas.getContext('2d')
-      const scales  = [1, 1.5, 2, 0.75]
-      const results = {}
-
-      for (const scale of scales) {
-        canvas.width  = Math.round(img.naturalWidth  * scale)
-        canvas.height = Math.round(img.naturalHeight * scale)
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-        try {
-          const r = await reader.decodeFromCanvas(canvas)
-          if (r && !BLOCKED_2D.has(r.getBarcodeFormat())) {
-            const t = r.getText()
-            results[t] = (results[t] || 0) + 1
-          }
-        } catch (_) {}
-      }
-
-      URL.revokeObjectURL(url)
-
-      const sorted = Object.entries(results).sort((a, b) => b[1] - a[1])
-      if (sorted.length === 0) {
-        setError('No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.')
+      const html5QrCode = new Html5Qrcode(/* element id not used for file */ "TEMP_FILE_SCAN")
+      const decoded = await html5QrCode.scanFile(file, /* showImage= */false)
+      // decoded contains .text (string) and .format (number)
+      if (!decoded || !decoded.text) throw new Error('No barcode found.')
+      if (isBlockedFormat(decoded.format)) {
+        setError('File contains only QR or 2D code, which is ignored.')
         return
       }
-
-      const topCount  = sorted[0][1]
-      const topValues = sorted.filter(([, c]) => c === topCount).map(([v]) => v)
-      const best      = topValues.reduce((a, b) => (a.length >= b.length ? a : b))
-
-      setLastScannedValue(best)
-      onScan(best)
-      // Do not close modal
+      setLastScannedValue(decoded.text)
+      onScan(decoded.text)
     } catch (err) {
-      if (err instanceof NotFoundException) {
-        setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
-      } else {
-        setError('Could not read image. Please try again.')
+      setError(
+        typeof err === 'string'
+          ? err
+          : err?.message?.includes('No QR code or barcode found') || err?.message?.includes('No barcode found.')
+          ? 'No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.'
+          : 'Could not read image. Please try again.'
+      )
+      if (typeof err !== 'string') {
         console.error(err)
       }
     }
-
     e.target.value = ''
   }, [onScan])
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────
+  // Lifecycle
   useEffect(() => {
     if (!open) return
     if (mode === 'camera') {
-      const t = setTimeout(() => {
+      setTimeout(() => {
         startCamera(null)
       }, 300)
-      return () => { clearTimeout(t); stopCamera() }
+      return () => { resetScanner() }
     } else {
-      stopCamera()
+      resetScanner()
     }
-  }, [open, mode, startCamera, stopCamera])
+  }, [open, mode, startCamera, resetScanner])
 
-  useEffect(() => { if (!open) stopCamera() }, [open, stopCamera])
+  useEffect(() => { if (!open) resetScanner() }, [open, resetScanner])
 
   const switchMode = (m) => { if (m !== mode) { setError(null); setMode(m) } }
 
@@ -801,7 +764,14 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
         {/* Camera view with dropdown camera selector */}
         {mode === 'camera' && (
           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-            <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
+            <div
+              id="barcode-html5-qrcode-scanner"
+              ref={el => {
+                if (el) scannerRef.current = el
+              }}
+              className="w-full h-full"
+              style={{ minHeight: 220 }}
+            />
 
             {/* Targeting overlay */}
             {scanning && (
@@ -814,17 +784,6 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
               </div>
             )}
 
-            {/* Confidence bar REMOVED */}
-            {/*
-
-            {scanning && confidence > 0 && (
-              <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/40">
-                <div className="h-full bg-brand-400 transition-all duration-150"
-                  style={{ width: `${confidence}%` }} />
-              </div>
-            )}
-            */}
-
             {/* Top controls row */}
             {scanning && (
               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
@@ -835,6 +794,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
                     torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
                   }`}
+                  disabled={!isScannerReady}
                 >
                   🔦 {torchOn ? 'On' : 'Off'}
                 </button>
@@ -846,6 +806,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
                       onClick={flipCamera}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
                       title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}
+                      disabled={!isScannerReady}
                     >
                       <span style={{ display: 'inline-block', fontSize: 15 }}>🔄</span>
                       <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
@@ -859,9 +820,10 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
                       onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
                       className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
                       style={{ maxWidth: 130 }}
+                      disabled={!isScannerReady}
                     >
                       {devices.map((d, i) => (
-                        <option value={d.deviceId} key={d.deviceId}>
+                        <option value={d.id} key={d.id}>
                           {d.label?.trim() || `Camera ${i + 1}`}
                         </option>
                       ))}
