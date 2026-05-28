@@ -507,6 +507,11 @@ export default function AWBScanForm({ onSuccess }) {
       if (res.data?.success) {
         console.log('[AWBScanForm] Scan successful, showing success toast')
         toast.success(res.data.message || `AWB ${awbId} scanned successfully`)
+        // Empty AWB input after successful submission
+        setValue('awbId', '', { shouldValidate: false, shouldDirty: false })
+        if (awbInputRef.current) {
+          awbInputRef.current.value = ''
+        }
         onSuccess?.()
       }
     } catch (err) {
