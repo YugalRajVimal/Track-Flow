@@ -155,7 +155,6 @@
 //   )
 // }
 
-
 import React, { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
@@ -173,7 +172,16 @@ export default function AWBScanForm({ onSuccess }) {
   // Used to reset only AWB field after successful scan
   const awbInputRef = useRef(null)
 
-  const { register, handleSubmit, watch, setValue, resetField, getValues, formState: { errors }, clearErrors, trigger } = useForm({
+  // React Hook Form for easy form control
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors },
+    clearErrors,
+  } = useForm({
     defaultValues: {
       channelPartnerId: "",
       brandId: "",
@@ -182,7 +190,6 @@ export default function AWBScanForm({ onSuccess }) {
   })
 
   const selectedPartner = watch('channelPartnerId')
-  const selectedBrand = watch('brandId')
 
   useEffect(() => {
     channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
@@ -196,60 +203,71 @@ export default function AWBScanForm({ onSuccess }) {
       .finally(() => setLoadingBrands(false))
   }, [selectedPartner])
 
-  // Submission triggered by onScan or Enter from input field
+  // Helper for both manual and scanner submit
   const doSubmit = async (data) => {
     const { channelPartnerId, brandId, awbId } = data
-    // Validate partner/brand
+    // Toast showing scan attempt 
+    toast(`Submitting AWB: ${awbId || '(empty)'}`)
     if (!channelPartnerId) {
       toast.error("Please select a Channel Partner before scanning or submitting")
       return
-    } else if (!brandId) {
+    }
+    if (!brandId) {
       toast.error("Please select a Brand before scanning or submitting")
+      return
+    }
+    // Validate AWB client-side before hitting API
+    if (
+      !awbId ||
+      awbId.length < 6 ||
+      awbId.length > 30 ||
+      !/^[a-zA-Z0-9]+$/.test(awbId)
+    ) {
+      toast.error("AWB must be 6-30 alphanumeric characters.")
+      // Always clear after feedback for barcode machines (even if invalid)
+      setValue('awbId', '')
+      awbInputRef.current && awbInputRef.current.focus()
+      clearErrors('awbId')
       return
     }
     try {
       setSubmitting(true)
-      // Validate field rules on AWB
-      if (
-        !awbId ||
-        awbId.length < 6 ||
-        awbId.length > 30 ||
-        !/^[a-zA-Z0-9]+$/.test(awbId)
-      ) {
-        toast.error("AWB must be 6-30 alphanumeric characters.")
-        return
-      }
       const res = await returnAPI.scan({ channelPartnerId, brandId, awbId })
       if (res.data?.success) {
         toast.success(res.data.message || `AWB ${awbId} scanned successfully`)
-        // Only clear AWB field -- keep Channel Partner and Brand
+        // Always clear AWB field after any submission (barcode or manual)
         setValue('awbId', '')
         clearErrors('awbId')
         awbInputRef.current && awbInputRef.current.focus()
         onSuccess?.()
-        // Do NOT close BarcodeScanner here per new requirements
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to scan AWB'
       toast.error(msg)
+      // Always clear field after server error
+      setValue('awbId', '')
+      clearErrors('awbId')
+      awbInputRef.current && awbInputRef.current.focus()
     } finally {
       setSubmitting(false)
     }
   }
 
-  // If barcode scanner returns, treat same as manual submit
+  // This gets triggered by the barcode scanner (hardware or UI scan)
   const onScan = async (awbId) => {
     setValue('awbId', awbId, { shouldValidate: true, shouldDirty: true })
     clearErrors('awbId')
-    doSubmit({
+    // Call the shared submit logic
+    // Use the latest values for other fields
+    await doSubmit({
       channelPartnerId: getValues('channelPartnerId'),
       brandId: getValues('brandId'),
       awbId
     })
-    // Do NOT close BarcodeScanner after scan -- leave open
+    // Leave scanner open (UX spec)
   }
 
-  // Allow user to type and also submit by pressing Enter
+  // Allow user to type and submit with Enter
   const handleAWBKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -260,7 +278,6 @@ export default function AWBScanForm({ onSuccess }) {
   // OnChange updates error message live as the user types
   const handleAWBChange = (e) => {
     setValue('awbId', e.target.value, { shouldValidate: true, shouldDirty: true })
-    // Clear "AWB ID is required" error as soon as user types
     if (errors.awbId && e.target.value) {
       clearErrors('awbId')
     }
@@ -283,7 +300,6 @@ export default function AWBScanForm({ onSuccess }) {
       <BarcodeScanner
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
-        // Pass onScan to handle scan & submit
         onScan={onScan}
         title="Scan AWB Barcode"
       />
