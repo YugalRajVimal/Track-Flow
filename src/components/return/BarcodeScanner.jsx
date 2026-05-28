@@ -1007,7 +1007,14 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
       const reader = getReader()
 
       console.log('[BarcodeScanner] Listing video input devices')
-      const allDevices = await BrowserMultiFormatReader.listVideoInputDevices()
+      // const allDevices = await BrowserMultiFormatReader.listVideoInputDevices()
+
+      await navigator.mediaDevices.getUserMedia({ video: true }) // ensure permission before enumerating
+      const allMediaDevices = await navigator.mediaDevices.enumerateDevices()
+      const allDevices = allMediaDevices
+        .filter(d => d.kind === 'videoinput')
+        .map(d => ({ deviceId: d.deviceId, label: d.label }))
+
       console.log('[BarcodeScanner] Available devices', allDevices)
       setDevices(allDevices)
 
