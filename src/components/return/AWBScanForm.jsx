@@ -402,6 +402,8 @@ import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
 
 export default function AWBScanForm({ onSuccess }) {
+  console.log('[AWBScanForm] Render start')
+
   const [partners, setPartners] = useState([])
   const [brands, setBrands] = useState([])
   const [loadingBrands, setLoadingBrands] = useState(false)
@@ -430,37 +432,57 @@ export default function AWBScanForm({ onSuccess }) {
   const selectedPartner = watch('channelPartnerId')
 
   useEffect(() => {
-    channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
+    console.log('[AWBScanForm] useEffect: fetching channel partners')
+    channelPartnersAPI.list().then(r => {
+      console.log('[AWBScanForm] Channel partners fetched:', r.data?.data || [])
+      setPartners(r.data?.data || [])
+    })
   }, [])
 
   useEffect(() => {
-    if (!selectedPartner) { setBrands([]); return }
+    console.log('[AWBScanForm] useEffect: selectedPartner changed:', selectedPartner)
+    if (!selectedPartner) {
+      console.log('[AWBScanForm] No selected partner; clear brands')
+      setBrands([])
+      return
+    }
     setLoadingBrands(true)
+    console.log('[AWBScanForm] Fetching brands for partner:', selectedPartner)
     brandsAPI.listByPartner(selectedPartner)
-      .then(r => setBrands(r.data?.data || []))
-      .finally(() => setLoadingBrands(false))
+      .then(r => {
+        console.log('[AWBScanForm] Brands fetched:', r.data?.data || [])
+        setBrands(r.data?.data || [])
+      })
+      .finally(() => {
+        setLoadingBrands(false)
+        console.log('[AWBScanForm] Finished loading brands')
+      })
   }, [selectedPartner])
 
   // ── Clear AWB and refocus ─────────────────────────────────────────────
   const clearAWB = () => {
+    console.log('[AWBScanForm] clearAWB called')
     setValue('awbId', '', { shouldValidate: false, shouldDirty: false })
     clearErrors('awbId')
-    // Also clear the DOM input directly — prevents stale value in uncontrolled scenarios
     if (awbInputRef.current) {
+      console.log('[AWBScanForm] Clearing and focusing AWB input')
       awbInputRef.current.value = ''
       awbInputRef.current.focus()
     }
   }
 
   const doSubmit = async (data) => {
+    console.log('[AWBScanForm] doSubmit called with data:', data)
     const { channelPartnerId, brandId, awbId } = data
 
     if (!channelPartnerId) {
+      console.log('[AWBScanForm] No channelPartnerId, showing error toast')
       toast.error("Please select a Channel Partner before scanning or submitting")
       clearAWB()
       return
     }
     if (!brandId) {
+      console.log('[AWBScanForm] No brandId, showing error toast')
       toast.error("Please select a Brand before scanning or submitting")
       clearAWB()
       return
@@ -471,6 +493,7 @@ export default function AWBScanForm({ onSuccess }) {
       awbId.length > 30 ||
       !/^[a-zA-Z0-9]+$/.test(awbId)
     ) {
+      console.log('[AWBScanForm] Invalid awbId, showing error toast')
       toast.error("AWB must be 6-30 alphanumeric characters.")
       clearAWB()
       return
@@ -478,32 +501,41 @@ export default function AWBScanForm({ onSuccess }) {
 
     try {
       setSubmitting(true)
+      console.log('[AWBScanForm] Submitting scan to API')
       const res = await returnAPI.scan({ channelPartnerId, brandId, awbId })
+      console.log('[AWBScanForm] Received API response:', res)
       if (res.data?.success) {
+        console.log('[AWBScanForm] Scan successful, showing success toast')
         toast.success(res.data.message || `AWB ${awbId} scanned successfully`)
         onSuccess?.()
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to scan AWB'
+      console.log('[AWBScanForm] Scan failed:', msg)
       toast.error(msg)
     } finally {
       setSubmitting(false)
-      // Always clear after every attempt — success or failure
+      console.log('[AWBScanForm] doSubmit finally, clearing AWB')
       clearAWB()
     }
   }
 
   // ── Hardware scanner / camera scan handler ────────────────────────────
   const onScan = async (scannedValue) => {
-    // Clear first to ensure no prefix from previous scan
+    console.log('[AWBScanForm] onScan called with scannedValue:', scannedValue)
     clearAWB()
-
-    // Small tick to let React flush the clear before setting new value
     await new Promise(r => setTimeout(r, 0))
-
     setValue('awbId', scannedValue, { shouldValidate: true, shouldDirty: true })
-    if (awbInputRef.current) awbInputRef.current.value = scannedValue
+    if (awbInputRef.current) {
+      console.log('[AWBScanForm] Setting awbInputRef current value to scannedValue')
+      awbInputRef.current.value = scannedValue
+    }
 
+    console.log('[AWBScanForm] Submitting form after scan with values:', {
+      channelPartnerId: getValues('channelPartnerId'),
+      brandId: getValues('brandId'),
+      awbId: scannedValue,
+    })
     await doSubmit({
       channelPartnerId: getValues('channelPartnerId'),
       brandId: getValues('brandId'),
@@ -513,8 +545,10 @@ export default function AWBScanForm({ onSuccess }) {
 
   // ── Enter key on AWB field submits ────────────────────────────────────
   const handleAWBKeyDown = (e) => {
+    console.log('[AWBScanForm] handleAWBKeyDown called:', e.key)
     if (e.key === 'Enter') {
       e.preventDefault()
+      console.log('[AWBScanForm] Enter pressed, submitting form')
       handleSubmit(doSubmit)()
     }
   }
@@ -530,8 +564,9 @@ export default function AWBScanForm({ onSuccess }) {
   })
 
   const mergedRef = (el) => {
-    rhfRef(el)           // Give RHF its ref so setValue/clearErrors work correctly
-    awbInputRef.current = el  // Keep our ref for direct DOM focus/clear
+    rhfRef(el)
+    awbInputRef.current = el
+    console.log('[AWBScanForm] mergedRef set:', el)
   }
 
   // Light theme classes
@@ -546,11 +581,15 @@ export default function AWBScanForm({ onSuccess }) {
     "btn-primary px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 font-semibold"
   const errorText = "text-pink-600 text-xs mt-1"
 
+  console.log('[AWBScanForm] Rendering form')
   return (
     <>
       <BarcodeScanner
         open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
+        onClose={() => {
+          console.log('[AWBScanForm] BarcodeScanner onClose')
+          setScannerOpen(false)
+        }}
         onScan={onScan}
         title="Scan AWB Barcode"
       />
@@ -564,6 +603,10 @@ export default function AWBScanForm({ onSuccess }) {
             {...register('channelPartnerId', { required: 'Channel partner is required' })}
             className={baseSelect}
             disabled={submitting}
+            onChange={e => {
+              console.log('[AWBScanForm] Channel Partner changed', e.target.value)
+              register('channelPartnerId').onChange?.(e)
+            }}
           >
             <option value="">Select channel partner...</option>
             {partners.map(p => (
@@ -582,6 +625,10 @@ export default function AWBScanForm({ onSuccess }) {
             {...register('brandId', { required: 'Brand is required' })}
             className={baseSelect}
             disabled={!selectedPartner || loadingBrands || submitting}
+            onChange={e => {
+              console.log('[AWBScanForm] Brand changed', e.target.value)
+              register('brandId').onChange?.(e)
+            }}
           >
             <option value="">
               {!selectedPartner ? 'Select partner first...' : loadingBrands ? 'Loading brands...' : 'Select brand...'}
@@ -603,17 +650,24 @@ export default function AWBScanForm({ onSuccess }) {
               <RiBarcodeLine className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" />
               <input
                 {...awbRegister}
-                ref={mergedRef}          // ← merged ref: RHF + our awbInputRef
+                ref={mergedRef}
                 className={baseInput}
                 placeholder="AWB123456"
                 autoComplete="off"
                 onKeyDown={handleAWBKeyDown}
                 disabled={submitting}
+                onChange={e => {
+                  console.log('[AWBScanForm] AWB input changed', e.target.value)
+                  awbRegister.onChange?.(e)
+                }}
               />
             </div>
             <button
               type="button"
-              onClick={() => setScannerOpen(true)}
+              onClick={() => {
+                console.log('[AWBScanForm] Scan barcode button clicked')
+                setScannerOpen(true)
+              }}
               className={baseButtonSecondary}
               title="Scan barcode"
               disabled={submitting}
@@ -626,7 +680,8 @@ export default function AWBScanForm({ onSuccess }) {
           )}
         </div>
 
-        <button type="submit" disabled={submitting} className={baseButtonPrimary}>
+        <button type="submit" disabled={submitting} className={baseButtonPrimary}
+          onClick={() => { console.log('[AWBScanForm] Submit button clicked') }}>
           {submitting ? (
             <><RiLoader4Line className="animate-spin" /> Scanning...</>
           ) : (
