@@ -1397,7 +1397,6 @@
 //     </Modal>
 //   )
 // }
-
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   BrowserMultiFormatReader,
@@ -1408,10 +1407,9 @@ import {
 import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
 import Modal from '../common/Modal'
 
-// ── Only the most common 1D formats (fewer = faster decode) ───────────────
 const BARCODE_FORMATS = [
-  BarcodeFormat.CODE_128,   // Most common shipping/warehouse
-  BarcodeFormat.EAN_13,     // Retail
+  BarcodeFormat.CODE_128,
+  BarcodeFormat.EAN_13,
   BarcodeFormat.EAN_8,
   BarcodeFormat.UPC_A,
   BarcodeFormat.UPC_E,
@@ -1428,9 +1426,7 @@ const BLOCKED_2D = new Set([
   BarcodeFormat.MAXICODE,
 ])
 
-// ── Two readers: fast (camera) and thorough (file upload) ─────────────────
 function createCameraReader() {
-  console.log('[BarcodeScanner] createCameraReader')
   const hints = new Map()
   hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
   hints.set(DecodeHintType.CHARACTER_SET, 'UTF-8')
@@ -1441,7 +1437,6 @@ function createCameraReader() {
 }
 
 function createFileReader() {
-  console.log('[BarcodeScanner] createFileReader')
   const hints = new Map()
   hints.set(DecodeHintType.POSSIBLE_FORMATS, BARCODE_FORMATS)
   hints.set(DecodeHintType.TRY_HARDER, true)
@@ -1450,16 +1445,12 @@ function createFileReader() {
 }
 
 export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Barcode' }) {
-  console.log('[BarcodeScanner] render start')
-
   const cameraReaderRef = useRef(null)
   const videoRef        = useRef(null)
   const fileInputRef    = useRef(null)
   const lockedRef       = useRef(false)
 
-  // ── Stable ref for onScan — prevents startCamera from being recreated
-  //    on every parent re-render, which was causing the camera to restart
-  //    after each successful scan.
+  // Stable ref for onScan — never causes startCamera to be recreated
   const onScanRef = useRef(onScan)
   useEffect(() => { onScanRef.current = onScan }, [onScan])
 
@@ -1472,180 +1463,136 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
   const [activeDeviceId, setActiveDeviceId] = useState(null)
   const [facingMode, setFacingMode] = useState('environment')
 
+  // Keep preferred device stable across restarts
+  const preferredDeviceIdRef = useRef(null)
+
   const getReader = useCallback(() => {
-    console.log('[BarcodeScanner] getReader')
     if (!cameraReaderRef.current) {
-      console.log('[BarcodeScanner] Creating camera reader')
       cameraReaderRef.current = createCameraReader()
     }
     return cameraReaderRef.current
   }, [])
 
   const stopCamera = useCallback(() => {
-    console.log('[BarcodeScanner] stopCamera')
     lockedRef.current = false
-    try { cameraReaderRef.current?.reset() } catch (e) { console.log('[BarcodeScanner] stopCamera reset error', e) }
+    try { cameraReaderRef.current?.reset() } catch (e) {}
     setScanning(false)
     setTorchOn(false)
   }, [])
 
   const startCamera = useCallback(async (preferredDeviceId = null, preferredFacing = null) => {
-    console.log('[BarcodeScanner] startCamera', { preferredDeviceId, preferredFacing })
     setError(null)
     setScanning(false)
     lockedRef.current = false
 
     try {
-      console.log('[BarcodeScanner] Getting reader')
       const reader = getReader()
 
-      console.log('[BarcodeScanner] Listing video input devices')
-      await navigator.mediaDevices.getUserMedia({ video: true }) // ensure permission before enumerating
+      await navigator.mediaDevices.getUserMedia({ video: true })
       const allMediaDevices = await navigator.mediaDevices.enumerateDevices()
       const allDevices = allMediaDevices
         .filter(d => d.kind === 'videoinput')
         .map(d => ({ deviceId: d.deviceId, label: d.label }))
-      console.log('[BarcodeScanner] Available devices', allDevices)
       setDevices(allDevices)
 
-      if (allDevices.length === 0) {
-        console.log('[BarcodeScanner] No camera found')
-        throw new Error('No camera found')
-      }
+      if (allDevices.length === 0) throw new Error('No camera found')
 
       let selected = null
       if (preferredDeviceId) {
         selected = allDevices.find(d => d.deviceId === preferredDeviceId)
-        console.log('[BarcodeScanner] preferredDeviceId selected:', selected)
       }
       if (!selected && preferredFacing) {
         const re = preferredFacing === 'environment'
           ? /back|rear|environment/i
           : /front|user|facetime|selfie/i
         selected = allDevices.find(d => re.test(d.label))
-        console.log('[BarcodeScanner] preferredFacing selected:', selected)
       }
       if (!selected) {
         selected =
           allDevices.find(d => /back|rear|environment/i.test(d.label)) ||
           allDevices[0]
-        console.log('[BarcodeScanner] default selected:', selected)
       }
 
       setActiveDeviceId(selected.deviceId)
+      preferredDeviceIdRef.current = selected.deviceId
       setFacingMode(/front|user|facetime|selfie/i.test(selected.label) ? 'user' : 'environment')
-      console.log('[BarcodeScanner] setActiveDeviceId:', selected.deviceId)
-      console.log('[BarcodeScanner] setFacingMode:', /front|user|facetime|selfie/i.test(selected.label) ? 'user' : 'environment')
 
       await reader.decodeFromVideoDevice(
         selected.deviceId,
         videoRef.current,
         (result, err) => {
-          console.log('[BarcodeScanner] decodeFromVideoDevice callback', { locked: lockedRef.current, result, err })
-          if (lockedRef.current) {
-            console.log('[BarcodeScanner] decodeFromVideoDevice: locked')
-            return
-          }
-          if (!result) {
-            // err is NotFoundException on every frame with no barcode — expected
-            return
-          }
-          if (BLOCKED_2D.has(result.getBarcodeFormat())) {
-            console.log('[BarcodeScanner] Skipping 2D barcode (blocked format):', result.getBarcodeFormat())
-            return
-          }
+          if (lockedRef.current) return
+          if (!result) return
+          if (BLOCKED_2D.has(result.getBarcodeFormat())) return
           const text = result.getText()
-          if (!text || text.length < 4) {
-            console.log('[BarcodeScanner] Skipping result (too short):', text)
-            return
-          }
+          if (!text || text.length < 4) return
+
           lockedRef.current = true
           setLastScannedValue(text)
-          console.log('[BarcodeScanner] Scanned barcode:', text)
+
+          // Stop camera, fire callback, then restart for next scan
           stopCamera()
-          // Use the ref so this callback never closes over a stale onScan,
-          // and startCamera is never recreated just because onScan changed.
           onScanRef.current(text)
+
+          // Restart camera after a short pause so user can see the success state,
+          // then the viewfinder comes back ready for the next barcode.
+          setTimeout(() => {
+            if (preferredDeviceIdRef.current) {
+              setLastScannedValue(null)
+              startCamera(preferredDeviceIdRef.current, null)
+            }
+          }, 1200)
         }
       )
 
       setScanning(true)
-      console.log('[BarcodeScanner] setScanning(true)')
     } catch (e) {
       const msg = e?.message || ''
       if (/permission|notallowed/i.test(msg)) {
         setError('Camera permission denied. Please allow camera access and reload.')
-        console.log('[BarcodeScanner] Camera permission denied.')
       } else if (/no camera/i.test(msg)) {
         setError('No camera found on this device.')
-        console.log('[BarcodeScanner] No camera found on this device.')
       } else {
         setError('Camera failed to start. Try uploading an image instead.')
-        console.error('[BarcodeScanner] Camera failed to start.', e)
       }
     }
-  // onScan intentionally excluded — use onScanRef.current instead
   }, [getReader, stopCamera]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const flipCamera = useCallback(async () => {
-    console.log('[BarcodeScanner] flipCamera')
     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
     stopCamera()
-    setTimeout(() => {
-      console.log('[BarcodeScanner] flipCamera triggering startCamera')
-      startCamera(null, nextFacing)
-    }, 150)
+    setTimeout(() => startCamera(null, nextFacing), 150)
   }, [facingMode, stopCamera, startCamera])
 
   const switchCamera = useCallback(async (deviceId) => {
-    console.log('[BarcodeScanner] switchCamera', deviceId)
     stopCamera()
-    setTimeout(() => {
-      console.log('[BarcodeScanner] switchCamera triggering startCamera')
-      startCamera(deviceId, null)
-    }, 150)
+    setTimeout(() => startCamera(deviceId, null), 150)
   }, [stopCamera, startCamera])
 
-  // ── Torch ─────────────────────────────────────────────────────────────
   const toggleTorch = useCallback(async () => {
-    console.log('[BarcodeScanner] toggleTorch')
     const track = videoRef.current?.srcObject?.getVideoTracks()[0]
-    if (!track) {
-      console.log('[BarcodeScanner] toggleTorch: no video track')
-      return
-    }
+    if (!track) return
     try {
       await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
-      console.log('[BarcodeScanner] Torch toggled to', !torchOn)
       setTorchOn(t => !t)
-    } catch (e) {
-      console.log('[BarcodeScanner] toggleTorch applyConstraints error', e)
-    }
+    } catch (e) {}
   }, [torchOn])
 
-  // ── File upload scan ──────────────────────────────────────────────────
   const handleFileChange = useCallback(async (e) => {
-    console.log('[BarcodeScanner] handleFileChange', e)
     const file = e.target.files?.[0]
-    if (!file) {
-      console.log('[BarcodeScanner] No file selected')
-      return
-    }
+    if (!file) return
     setError(null)
 
     try {
-      console.log('[BarcodeScanner] Creating file reader')
       const reader = createFileReader()
       const url    = URL.createObjectURL(file)
       const img    = new Image()
-      console.log('[BarcodeScanner] Image src loading:', url)
       await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
 
       const canvas  = document.createElement('canvas')
       const ctx     = canvas.getContext('2d')
       const scales  = [1, 1.5, 2, 0.75]
       const results = {}
-      console.log('[BarcodeScanner] Starting scan for scales', scales)
 
       for (const scale of scales) {
         canvas.width  = Math.round(img.naturalWidth  * scale)
@@ -1656,97 +1603,66 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
           if (r && !BLOCKED_2D.has(r.getBarcodeFormat())) {
             const t = r.getText()
             results[t] = (results[t] || 0) + 1
-            console.log(`[BarcodeScanner] Found barcode "${t}" at scale ${scale}`)
-          } else if (r) {
-            console.log(`[BarcodeScanner] Skipping 2D format "${r.getBarcodeFormat()}" at scale ${scale}`)
           }
-        } catch (scanErr) {
-          console.log(`[BarcodeScanner] No barcode found at scale ${scale}`)
-        }
+        } catch (_) {}
       }
 
       URL.revokeObjectURL(url)
-      console.log('[BarcodeScanner] Results after scanning:', results)
 
       const sorted = Object.entries(results).sort((a, b) => b[1] - a[1])
       if (sorted.length === 0) {
         setError('No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.')
-        console.log('[BarcodeScanner] No barcode found in any scale')
         return
       }
 
       const topCount = sorted[0][1]
-      const best     = sorted
+      const best = sorted
         .filter(([, c]) => c === topCount)
         .map(([v]) => v)
         .reduce((a, b) => (a.length >= b.length ? a : b))
-      console.log('[BarcodeScanner] Most frequent scanned value:', best)
+
       setLastScannedValue(best)
       onScanRef.current(best)
+
+      // Clear success state after a moment for next upload
+      setTimeout(() => setLastScannedValue(null), 2000)
     } catch (err) {
       if (err instanceof NotFoundException) {
         setError('No barcode detected. Make sure the full barcode is visible and well-lit.')
-        console.log('[BarcodeScanner] NotFoundException:', err)
       } else {
         setError('Could not read image. Please try again.')
-        console.error('[BarcodeScanner] Could not read image.', err)
       }
     }
 
     e.target.value = ''
-  }, []) // onScan accessed via onScanRef — no dep needed
+  }, [])
 
-  // ── Start / stop camera when modal opens/closes or mode changes ───────
-  // Only [open, mode] in deps — startCamera is stable now that onScan is
-  // accessed via ref, so this effect will never fire spuriously after a scan.
+  // Start/stop camera only when open or mode changes
   useEffect(() => {
-    console.log('[BarcodeScanner] useEffect: open=', open, 'mode=', mode)
-    if (!open) {
-      console.log('[BarcodeScanner] useEffect: Not open. return.')
-      return
-    }
+    if (!open) return
     if (mode === 'camera') {
-      console.log('[BarcodeScanner] useEffect: Camera mode. Starting camera.')
       const t = setTimeout(() => startCamera(null), 300)
-      return () => {
-        console.log('[BarcodeScanner] useEffect cleanup: clearTimeout + stopCamera')
-        clearTimeout(t)
-        stopCamera()
-      }
+      return () => { clearTimeout(t); stopCamera() }
     } else {
-      console.log('[BarcodeScanner] useEffect: Not camera mode. Stopping camera.')
       stopCamera()
     }
   }, [open, mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    console.log('[BarcodeScanner] useEffect[open]: open =', open)
-    if (!open) {
-      console.log('[BarcodeScanner] useEffect[open]: stopCamera()')
-      stopCamera()
-    }
+    if (!open) stopCamera()
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    console.log('[BarcodeScanner] useEffect[]: unmount cleanup')
     return () => {
-      try {
-        cameraReaderRef.current?.reset()
-        console.log('[BarcodeScanner] Reader reset on unmount')
-      } catch (e) {
-        console.log('[BarcodeScanner] Reader reset error on unmount', e)
-      }
+      try { cameraReaderRef.current?.reset() } catch (e) {}
       cameraReaderRef.current = null
-      console.log('[BarcodeScanner] cameraReaderRef nulled on unmount')
     }
   }, [])
 
   const switchMode = (m) => {
-    console.log('[BarcodeScanner] switchMode', m)
     if (m !== mode) { setError(null); setMode(m) }
   }
 
-  console.log('[BarcodeScanner] render complete')
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
       <div className="space-y-4 bg-white text-slate-800">
@@ -1756,7 +1672,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
           {[['camera', <RiCameraLine />, 'Camera'], ['file', <RiImageLine />, 'Upload Image']].map(([m, icon, label]) => (
             <button
               key={m}
-              onClick={() => { console.log(`[BarcodeScanner] Tab button click: ${m}`); switchMode(m) }}
+              onClick={() => switchMode(m)}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
                 mode === m ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
@@ -1771,7 +1687,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
           <RiBarcodeLine className="text-brand-500 shrink-0" />
           <span>
             {mode === 'camera'
-              ? 'Keep barcode fully in frame and hold steady'
+              ? 'Hold each barcode in frame — camera restarts automatically after each scan'
               : 'Upload a clear, well-lit photo of the label'}
           </span>
         </div>
@@ -1783,17 +1699,11 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
           </div>
         )}
 
-        {/* Success */}
+        {/* Success flash */}
         {lastScannedValue && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-green-700 text-sm flex items-center gap-2">
-            <span className="font-semibold">Scanned:</span>
+            <span className="font-semibold">✓ Scanned:</span>
             <span className="font-mono break-all">{lastScannedValue}</span>
-            <button
-              className="ml-auto px-2 py-1 rounded text-xs bg-green-200 hover:bg-green-300 text-green-800"
-              onClick={() => { console.log('[BarcodeScanner] Clear scanned value click'); setLastScannedValue(null) }}
-            >
-              Clear
-            </button>
           </div>
         )}
 
@@ -1817,7 +1727,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
             {scanning && (
               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
                 <button
-                  onClick={() => { console.log('[BarcodeScanner] Torch button clicked'); toggleTorch() }}
+                  onClick={toggleTorch}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow ${
                     torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
                   }`}
@@ -1828,7 +1738,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
                 <div className="flex items-center gap-2">
                   {devices.length > 1 && (
                     <button
-                      onClick={() => { console.log('[BarcodeScanner] Flip camera button clicked'); flipCamera() }}
+                      onClick={flipCamera}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
                     >
                       <span style={{ fontSize: 15 }}>🔄</span>
@@ -1838,10 +1748,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
                   {devices.length > 2 && (
                     <select
                       value={activeDeviceId || ''}
-                      onChange={e => {
-                        console.log('[BarcodeScanner] Camera select change', e.target.value)
-                        if (e.target.value !== activeDeviceId) switchCamera(e.target.value)
-                      }}
+                      onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
                       className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
                       style={{ maxWidth: 130 }}
                     >
@@ -1869,10 +1776,7 @@ export default function BarcodeScanner({ open, onClose, onScan, title = 'Scan Ba
           <>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
             <button
-              onClick={() => {
-                console.log('[BarcodeScanner] File upload button clicked')
-                fileInputRef.current?.click()
-              }}
+              onClick={() => fileInputRef.current?.click()}
               className="w-full py-10 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 hover:border-brand-400 hover:text-brand-500 transition-colors text-sm flex flex-col items-center gap-2"
             >
               <RiImageLine className="text-3xl" />

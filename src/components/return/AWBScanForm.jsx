@@ -700,7 +700,6 @@
 //     </>
 //   )
 // }
-
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
@@ -710,8 +709,6 @@ import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
 
 export default function AWBScanForm({ onSuccess }) {
-  console.log('[AWBScanForm] Render start')
-
   const [partners, setPartners] = useState([])
   const [brands, setBrands] = useState([])
   const [loadingBrands, setLoadingBrands] = useState(false)
@@ -739,9 +736,7 @@ export default function AWBScanForm({ onSuccess }) {
   const selectedPartner = watch('channelPartnerId')
 
   useEffect(() => {
-    channelPartnersAPI.list().then(r => {
-      setPartners(r.data?.data || [])
-    })
+    channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
   }, [])
 
   useEffect(() => {
@@ -752,20 +747,16 @@ export default function AWBScanForm({ onSuccess }) {
       .finally(() => setLoadingBrands(false))
   }, [selectedPartner])
 
-  // ── Clear AWB field and refocus after submit ──────────────────────────
   const clearAWB = useCallback(() => {
     setValue('awbId', '', { shouldValidate: false, shouldDirty: false })
     clearErrors('awbId')
     if (awbInputRef.current) {
       awbInputRef.current.value = ''
-      // Defer focus until after React re-enables the input (submitting → false)
       setTimeout(() => { awbInputRef.current?.focus() }, 0)
     }
   }, [setValue, clearErrors])
 
-  // ── Core submit logic — shared by manual submit and scanner ───────────
   const doSubmit = useCallback(async (data) => {
-    console.log('[AWBScanForm] doSubmit called with data:', data)
     const { channelPartnerId, brandId, awbId } = data
 
     if (!channelPartnerId) {
@@ -800,31 +791,15 @@ export default function AWBScanForm({ onSuccess }) {
     }
   }, [clearAWB, onSuccess])
 
-  // ── Camera / hardware scanner result handler ──────────────────────────
-  // useCallback so this is a stable reference — BarcodeScanner won't see a
-  // new prop on every render, preventing the camera from restarting.
+  // Keep scanner open — just submit and BarcodeScanner restarts camera for next scan
   const onScan = useCallback(async (scannedValue) => {
-    console.log('[AWBScanForm] onScan called with scannedValue:', scannedValue)
-
-    // Close scanner FIRST — this prevents open=true re-renders from
-    // re-triggering BarcodeScanner's startCamera useEffect.
-    setScannerOpen(false)
-
-    // Small delay to let the modal fully unmount before we hit the API,
-    // so no stale state from the scanner bleeds into the submit.
-    await new Promise(r => setTimeout(r, 50))
-
-    setValue('awbId', scannedValue, { shouldValidate: true, shouldDirty: true })
-    if (awbInputRef.current) awbInputRef.current.value = scannedValue
-
     await doSubmit({
       channelPartnerId: getValues('channelPartnerId'),
       brandId: getValues('brandId'),
       awbId: scannedValue,
     })
-  }, [doSubmit, getValues, setValue])
+  }, [doSubmit, getValues])
 
-  // ── Enter key on AWB field submits ────────────────────────────────────
   const handleAWBKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -832,7 +807,6 @@ export default function AWBScanForm({ onSuccess }) {
     }
   }
 
-  // ── Merge RHF ref with our awbInputRef ────────────────────────────────
   const { ref: rhfRef, ...awbRegister } = register('awbId', {
     required: 'AWB ID is required',
     minLength: { value: 6, message: 'Min 6 characters' },
@@ -845,7 +819,6 @@ export default function AWBScanForm({ onSuccess }) {
     awbInputRef.current = el
   }
 
-  // Light theme classes
   const baseInput =
     "input-field pl-9 font-mono bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:ring-blue-200"
   const baseSelect =
@@ -867,8 +840,6 @@ export default function AWBScanForm({ onSuccess }) {
       />
 
       <form className="space-y-4" autoComplete="off" onSubmit={handleSubmit(doSubmit)}>
-
-        {/* Channel Partner */}
         <div>
           <label className={baseLabel}>Channel Partner *</label>
           <select
@@ -881,12 +852,9 @@ export default function AWBScanForm({ onSuccess }) {
               <option key={p._id} value={p._id}>{p.name}</option>
             ))}
           </select>
-          {errors.channelPartnerId && (
-            <p className={errorText}>{errors.channelPartnerId.message}</p>
-          )}
+          {errors.channelPartnerId && <p className={errorText}>{errors.channelPartnerId.message}</p>}
         </div>
 
-        {/* Brand */}
         <div>
           <label className={baseLabel}>Brand *</label>
           <select
@@ -901,12 +869,9 @@ export default function AWBScanForm({ onSuccess }) {
               <option key={b._id} value={b._id}>{b.name}</option>
             ))}
           </select>
-          {errors.brandId && (
-            <p className={errorText}>{errors.brandId.message}</p>
-          )}
+          {errors.brandId && <p className={errorText}>{errors.brandId.message}</p>}
         </div>
 
-        {/* AWB ID */}
         <div>
           <label className={baseLabel}>AWB ID *</label>
           <div className="flex gap-2">
@@ -933,9 +898,7 @@ export default function AWBScanForm({ onSuccess }) {
               <RiQrScanLine className="text-lg" />
             </button>
           </div>
-          {errors.awbId && (
-            <p className={errorText}>{errors.awbId.message}</p>
-          )}
+          {errors.awbId && <p className={errorText}>{errors.awbId.message}</p>}
         </div>
 
         <button type="submit" disabled={submitting} className={baseButtonPrimary}>
