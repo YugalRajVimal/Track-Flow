@@ -528,6 +528,7 @@ export default function AWBScanForm({ onSuccess }) {
         if (awbInputRef.current) {
           awbInputRef.current.value = ''
         }
+        clearAWB();
         onSuccess?.()
       }
     } catch (err) {
