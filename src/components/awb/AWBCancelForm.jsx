@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
-import { RiLoader4Line } from 'react-icons/ri'
+import { RiBarcodeLine, RiLoader4Line } from 'react-icons/ri'
 import { awbAPI } from '../../api/awb'
 import BarcodeScanner from './BarcodeScanner'
 
@@ -63,7 +63,20 @@ export default function AWBCancelForm({ onSuccess, userId }) {
   const [passcodeVerified, setPasscodeVerified] = useState(false)
   const [passcodeModal, setPasscodeModal] = useState(true)
   const [verifyingPasscode, setVerifyingPasscode] = useState(false)
-  const { reset } = useForm()
+  const awbInputRef = useRef(null)
+  // react-hook-form setup
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+    clearErrors,
+    reset: rhfReset,
+  } = useForm({
+    defaultValues: {
+      awbId: ""
+    }
+  })
 
   // Passcode verify flow using /awb/verify-passcode API endpoint
   const handleVerifyPasscode = async (passcode) => {
@@ -83,37 +96,88 @@ export default function AWBCancelForm({ onSuccess, userId }) {
     }
   }
 
-  // Cancels the AWB immediately after scan, no form
+  // Utility: Reset input after scan/cancel
+  const clearAWB = useCallback(() => {
+    setValue('awbId', '', { shouldValidate: false, shouldDirty: false })
+    clearErrors('awbId')
+    if (awbInputRef.current) {
+      awbInputRef.current.value = ''
+      setTimeout(() => { awbInputRef.current?.focus() }, 0)
+    }
+  }, [setValue, clearErrors])
+
+  // Cancel the AWB by ID
   const cancelAWB = async (awbId) => {
     setSubmitting(true)
     try {
       const res = await awbAPI.cancel(awbId)
       if (res.data?.success) {
         toast.success(res.data.message || `AWB ${awbId} cancelled`)
-        reset()
+        rhfReset()
         onSuccess?.()
       }
     } catch (err) {
       toast.error(err.response?.data?.message || `Failed to cancel AWB ${awbId}`)
     } finally {
       setSubmitting(false)
-      // Open scanner again for next scan
       setScannerOpen(true)
+      clearAWB()
     }
   }
 
+  // When barcode is scanned
   const onScan = (awbId) => {
-    // Always toast on every scan that this id status set to cancel
-    toast(`AWB ${awbId} status set to cancel`, { icon: '⚠️' })
     if (submitting) {
-      // Ignore scan while canceling previous AWB
       return
     }
     setScannerOpen(false)
+    // validate before sending: 6-30 alphanumeric chars (copy AWBScanForm rule)
+    if (!awbId || awbId.length < 6 || awbId.length > 30 || !/^[a-zA-Z0-9]+$/.test(awbId)) {
+      toast.error("AWB must be 6-30 alphanumeric characters.")
+      clearAWB()
+      setScannerOpen(true)
+      return
+    }
     cancelAWB(awbId)
   }
 
-  // Show passcode modal first, only show scanner after passing
+  // Called via input form submit
+  const doSubmit = useCallback(
+    ({ awbId }) => {
+      onScan(awbId)
+    },
+    [onScan]
+  )
+
+  // Handle Enter submit on input field
+  const handleAWBKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSubmit(doSubmit)()
+    }
+  }
+
+  const { ref: rhfRef, ...awbRegister } = register('awbId', {
+    required: 'AWB ID is required',
+    minLength: { value: 6, message: 'Min 6 characters' },
+    maxLength: { value: 30, message: 'Max 30 characters' },
+    pattern: { value: /^[a-zA-Z0-9]+$/, message: 'Alphanumeric only' },
+  })
+
+  // Merge react-hook-form and local ref for input
+  const mergedRef = (el) => {
+    rhfRef(el)
+    awbInputRef.current = el
+  }
+
+  // UI/class names
+  const baseInput =
+    "input-field pl-9 font-mono bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:ring-blue-200"
+  const baseButtonSecondary =
+    "btn-secondary px-3 flex-shrink-0 bg-slate-100 border border-slate-300 hover:bg-blue-100 text-blue-600"
+  const errorText = "text-pink-600 text-xs mt-1"
+
+  // Passcode modal first, only show scanner/field after passing
   if (!passcodeVerified) {
     return (
       <PasscodeModal
@@ -126,7 +190,8 @@ export default function AWBCancelForm({ onSuccess, userId }) {
   }
 
   return (
-    <div className="space-y-4 bg-white p-6 rounded-2xl shadow border border-slate-200 flex flex-col items-center">
+    <div className="space-y-4 bg-white p-6 rounded-2xl shadow border border-slate-200 flex flex-col items-center w-full max-w-md mx-auto">
+      {/* Barcode scanner modal */}
       <BarcodeScanner
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
@@ -134,10 +199,48 @@ export default function AWBCancelForm({ onSuccess, userId }) {
         title="Scan to Cancel AWB"
       />
 
-      <div className="flex flex-col items-center gap-3 w-full justify-center pt-4">
-        <p className="font-semibold text-lg text-slate-700">Scan AWB to Cancel</p>
-        <p className="text-sm text-slate-500 text-center">
-          This operation <b>immediately cancels</b> AWB upon scanning.<br/>
+      {/* Input field for AWB, for barcode scanner hardware/manual entry */}
+      <form
+        className="w-full"
+        autoComplete="off"
+        onSubmit={handleSubmit(doSubmit)}
+      >
+        <label className="label text-slate-700 font-medium mb-1 block text-center">AWB ID *</label>
+        <div className="flex gap-2 w-full justify-center">
+          <div className="relative flex-1">
+            <RiBarcodeLine className="absolute left-3 top-1/2 -translate-y-1/2 text-red-500" />
+            <input
+              {...awbRegister}
+              ref={mergedRef}
+              className={baseInput + " w-full pr-3"}
+              placeholder="AWB123456"
+              autoComplete="off"
+              onKeyDown={handleAWBKeyDown}
+              disabled={submitting}
+              onChange={e => awbRegister.onChange?.(e)}
+              inputMode="text"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className={baseButtonSecondary}
+            title="Scan barcode"
+            disabled={submitting}
+          >
+            {/* icon stays blue */}
+            <RiBarcodeLine className="text-lg" />
+          </button>
+        </div>
+        {errors.awbId && <p className={errorText + " text-center"}>{errors.awbId.message}</p>}
+        {/* Hide "submit" button as action is on scan/enter, but retain for accessibility */}
+        <button type="submit" className="hidden">Submit</button>
+      </form>
+
+      <div className="flex flex-col items-center gap-3 w-full justify-center pt-2">
+        <p className="font-semibold text-lg text-slate-700 text-center">Scan AWB to Cancel</p>
+        <p className="text-sm text-slate-500 text-center max-w-xs mx-auto">
+          This operation <b>immediately cancels</b> AWB upon scanning or submitting.<br />
           No confirmation. Please scan carefully.
         </p>
         {submitting && (
