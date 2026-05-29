@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  RiBarcodeLine, RiSendPlaneLine, RiCloseCircleLine, RiTimeLine
+  RiBarcodeLine, RiSendPlaneLine, RiCloseCircleLine, RiTimeLine, RiExchangeDollarLine
 } from 'react-icons/ri'
 import dayjs from 'dayjs'
 import { dashboardAPI } from '../api/services'
@@ -35,8 +35,8 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
-        {Array(3).fill(0).map((_, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
+        {Array(4).fill(0).map((_, i) => (
           <div key={i} className={`h-36 rounded-xl ${bgCard} border ${borderLight}`} />
         ))}
       </div>
@@ -47,6 +47,7 @@ export default function DashboardPage() {
     { icon: RiBarcodeLine, label: 'Total Scans Today', value: stats?.totalScansToday, color: 'brand' },
     { icon: RiSendPlaneLine, label: 'Total Dispatched', value: stats?.totalDispatched, color: 'emerald' },
     { icon: RiCloseCircleLine, label: 'Total Cancelled', value: stats?.totalCancelled, color: 'red' },
+    { icon: RiExchangeDollarLine, label: 'Total Return', value: stats?.totalReturnRecords, color: 'amber' },
   ]
 
   return (
@@ -60,7 +61,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card, i) => (
           <StatCard key={card.label} {...card} index={i} />
         ))}
