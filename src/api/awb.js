@@ -13,4 +13,11 @@ export const awbAPI = {
       params,
       responseType: 'blob',
     }),
+  // ─── Missing AWB Feature ──────────────────────────────
+  previewMissing: (formData) =>
+    api.post('/awb/missing/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  saveMissing: (rows) =>
+    api.post('/awb/missing/save', { rows }),
 }

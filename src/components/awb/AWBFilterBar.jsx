@@ -71,6 +71,8 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
           <option value="">All Status</option>
           <option value="dispatched">Dispatched</option>
           <option value="cancelled">Cancelled</option>
+          <option value="missing">Missing</option>
+
         </select>
 
         {/* Channel Partner */}

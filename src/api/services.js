@@ -1,7 +1,7 @@
 import api from './axios'
 
 export const dashboardAPI = {
-  getStats: () => api.get('/dashboard/stats'),
+  getStats: (params) => api.get('/dashboard/stats', { params }),
 }
 
 export const usersAPI = {
@@ -10,7 +10,6 @@ export const usersAPI = {
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
   toggleStatus: (id, data) => api.patch(`/users/${id}/status`, data),
- 
 }
 
 export const channelPartnersAPI = {
