@@ -183,6 +183,7 @@ import {
   RiBarcodeLine, RiSendPlaneLine, RiCloseCircleLine, RiTimeLine,
   RiExchangeDollarLine, RiCalendarLine, RiRefreshLine,
 } from 'react-icons/ri'
+import { TbAlertCircle, TbAlertTriangle } from 'react-icons/tb'
 import dayjs from 'dayjs'
 import { dashboardAPI } from '../api/services'
 import StatCard from '../components/dashboard/StatCard'
@@ -350,10 +351,13 @@ export default function DashboardPage() {
 
   // ── Stat cards config ─────────────────────────────────────────────
   const statCards = [
-    { icon: RiBarcodeLine,        label: 'Total Scans',      value: stats?.totalScansToday,    color: 'brand'   },
-    { icon: RiSendPlaneLine,      label: 'Total Dispatched', value: stats?.totalDispatched,    color: 'emerald' },
-    { icon: RiCloseCircleLine,    label: 'Total Cancelled',  value: stats?.totalCancelled,     color: 'red'     },
-    { icon: RiExchangeDollarLine, label: 'Total Return',     value: stats?.totalReturnRecords, color: 'amber'   },
+    { icon: RiBarcodeLine,        label: 'Total Scans',         value: stats?.totalScansToday,         color: 'brand'    },
+    { icon: RiSendPlaneLine,      label: 'Total Dispatched',    value: stats?.totalDispatched,         color: 'emerald'  },
+    { icon: RiCloseCircleLine,    label: 'Total Cancelled',     value: stats?.totalCancelled,          color: 'red'      },
+    { icon: RiExchangeDollarLine, label: 'Total Return',        value: stats?.totalReturnRecords,      color: 'amber'    },
+    // Add missing counts (with warning icons)
+    { icon: TbAlertCircle,        label: 'AddAWB Missing',      value: stats?.addAWBMissingRecordsCount, color: 'orange', bg: 'bg-orange-50', text: 'text-orange-500'},
+    { icon: TbAlertTriangle,      label: 'Return Missing',      value: stats?.returnMissingRecordsCount, color: 'fuchsia', bg: 'bg-fuchsia-50', text: 'text-fuchsia-700' },
   ]
 
   // ── Skeleton ──────────────────────────────────────────────────────
@@ -361,8 +365,8 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div className={`h-16 rounded-xl ${bgCard} border ${borderLight} animate-pulse`} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
-          {Array(4).fill(0).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 animate-pulse">
+          {Array(6).fill(0).map((_, i) => (
             <div key={i} className={`h-36 rounded-xl ${bgCard} border ${borderLight}`} />
           ))}
         </div>
@@ -402,9 +406,13 @@ export default function DashboardPage() {
       />
 
       {/* Stat cards — shimmer overlay while refetching */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
         {statCards.map((card, i) => (
-          <StatCard key={card.label} {...card} index={i} />
+          <div key={card.label} className={card.bg ? `${card.bg} rounded-xl` : ''}>
+            <StatCard {...card} index={i}
+              iconColor={card.text ? card.text : undefined}
+            />
+          </div>
         ))}
       </div>
 
