@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import dayjs from 'dayjs'
 import {
-  RiBarcodeLine, RiDeleteBinLine,
+  RiBarcodeLine, RiAlertLine, RiDeleteBinLine,
   RiEyeLine, RiLoader4Line
 } from 'react-icons/ri'
 import { returnAPI } from '../api/return'
@@ -12,6 +12,7 @@ import StatusBadge from '../components/common/StatusBadge'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import Modal from '../components/common/Modal'
 import AWBScanForm from '../components/return/AWBScanForm'
+import AWBMissingForm from '../components/return/AWBMissingForm'
 import AWBFilterBar from '../components/return/AWBFilterBar'
 
 // --- Light theme color palette overrides ---
@@ -25,12 +26,24 @@ const accentBorder = 'border-blue-400'
 const cardShadow = 'shadow'
 const cardBorder = 'border border-slate-200'
 
-// ------------------------------------------------
-
-// Only Scan tab is available
+// ───────────────────────────────────────────────
+// Tabs — includes "Scan" and "Missing"
 const TABS = [
-  { id: 'scan', label: 'Scan AWB', icon: RiBarcodeLine },
+  { id: 'scan',    label: 'Scan AWB',    icon: RiBarcodeLine },
+  { id: 'missing', label: 'Missing AWB', icon: RiAlertLine },
 ]
+
+// Per-tab accent colours so the active indicator matches the operation
+const TAB_ACTIVE_CLASSES = {
+  scan:    'text-blue-600  border-blue-600  bg-blue-50',
+  missing: 'text-amber-600 border-amber-600 bg-amber-50',
+}
+
+const TAB_HOVER_CLASSES = {
+  scan:    'hover:text-blue-600  hover:bg-blue-50',
+  missing: 'hover:text-amber-600 hover:bg-amber-50',
+}
+// ───────────────────────────────────────────────
 
 export default function ReturnManagementPage() {
   const [activeTab, setActiveTab] = useState('scan')
@@ -47,7 +60,6 @@ export default function ReturnManagementPage() {
     try {
       const res = await returnAPI.list(filters)
       if (res.data?.success) {
-
         setAwbs(res.data.data || [])
         setPagination(res.data.pagination || null)
       }
@@ -157,6 +169,20 @@ export default function ReturnManagementPage() {
     },
   ]
 
+  // ── View modal detail rows ─────────────────────────────────────────────
+  const viewDetails = viewItem
+    ? [
+        ['AWB ID', viewItem.awbId, `font-mono ${accent}`],
+        ['Status', null, '', <StatusBadge status={viewItem.status} />],
+        ['Channel Partner', viewItem.channelPartner?.name],
+        ['Brand', viewItem.brand?.name],
+        ['Scanned At', viewItem.scannedAt ? dayjs(viewItem.scannedAt).format('MMM D, YYYY HH:mm:ss') : '—'],
+        ['Created By', viewItem.createdBy?.name],
+        ...(viewItem.missingAt   ? [['Missing At',   dayjs(viewItem.missingAt).format('MMM D, YYYY HH:mm:ss')]]  : []),
+        ...(viewItem.missingBy   ? [['Missing By',   viewItem.missingBy?.name]]   : []),
+      ]
+    : []
+
   return (
     <div className={`${bgLight} min-h-[100svh] py-4`}>
       <ConfirmDialog
@@ -172,17 +198,10 @@ export default function ReturnManagementPage() {
       <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="AWB Details">
         {viewItem && (
           <div className="space-y-3">
-            {[
-              ['AWB ID', viewItem.awbId, `font-mono ${accent}`],
-              ['Status', null, '', <StatusBadge status={viewItem.status} />],
-              ['Channel Partner', viewItem.channelPartner?.name],
-              ['Brand', viewItem.brand?.name],
-              ['Scanned At', viewItem.scannedAt ? dayjs(viewItem.scannedAt).format('MMM D, YYYY HH:mm:ss') : '—'],
-              ['Created By', viewItem.createdBy?.name],
-            ].map(([label, val, cls, custom]) => (
+            {viewDetails.map(([label, val, cls, custom]) => (
               <div key={label} className={`flex justify-between items-center py-2 border-b ${borderLight} last:border-0`}>
                 <span className={`text-sm ${textSubtle}`}>{label}</span>
-                {custom || <span className={`text-sm ${textDark} ${cls}`}>{val || '—'}</span>}
+                {custom || <span className={`text-sm ${textDark} ${cls || ''}`}>{val || '—'}</span>}
               </div>
             ))}
           </div>
@@ -200,7 +219,7 @@ export default function ReturnManagementPage() {
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Left: Scan panel only */}
+          {/* Left: Tab panel */}
           <div className={`${bgLight} ${cardBorder} ${cardShadow} rounded-xl overflow-hidden`}>
             {/* Tabs */}
             <div className={`flex border-b ${borderLight} bg-slate-50`}>
@@ -208,21 +227,22 @@ export default function ReturnManagementPage() {
                 <button
                   key={id}
                   onClick={() => setActiveTab(id)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-all border-b-2 ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-3.5 text-xs font-medium transition-all border-b-2 ${
                     activeTab === id
-                      ? 'text-blue-600 border-blue-600 bg-blue-50'
-                      : `${textSubtle} hover:text-blue-600 border-transparent hover:bg-blue-50`
+                      ? TAB_ACTIVE_CLASSES[id]
+                      : `${textSubtle} border-transparent ${TAB_HOVER_CLASSES[id]}`
                   }`}
-                  style={{ outline: "none" }}
+                  style={{ outline: 'none' }}
                 >
-                  <Icon />
-                  {label}
+                  <Icon className="shrink-0" />
+                  <span className="truncate">{label}</span>
                 </button>
               ))}
             </div>
 
             <div className="p-5">
-              <AWBScanForm onSuccess={fetchAWBs} />
+              {activeTab === 'scan' && <AWBScanForm onSuccess={fetchAWBs} />}
+              {activeTab === 'missing' && <AWBMissingForm onSuccess={fetchAWBs} />}
             </div>
           </div>
 

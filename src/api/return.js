@@ -11,4 +11,10 @@ export const returnAPI = {
       params,
       responseType: 'blob',
     }),
+    previewMissing: (formData) =>
+      api.post('/returns/missing/preview', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }),
+    saveMissing: (rows) =>
+      api.post('/returns/missing/save', { rows }),
 }
