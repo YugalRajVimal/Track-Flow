@@ -821,14 +821,14 @@ import {
   DecodeHintType,
   NotFoundException,
 } from '@zxing/library'
-import { RiBarcodeLine, RiCameraLine, RiImageLine, RiQrScanLine } from 'react-icons/ri'
+import { RiBarcodeLine, RiCameraLine, RiImageLine } from 'react-icons/ri'
 import Modal from '../common/Modal'
 
 // ─────────────────────────────────────────────
 // Format sets
 // ─────────────────────────────────────────────
 
-/** Standard 1-D barcode formats — used for every partner except Meesho */
+/** Only Standard 1-D barcode formats allowed */
 const BARCODE_1D_FORMATS = [
   BarcodeFormat.CODE_128,
   BarcodeFormat.EAN_13,
@@ -840,23 +840,24 @@ const BARCODE_1D_FORMATS = [
   BarcodeFormat.CODABAR,
 ]
 
-/** 2-D / QR formats — used only when partner is Meesho */
-const QR_2D_FORMATS = [
+/** 2-D / QR formats — REMOVED */
+const QR_2D_FORMATS = []
+
+/** Set for blocking QR codes */
+const ALL_BLOCKED_2D = new Set([
   BarcodeFormat.QR_CODE,
   BarcodeFormat.DATA_MATRIX,
   BarcodeFormat.AZTEC,
   BarcodeFormat.PDF_417,
-]
-
-/** Everything NOT in the active set should be ignored */
-const ALL_BLOCKED_1D = new Set(BARCODE_1D_FORMATS)
-const ALL_BLOCKED_2D = new Set(QR_2D_FORMATS)
+])
 
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
 
-/** Returns true when the partner name matches Meesho (case-insensitive) */
+/** Returns true when the partner name matches Meesho (case-insensitive)
+ *   NO LONGER CHANGES BEHAVIOR.
+ */
 const isMeeshoPartner = (name = '') => /meesho/i.test(name)
 
 function createReader(formats, tryHarder = false) {
@@ -882,24 +883,22 @@ function createReader(formats, tryHarder = false) {
  *   onClose      – () => void
  *   onScan       – (decodedText: string) => void
  *   title        – string (modal header)
- *   partnerName  – string — when this matches "meesho" the scanner
- *                  switches to QR / 2-D codes only; otherwise it
- *                  scans 1-D barcodes only (original behaviour).
+ *   partnerName  – string (shown for display only, does not affect scan types)
  */
 export default function BarcodeScanner({
   open,
   onClose,
   onScan,
   title = 'Scan Barcode',
-  partnerName = '',   // ← NEW prop
+  partnerName = '',   
 }) {
-  // ── derive scan mode from partner ──────────────────────────────────
-  const isMeesho     = isMeeshoPartner(partnerName)
-  const activeFormats = isMeesho ? QR_2D_FORMATS : BARCODE_1D_FORMATS
-  // Formats that must be silently rejected when the reader fires
-  const blockedSet    = isMeesho ? ALL_BLOCKED_1D : ALL_BLOCKED_2D
+  // ── scan mode always barcode (1D barcodes) ─────────────────────
+  // NO MORE SPECIAL CASE FOR 'meesho'
+  const activeFormats = BARCODE_1D_FORMATS
+  // Block all QR/2D code types
+  const blockedSet    = ALL_BLOCKED_2D
 
-  // ── refs ───────────────────────────────────────────────────────────
+  // ── refs ───────────────────────────────────────────────────────
   const cameraReaderRef = useRef(null)
   const videoRef        = useRef(null)
   const fileInputRef    = useRef(null)
@@ -907,7 +906,7 @@ export default function BarcodeScanner({
   const onScanRef       = useRef(onScan)
   useEffect(() => { onScanRef.current = onScan }, [onScan])
 
-  // ── state ──────────────────────────────────────────────────────────
+  // ── state ──────────────────────────────────────────────────────
   const [mode, setMode]                     = useState('camera')
   const [error, setError]                   = useState(null)
   const [scanning, setScanning]             = useState(false)
@@ -919,24 +918,24 @@ export default function BarcodeScanner({
 
   const preferredDeviceIdRef = useRef(null)
 
-  // ── reader factory — recreated whenever the format set changes ─────
+  // ── reader factory — always 1D codes ───────────────────────────
   const getReader = useCallback(() => {
     if (!cameraReaderRef.current) {
       cameraReaderRef.current = createReader(activeFormats)
     }
     return cameraReaderRef.current
-  }, [activeFormats])                         // ← rebuilds when isMeesho flips
+  }, [activeFormats])
 
-  // ── stop camera ────────────────────────────────────────────────────
+  // ── stop camera ────────────────────────────────────────────────
   const stopCamera = useCallback(() => {
     lockedRef.current = false
     try { cameraReaderRef.current?.reset() } catch (_) {}
-    cameraReaderRef.current = null             // force fresh reader next start
+    cameraReaderRef.current = null
     setScanning(false)
     setTorchOn(false)
   }, [])
 
-  // ── start camera ───────────────────────────────────────────────────
+  // ── start camera ───────────────────────────────────────────────
   const startCamera = useCallback(
     async (preferredDeviceId = null, preferredFacing = null) => {
       setError(null)
@@ -978,7 +977,7 @@ export default function BarcodeScanner({
 
             const fmt = result.getBarcodeFormat()
 
-            // ── KEY LOGIC: reject formats not in the active set ─────
+            // ── KEY LOGIC: reject formats not in the allowed set (barcodes only) ───
             if (blockedSet.has(fmt)) return
 
             const text = result.getText()
@@ -1011,10 +1010,10 @@ export default function BarcodeScanner({
           setError('Camera failed to start. Try uploading an image instead.')
       }
     },
-    [getReader, stopCamera, blockedSet],       // ← depends on blockedSet (isMeesho)
+    [getReader, stopCamera, blockedSet],   
   )
 
-  // ── flip / switch camera ───────────────────────────────────────────
+  // ── flip / switch camera ───────────────────────────────────────
   const flipCamera = useCallback(async () => {
     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
     stopCamera()
@@ -1026,7 +1025,7 @@ export default function BarcodeScanner({
     setTimeout(() => startCamera(deviceId, null), 150)
   }, [stopCamera, startCamera])
 
-  // ── torch ──────────────────────────────────────────────────────────
+  // ── torch ──────────────────────────────────────────────────────
   const toggleTorch = useCallback(async () => {
     const track = videoRef.current?.srcObject?.getVideoTracks()[0]
     if (!track) return
@@ -1036,7 +1035,7 @@ export default function BarcodeScanner({
     } catch (_) {}
   }, [torchOn])
 
-  // ── file upload ────────────────────────────────────────────────────
+  // ── file upload ────────────────────────────────────────────────
   const handleFileChange = useCallback(
     async (e) => {
       const file = e.target.files?.[0]
@@ -1072,9 +1071,7 @@ export default function BarcodeScanner({
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1])
         if (sorted.length === 0) {
           setError(
-            isMeesho
-              ? 'No QR code found. Make sure the QR code is fully visible and well-lit.'
-              : 'No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.',
+            'No barcode found. Try a clearer, well-lit photo with the barcode fully in frame.'
           )
           return
         }
@@ -1091,9 +1088,7 @@ export default function BarcodeScanner({
       } catch (err) {
         if (err instanceof NotFoundException) {
           setError(
-            isMeesho
-              ? 'No QR code detected. Make sure the QR code is fully visible and well-lit.'
-              : 'No barcode detected. Make sure the full barcode is visible and well-lit.',
+            'No barcode detected. Make sure the full barcode is visible and well-lit.'
           )
         } else {
           setError('Could not read image. Please try again.')
@@ -1102,10 +1097,10 @@ export default function BarcodeScanner({
 
       e.target.value = ''
     },
-    [activeFormats, blockedSet, isMeesho],
+    [activeFormats, blockedSet],
   )
 
-  // ── open / close effects ───────────────────────────────────────────
+  // ── open / close effects ──────────────────────────────────────────
   useEffect(() => {
     if (!open) return
     if (mode === 'camera') {
@@ -1114,20 +1109,19 @@ export default function BarcodeScanner({
     } else {
       stopCamera()
     }
-  }, [open, mode])               // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, mode])           
 
   useEffect(() => {
     if (!open) stopCamera()
-  }, [open])                     // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open])                     
 
-  // When the partner changes while the modal is open, restart so the
-  // correct format set is loaded into the reader.
+  // Partner name does NOT change scan behavior, but restart on prop change anyway
   useEffect(() => {
     if (!open || mode !== 'camera') return
     stopCamera()
     const t = setTimeout(() => startCamera(null), 300)
     return () => clearTimeout(t)
-  }, [isMeesho])                 // eslint-disable-line react-hooks/exhaustive-deps
+  }, [partnerName])                 
 
   useEffect(() => {
     return () => {
@@ -1140,20 +1134,15 @@ export default function BarcodeScanner({
     if (m !== mode) { setError(null); setMode(m) }
   }
 
-  // ── hint text ──────────────────────────────────────────────────────
-  const scanHint = isMeesho
-    ? mode === 'camera'
-      ? 'Meesho order — point camera at the QR code'
-      : 'Meesho order — upload an image containing the QR code'
-    : mode === 'camera'
-    ? 'Hold each barcode in frame — camera restarts after each scan'
-    : 'Upload a clear, well-lit photo of the label'
+  // ── hint text — always barcode, not QR ───────────────────────────
+  const scanHint =
+    mode === 'camera'
+      ? 'Point camera at the barcode'
+      : 'Upload a clear, well-lit photo of the barcode'
 
-  const formatLine = isMeesho
-    ? 'QR Code · DataMatrix · Aztec · PDF-417'
-    : 'CODE-128 · EAN-13 · UPC-A · CODE-39 and more'
+  const formatLine = 'CODE-128 · EAN-13 · UPC-A · CODE-39 and more'
 
-  const ScanIcon = isMeesho ? RiQrScanLine : RiBarcodeLine
+  const ScanIcon = RiBarcodeLine
 
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
@@ -1162,17 +1151,11 @@ export default function BarcodeScanner({
         {/* ── Partner badge ─────────────────────────────────────────── */}
         {partnerName && (
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium w-fit ${
-              isMeesho
-                ? 'bg-orange-50 border border-orange-200 text-orange-700'
-                : 'bg-blue-50 border border-blue-200 text-blue-700'
-            }`}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium w-fit bg-blue-50 border border-blue-200 text-blue-700`}
           >
             <ScanIcon className="shrink-0" />
             <span>
-              {isMeesho
-                ? `${partnerName} — scanning QR codes only`
-                : `${partnerName} — scanning barcodes only`}
+              {partnerName} — scanning barcodes only
             </span>
           </div>
         )}
@@ -1226,19 +1209,11 @@ export default function BarcodeScanner({
             {scanning && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="absolute inset-0 bg-black/30" />
-                {isMeesho ? (
-                  /* Square viewfinder for QR codes */
-                  <div className="relative z-10 w-48 h-48 border-2 border-brand-400 rounded">
-                    <div className="absolute inset-x-0 h-0.5 bg-brand-400"
-                      style={{ animation: 'scanline-square 1.4s ease-in-out infinite' }} />
-                  </div>
-                ) : (
-                  /* Wide short viewfinder for 1-D barcodes */
-                  <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
-                    <div className="absolute inset-x-0 h-0.5 bg-brand-400"
-                      style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
-                  </div>
-                )}
+                {/* Always wide barcode viewfinder */}
+                <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
+                  <div className="absolute inset-x-0 h-0.5 bg-brand-400"
+                    style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
+                </div>
               </div>
             )}
 
@@ -1298,9 +1273,7 @@ export default function BarcodeScanner({
             >
               <RiImageLine className="text-3xl" />
               <span>
-                {isMeesho
-                  ? 'Tap to choose a photo of the QR code'
-                  : 'Tap to choose a photo of the barcode'}
+                Tap to choose a photo of the barcode
               </span>
               <span className="text-xs text-slate-300">JPG · PNG · WebP</span>
             </button>
@@ -1310,7 +1283,7 @@ export default function BarcodeScanner({
         {/* ── Footer note ───────────────────────────────────────────── */}
         <p className="text-xs text-slate-400 text-center">
           {formatLine}<br />
-          <b>{isMeesho ? 'Barcodes are always ignored for Meesho.' : 'QR codes and 2D codes are always ignored.'}</b>
+          <b>QR codes and 2D codes are always ignored.</b>
         </p>
       </div>
 
@@ -1319,11 +1292,6 @@ export default function BarcodeScanner({
           0%   { top: 0;    opacity: 1;   }
           50%  { top: 74px; opacity: 0.7; }
           100% { top: 0;    opacity: 1;   }
-        }
-        @keyframes scanline-square {
-          0%   { top: 0;     opacity: 1;   }
-          50%  { top: 182px; opacity: 0.7; }
-          100% { top: 0;     opacity: 1;   }
         }
       `}</style>
     </Modal>

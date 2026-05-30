@@ -68,10 +68,12 @@ function MeeshoToggle({ value, onChange, disabled }) {
         )}
         <div>
           <p className="text-sm font-medium text-slate-700 leading-tight">
-            {value ? 'Meesho order' : 'Standard order'}
+            {value ? 'Meesho QR Scan Mode' : 'Standard AWB Barcode Mode'}
           </p>
           <p className="text-xs text-slate-400 leading-tight mt-0.5">
-            {value ? 'Scanning QR codes only' : 'Scanning barcodes only'}
+            {value
+              ? 'Scan QR code printed on Meesho packet only'
+              : 'Scan AWB barcode (not Meesho QR) only'}
           </p>
         </div>
       </div>
