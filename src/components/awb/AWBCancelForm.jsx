@@ -103,7 +103,8 @@ function MeeshoToggle({ value, onChange, disabled }) {
 
 // Requires userId prop
 export default function AWBCancelForm({ onSuccess, userId }) {
-  const [scannerOpen, setScannerOpen]           = useState(true)
+  // Camera (scanner) should NOT open initially
+  const [scannerOpen, setScannerOpen]           = useState(false)
   const [submitting, setSubmitting]             = useState(false)
   const [passcodeVerified, setPasscodeVerified] = useState(false)
   const [passcodeModal, setPasscodeModal]       = useState(true)
@@ -134,7 +135,8 @@ export default function AWBCancelForm({ onSuccess, userId }) {
       setPasscodeVerified(true)
       setPasscodeModal(false)
       toast.success('Passcode verified')
-      setScannerOpen(true)
+      // Do NOT auto-open the scanner here
+      // setScannerOpen(true)
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Invalid passcode')
     } finally {
@@ -165,7 +167,7 @@ export default function AWBCancelForm({ onSuccess, userId }) {
       toast.error(err.response?.data?.message || `Failed to cancel AWB ${awbId}`)
     } finally {
       setSubmitting(false)
-      setScannerOpen(true)
+      setScannerOpen(false) // Don't auto-reopen - user must click "Scan"
       clearAWB()
     }
   }
@@ -176,7 +178,7 @@ export default function AWBCancelForm({ onSuccess, userId }) {
     if (!awbId || awbId.length < 6 || awbId.length > 30 || !/^[a-zA-Z0-9]+$/.test(awbId)) {
       toast.error('AWB must be 6-30 alphanumeric characters.')
       clearAWB()
-      setScannerOpen(true)
+      setScannerOpen(false)
       return
     }
     cancelAWB(awbId)
@@ -235,10 +237,9 @@ export default function AWBCancelForm({ onSuccess, userId }) {
           onChange={(next) => {
             setIsMeeshoOrder(next)
             // If scanner is open, closing + reopening forces BarcodeScanner
-            // to restart with the new format set immediately.
+            // to restart with the new format set immediately, but shouldn't auto open anymore
             if (scannerOpen) {
               setScannerOpen(false)
-              setTimeout(() => setScannerOpen(true), 150)
             }
           }}
           disabled={submitting}

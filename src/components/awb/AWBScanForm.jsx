@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
@@ -7,6 +6,29 @@ import { RiBarcodeLine, RiQrScanLine, RiSendPlane2Line, RiLoader4Line } from 're
 import { awbAPI } from '../../api/awb'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
+
+// ── Scan Alert Box Component ──
+function ScanAlertBox({ scanInfo }) {
+  if (!scanInfo) return null
+
+  // Red for Meesho/QR, Blue for other/barcode
+  const boxClass = scanInfo.type === 'qr'
+    ? 'bg-red-50 border border-red-300 text-red-700'
+    : 'bg-blue-50 border border-blue-300 text-blue-800'
+
+  const icon = scanInfo.type === 'qr' ? (
+    <RiQrScanLine className="text-2xl mr-2 text-red-500" />
+  ) : (
+    <RiBarcodeLine className="text-2xl mr-2 text-blue-600" />
+  )
+
+  return (
+    <div className={`flex items-center gap-2 p-3 rounded mb-4 font-semibold ${boxClass}`}>
+      {icon}
+      <span>{scanInfo.label}</span>
+    </div>
+  )
+}
 
 export default function AWBScanForm({ onSuccess }) {
   const [partners, setPartners] = useState([])
@@ -38,6 +60,25 @@ export default function AWBScanForm({ onSuccess }) {
   // ── NEW: derive the selected partner object so we can read its name ──
   const selectedPartnerObj = partners.find(p => p._id === selectedPartner) || null
   const selectedPartnerName = selectedPartnerObj?.name || ''
+
+  // ── Build scanInfo based on partner type ──
+  let scanInfo = null
+
+  if (selectedPartnerObj) {
+    if (
+      selectedPartnerObj.name?.toLowerCase().includes('meesho')
+    ) {
+      scanInfo = {
+        type: 'qr',
+        label: 'MEESHO: Scan only Packet QR Code.',
+      }
+    } else {
+      scanInfo = {
+        type: 'barcode',
+        label: 'Scan only Label Barcode.',
+      }
+    }
+  }
 
   useEffect(() => {
     channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
@@ -150,6 +191,9 @@ export default function AWBScanForm({ onSuccess }) {
         title="Scan AWB Barcode"
         partnerName={selectedPartnerName}
       />
+
+      {/* Scan alert box for selected partner */}
+      <ScanAlertBox scanInfo={scanInfo} />
 
       <form className="space-y-4" autoComplete="off" onSubmit={handleSubmit(doSubmit)}>
         {/* Channel Partner */}

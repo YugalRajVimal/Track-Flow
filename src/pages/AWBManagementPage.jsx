@@ -490,7 +490,7 @@ export default function AWBManagementPage() {
         </div>
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
 
           {/* ── Left: tab panel ─────────────────────────────────────────── */}
           <div className={`${bgLight} ${cardBorder} ${cardShadow} rounded-xl overflow-hidden`}>

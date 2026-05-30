@@ -2,19 +2,21 @@
  * AWBMissingForm.jsx
  *
  * Two-phase UI:
- *   Phase 1 (upload)  – Channel Partner + Date Range + File → call /missing/preview
+ *   Phase 1 (upload)  – Channel Partner + Brand + Date Range + File → call /missing/preview
  *   Phase 2 (confirm) – Show preview table → call /missing/save on confirm
  */
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import {
   RiUpload2Line, RiLoader4Line, RiCheckDoubleLine,
   RiCloseLine, RiAlertLine, RiFileExcelLine,
   RiFileTextLine, RiArrowLeftLine, RiInformationLine,
+  RiBarcodeLine, RiQrScanLine,
 } from 'react-icons/ri'
 import { returnAPI } from '../../api/return'
-import { channelPartnersAPI } from '../../api/services'
+import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import dayjs from 'dayjs'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,30 +107,74 @@ function PreviewTable({ rows, partnerName }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ScanAlertBox component
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ScanAlertBox({ scanInfo }) {
+  if (!scanInfo) return null
+  // Red for Meesho/QR, Blue for other/barcode
+  const boxClass =
+    scanInfo.type === 'qr'
+      ? 'bg-red-50 border border-red-300 text-red-700'
+      : 'bg-blue-50 border border-blue-300 text-blue-800'
+  const icon =
+    scanInfo.type === 'qr' ? (
+      <RiQrScanLine className="text-2xl mr-2 text-red-500" />
+    ) : (
+      <RiBarcodeLine className="text-2xl mr-2 text-blue-600" />
+    )
+  return (
+    <div className={`flex items-center gap-2 p-3 rounded mb-4 font-semibold ${boxClass}`}>
+      {icon}
+      <span>{scanInfo.label}</span>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AWBMissingForm({ onSuccess }) {
   // ── Shared state ──────────────────────────────────────────────────────────
-  const [partners, setPartners]       = useState([])
-  const [phase, setPhase]             = useState('upload') // 'upload' | 'preview'
+  const [partners, setPartners] = useState([])
+  const [brands, setBrands] = useState([])
+  const [loadingBrands, setLoadingBrands] = useState(false)
+  const [phase, setPhase] = useState('upload') // 'upload' | 'preview'
 
   // ── Upload phase state ────────────────────────────────────────────────────
   const [channelPartnerId, setChannelPartnerId] = useState('')
-  const [startDate, setStartDate]               = useState('')
-  const [endDate, setEndDate]                   = useState('')
-  const [file, setFile]                         = useState(null)
-  const [loading, setLoading]                   = useState(false)
+  const [brandId, setBrandId] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [file, setFile] = useState(null)
+  const [loading, setLoading] = useState(false)
   const fileInputRef = useRef(null)
 
   // ── Preview phase state ───────────────────────────────────────────────────
   const [previewData, setPreviewData] = useState(null)   // { partner, totalInFile, missing[] }
-  const [saving, setSaving]           = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // ── Load channel partners ─────────────────────────────────────────────────
   useEffect(() => {
     channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
   }, [])
+
+  // ── Load brands when channelPartnerId changes ─────────────────────────────
+  useEffect(() => {
+    if (!channelPartnerId) {
+      setBrands([]); setBrandId('');
+      return
+    }
+    setLoadingBrands(true)
+    brandsAPI
+      .listByPartner(channelPartnerId)
+      .then(r => {
+        setBrands(r.data?.data || [])
+        setBrandId('')
+      })
+      .finally(() => setLoadingBrands(false))
+  }, [channelPartnerId])
 
   // ── File selection ────────────────────────────────────────────────────────
   const handleFileDrop = (e) => {
@@ -157,9 +203,29 @@ export default function AWBMissingForm({ onSuccess }) {
     setFile(f)
   }
 
+  // ── Scan Info logic
+  let scanInfo = null
+  let selectedPartnerObj = partners.find(p => p._id === channelPartnerId)
+  if (selectedPartnerObj) {
+    if (
+      selectedPartnerObj.name?.toLowerCase().includes('meesho')
+    ) {
+      scanInfo = {
+        type: 'qr',
+        label: 'MEESHO: Scan only Packet QR Code.',
+      }
+    } else {
+      scanInfo = {
+        type: 'barcode',
+        label: 'Scan only Label Barcode.',
+      }
+    }
+  }
+
   // ── Phase 1: Preview ──────────────────────────────────────────────────────
   const handlePreview = async () => {
     if (!channelPartnerId) { toast.error('Please select a Channel Partner.'); return }
+    if (!brandId) { toast.error('Please select a Brand.'); return }
     if (!startDate || !endDate) { toast.error('Please enter both Start and End dates.'); return }
     if (new Date(startDate) > new Date(endDate)) { toast.error('Start date cannot be after end date.'); return }
     if (!file) { toast.error('Please upload a CSV or Excel file.'); return }
@@ -169,6 +235,7 @@ export default function AWBMissingForm({ onSuccess }) {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('channelPartnerId', channelPartnerId)
+      formData.append('brandId', brandId)
       formData.append('startDate', startDate)
       formData.append('endDate', endDate)
 
@@ -211,6 +278,7 @@ export default function AWBMissingForm({ onSuccess }) {
     setPreviewData(null)
     setFile(null)
     setChannelPartnerId('')
+    setBrandId('')
     setStartDate('')
     setEndDate('')
   }
@@ -236,6 +304,9 @@ export default function AWBMissingForm({ onSuccess }) {
           </div>
         </div>
 
+        {/* Scan Alert Box */}
+        <ScanAlertBox scanInfo={scanInfo} />
+
         {/* Channel Partner */}
         <div>
           <label className={labelCls}>Channel Partner *</label>
@@ -248,6 +319,28 @@ export default function AWBMissingForm({ onSuccess }) {
             <option value="">Select channel partner...</option>
             {partners.map(p => (
               <option key={p._id} value={p._id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Brand */}
+        <div>
+          <label className={labelCls}>Brand *</label>
+          <select
+            value={brandId}
+            onChange={e => setBrandId(e.target.value)}
+            className={inputCls}
+            disabled={!channelPartnerId || loadingBrands || loading}
+          >
+            <option value="">
+              {!channelPartnerId
+                ? 'Select partner first...'
+                : loadingBrands
+                ? 'Loading brands...'
+                : 'Select brand...'}
+            </option>
+            {brands.map(b => (
+              <option key={b._id} value={b._id}>{b.name}</option>
             ))}
           </select>
         </div>
@@ -353,6 +446,7 @@ export default function AWBMissingForm({ onSuccess }) {
   const foundCount    = totalInFile - missingCount
   const partnerLabel  = PARTNER_LABELS[previewData?.partner] || previewData?.partner || '—'
   const cpName        = partners.find(p => p._id === channelPartnerId)?.name || channelPartnerId
+  const brandName     = brands.find(b => b._id === brandId)?.name || brandId
 
   return (
     <div className="space-y-5 w-full">
@@ -367,6 +461,9 @@ export default function AWBMissingForm({ onSuccess }) {
         <RiArrowLeftLine />
         Back to upload
       </button>
+
+      {/* Scan Alert Box */}
+      <ScanAlertBox scanInfo={scanInfo} />
 
       {/* Summary banner */}
       <div className={`rounded-xl border p-4 space-y-2 ${missingCount > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
@@ -386,6 +483,7 @@ export default function AWBMissingForm({ onSuccess }) {
 
         <div className="flex flex-wrap gap-4 text-xs text-slate-600 pt-1">
           <span><span className="font-medium">Partner:</span> {cpName}</span>
+          <span><span className="font-medium">Brand:</span> {brandName}</span>
           <span><span className="font-medium">Date range:</span> {dayjs(startDate).format('MMM D')} – {dayjs(endDate).format('MMM D, YYYY')}</span>
           <span><span className="font-medium">Source:</span> {partnerLabel}</span>
           <span><span className="font-medium">File:</span> {file?.name}</span>

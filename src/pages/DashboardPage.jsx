@@ -176,7 +176,6 @@
 //   )
 // }
 
-
 import React, { useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
@@ -185,7 +184,7 @@ import {
 } from 'react-icons/ri'
 import { TbAlertCircle, TbAlertTriangle } from 'react-icons/tb'
 import dayjs from 'dayjs'
-import { dashboardAPI } from '../api/services'
+import { dashboardAPI, channelPartnersAPI, brandsAPI } from '../api/services'
 import StatCard from '../components/dashboard/StatCard'
 import ScanActivityChart from '../components/dashboard/ScanActivityChart'
 import BrandAnalyticsChart from '../components/dashboard/BrandAnalyticsChart'
@@ -206,7 +205,7 @@ const PRESETS = [
 const FORMAT = 'YYYY-MM-DD'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Light theme tokens (unchanged)
+// Light theme tokens
 // ─────────────────────────────────────────────────────────────────────────────
 const textSecondary  = 'text-slate-500'
 const textSubtle     = 'text-slate-400'
@@ -217,9 +216,20 @@ const progressBar    = 'bg-brand-500'
 const brandIcon      = 'text-brand-600'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DateRangeFilter component
+// DateAndFilterBar component - handles brand/channel filters
 // ─────────────────────────────────────────────────────────────────────────────
-function DateRangeFilter({ startDate, endDate, onApply, loading }) {
+function DateAndFilterBar({
+  startDate,
+  endDate,
+  onApply,
+  loading,
+  channelOptions,
+  brandOptions,
+  channel,
+  setChannel,
+  brand,
+  setBrand,
+}) {
   const [activePreset, setActivePreset] = useState('Today')
   const [customStart, setCustomStart]   = useState(startDate)
   const [customEnd,   setCustomEnd]     = useState(endDate)
@@ -233,22 +243,32 @@ function DateRangeFilter({ startDate, endDate, onApply, loading }) {
     }
     setShowCustom(false)
     const { start, end } = preset.getDates()
-    onApply(start.format(FORMAT), end.format(FORMAT))
+    onApply(start.format(FORMAT), end.format(FORMAT), channel, brand)
   }
 
   const handleCustomApply = () => {
     if (!customStart || !customEnd) return
     if (dayjs(customStart).isAfter(dayjs(customEnd))) return
-    onApply(customStart, customEnd)
+    onApply(customStart, customEnd, channel, brand)
+  }
+
+  // channelPartnerId/_id (not .id!) for sending to backend
+  const handleChannelChange = e => {
+    setChannel(e.target.value)
+    setBrand("")
+    onApply(startDate, endDate, e.target.value, "")
+  }
+
+  const handleBrandChange = e => {
+    setBrand(e.target.value)
+    onApply(startDate, endDate, channel, e.target.value)
   }
 
   return (
     <div className={`rounded-xl border ${borderLight} ${bgCard} p-4`}>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
         <RiCalendarLine className={`${brandIcon} text-base shrink-0`} />
         <span className="text-sm font-medium text-slate-700 mr-1">Filter by date:</span>
-
-        {/* Preset pills */}
         {PRESETS.map(preset => (
           <button
             key={preset.label}
@@ -264,6 +284,38 @@ function DateRangeFilter({ startDate, endDate, onApply, loading }) {
             {preset.label}
           </button>
         ))}
+      </div>
+      <div className="flex flex-wrap gap-3 mb-1 items-end">
+        <div className="flex flex-col">
+          <label className="text-xs text-slate-500 mb-1">Channel Partner</label>
+          <select
+            value={channel}
+            disabled={loading}
+            onChange={handleChannelChange}
+            className="input-field text-sm px-3 py-1.5 w-48"
+          >
+            <option value="">All Channels</option>
+            {/* Use _id for actual filter value */}
+            {channelOptions.map(cp => (
+              <option value={cp._id} key={cp._id}>{cp.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col">
+          <label className="text-xs text-slate-500 mb-1">Brand</label>
+          <select
+            value={brand}
+            disabled={loading}
+            onChange={handleBrandChange}
+            className="input-field text-sm px-3 py-1.5 w-48"
+          >
+            <option value="">All Brands</option>
+            {/* Use _id for actual filter value */}
+            {brandOptions.map(b => (
+              <option value={b._id} key={b._id}>{b.displayName || b.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Custom date inputs — shown only when "Custom" is selected */}
@@ -314,6 +366,13 @@ function DateRangeFilter({ startDate, endDate, onApply, loading }) {
               ? dayjs(startDate).format('MMM D, YYYY')
               : `${dayjs(startDate).format('MMM D, YYYY')} – ${dayjs(endDate).format('MMM D, YYYY')}`}
           </span>
+          {/* Find display names by _id, not .id */}
+          {channelOptions.find(cp => cp._id === channel) ? (
+            <> &middot; <span className="text-slate-700">{channelOptions.find(cp => cp._id === channel)?.name}</span></>
+          ) : null}
+          {brandOptions.find(b => b._id === brand) ? (
+            <> &middot; <span className="text-slate-700">{brandOptions.find(b => b._id === brand)?.displayName || brandOptions.find(b => b._id === brand)?.name}</span></>
+          ) : null}
         </p>
       )}
     </div>
@@ -326,27 +385,73 @@ function DateRangeFilter({ startDate, endDate, onApply, loading }) {
 export default function DashboardPage() {
   const today = dayjs().format(FORMAT)
 
+  // Filter states with _id (Mongo) for value
+  const [channel, setChannel] = useState("")
+  const [brand, setBrand] = useState("")
+  const [channelOptions, setChannelOptions] = useState([])
+  const [brandOptions, setBrandOptions] = useState([])
+
   const [stats,     setStats]     = useState(null)
   const [loading,   setLoading]   = useState(true)
   const [startDate, setStartDate] = useState(today)
   const [endDate,   setEndDate]   = useState(today)
 
-  const fetchStats = useCallback((start, end) => {
+  // Get channel partners list, use _id
+  useEffect(() => {
+    let mounted = true
+    channelPartnersAPI.list()
+      .then(res => {
+        const list = res?.data?.data || []
+        // Remove non-_id fields; just keep as is but our select uses _id now
+        if(mounted) setChannelOptions(list)
+      })
+      .catch(()=>setChannelOptions([]))
+    return () => { mounted = false }
+  }, [])
+
+  // Fetch brands for current channel (_id); send channelPartnerId as _id to filter brands API
+  useEffect(() => {
+    let mounted = true
+    // Filter brands via selected channel Partner _id
+    // Convention: brandsAPI.list({ channelPartnerId: <_id> })
+    // If no channel, fetch all brands
+    const apiCall = brandsAPI.list(channel ? { channelPartnerId: channel } : undefined)
+    Promise.resolve(apiCall)
+      .then(res => {
+        const list = res?.data?.data || []
+        console.log(list);
+        if(mounted) setBrandOptions(list)
+      })
+      .catch(()=>setBrandOptions([]))
+    return () => { mounted = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel])
+
+  // Fetch stats using the filters - send channelPartnerId/brandId as _id
+  const fetchStats = useCallback((start, end, _channel = channel, _brand = brand) => {
     setLoading(true)
     dashboardAPI
-      .getStats({ startDate: start, endDate: end })   // ← passes dates to API
+      .getStats({
+        startDate: start,
+        endDate: end,
+        channelPartnerId: _channel || undefined,
+        brandId: _brand || undefined,
+      })
       .then(r => setStats(r.data?.data || null))
       .catch(() => setStats(null))
       .finally(() => setLoading(false))
-  }, [])
+  }, [channel, brand])
 
-  // Initial load — today
-  useEffect(() => { fetchStats(today, today) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Initial load — today, all filters
+  useEffect(() => { fetchStats(today, today, "", "") }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDateApply = (start, end) => {
+  // Whenever filters change from DateAndFilterBar
+  const handleFiltersApply = (start, end, _channel, _brand) => {
     setStartDate(start)
     setEndDate(end)
-    fetchStats(start, end)
+    setChannel(_channel)
+    setBrand(_brand)
+    fetchStats(start, end, _channel, _brand)
   }
 
   // ── Stat cards config ─────────────────────────────────────────────
@@ -355,8 +460,7 @@ export default function DashboardPage() {
     { icon: RiSendPlaneLine,      label: 'Total Dispatched',    value: stats?.totalDispatched,         color: 'emerald'  },
     { icon: RiCloseCircleLine,    label: 'Total Cancelled',     value: stats?.totalCancelled,          color: 'red'      },
     { icon: RiExchangeDollarLine, label: 'Total Return',        value: stats?.totalReturnRecords,      color: 'amber'    },
-    // Add missing counts (with warning icons)
-    { icon: TbAlertCircle,        label: 'AddAWB Missing',      value: stats?.addAWBMissingRecordsCount, color: 'orange', bg: 'bg-orange-50', text: 'text-orange-500'},
+    { icon: TbAlertCircle,        label: 'AddAWB Missing',      value: stats?.awbMissingRecordsCount, color: 'orange', bg: 'bg-orange-50', text: 'text-orange-500'},
     { icon: TbAlertTriangle,      label: 'Return Missing',      value: stats?.returnMissingRecordsCount, color: 'fuchsia', bg: 'bg-fuchsia-50', text: 'text-fuchsia-700' },
   ]
 
@@ -385,10 +489,10 @@ export default function DashboardPage() {
             Live overview — {dayjs().format('dddd, MMMM D, YYYY')}
           </p>
         </div>
-        {/* Refresh button for current range */}
+        {/* Refresh button for current range and filters */}
         <button
           type="button"
-          onClick={() => fetchStats(startDate, endDate)}
+          onClick={() => fetchStats(startDate, endDate, channel, brand)}
           disabled={loading}
           className="btn-secondary flex items-center gap-1.5 text-sm px-3 py-1.5 self-start"
         >
@@ -397,12 +501,18 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* ── Date filter ─────────────────────────────────────────────── */}
-      <DateRangeFilter
+      {/* Date + Filters Bar */}
+      <DateAndFilterBar
         startDate={startDate}
         endDate={endDate}
-        onApply={handleDateApply}
+        onApply={handleFiltersApply}
         loading={loading}
+        channelOptions={channelOptions}
+        brandOptions={brandOptions}
+        channel={channel}
+        setChannel={setChannel}
+        brand={brand}
+        setBrand={setBrand}
       />
 
       {/* Stat cards — shimmer overlay while refetching */}
@@ -502,7 +612,7 @@ export default function DashboardPage() {
                         {activity.awbId || activity.awb}
                       </div>
                       <div className="text-xs text-slate-500 truncate">
-                        {activity.channelPartner?.name || ''} · {activity.brand?.name || ''}
+                        {activity.channelPartner?.name || ''} · {activity.brand?.displayName || activity.brand?.name || ''}
                       </div>
                     </div>
                   </div>

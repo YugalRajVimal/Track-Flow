@@ -82,7 +82,7 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
         >
           <option value="">All Brands</option>
           {brands.map(b => (
-            <option key={b._id} value={b._id}>{b.name}</option>
+            <option key={b._id} value={b._id}>{b.displayName ? b.displayName : b.name}</option>
           ))}
         </select>
       </div>

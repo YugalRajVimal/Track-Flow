@@ -213,7 +213,6 @@
 //   )
 // }
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
@@ -354,8 +353,49 @@ export default function AWBScanForm({ onSuccess }) {
     'btn-primary px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 font-semibold'
   const errorText = 'text-pink-600 text-xs mt-1'
 
+  // --- SCAN TYPE ALERT LOGIC ---
+  let scanInfo = null
+  if (selectedPartnerObj) {
+    if (
+      selectedPartnerObj.name?.toLowerCase().includes('meesho')
+    ) {
+      scanInfo = {
+        type: 'qr',
+        label: 'MEESHO: Scan only Packet QR Code.',
+      }
+    } else {
+      scanInfo = {
+        type: 'barcode',
+        label: 'Scan only Label Barcode.',
+      }
+    }
+  }
+
+  // Alert box component
+  function ScanAlertBox({ scanInfo }) {
+    if (!scanInfo) return null
+    // Red for Meesho/QR, Blue for other/barcode
+    const boxClass = scanInfo.type === 'qr'
+      ? 'bg-red-50 border border-red-300 text-red-700'
+      : 'bg-blue-50 border border-blue-300 text-blue-800'
+    const icon = scanInfo.type === 'qr' ? (
+      <RiQrScanLine className="text-2xl mr-2 text-red-500" />
+    ) : (
+      <RiBarcodeLine className="text-2xl mr-2 text-blue-600" />
+    )
+    return (
+      <div className={`flex items-center gap-2 p-3 rounded mb-4 font-semibold ${boxClass}`}>
+        {icon}
+        <span>{scanInfo.label}</span>
+      </div>
+    )
+  }
+
   return (
     <>
+      {/* ── Alert box shows scan instructions based on selected partner ── */}
+      <ScanAlertBox scanInfo={scanInfo} />
+
       {/* ── CHANGED: pass partnerName so BarcodeScanner knows the active partner ── */}
       <BarcodeScanner
         open={scannerOpen}
