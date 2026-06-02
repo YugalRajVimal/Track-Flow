@@ -6,8 +6,7 @@
  *   Phase 2 (confirm) – Show preview table → call /missing/save on confirm
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useForm } from 'react-hook-form'
+import React, { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import {
   RiUpload2Line, RiLoader4Line, RiCheckDoubleLine,
@@ -155,6 +154,10 @@ export default function AWBMissingForm({ onSuccess }) {
   const [previewData, setPreviewData] = useState(null)   // { partner, totalInFile, missing[] }
   const [saving, setSaving] = useState(false)
 
+  // ── Save date range locally for passing to save API ───────────────────────
+  // We need to keep the date range that was used for preview so it doesn't get reset by state changes before save
+  const [savedPreviewDates, setSavedPreviewDates] = useState({ startDate: '', endDate: '' })
+
   // ── Load channel partners ─────────────────────────────────────────────────
   useEffect(() => {
     channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
@@ -240,8 +243,14 @@ export default function AWBMissingForm({ onSuccess }) {
       formData.append('endDate', endDate)
 
       const res = await awbAPI.previewMissing(formData)
+      // Instead of only saving previewData, also save used date range for preview "from" and "to"
       if (res.data?.success) {
-        setPreviewData(res.data.data)
+        setPreviewData({
+          ...res.data.data,
+          missingFromDate: startDate,
+          missingToDate: endDate,
+        })
+        setSavedPreviewDates({ startDate, endDate })
         setPhase('preview')
       }
     } catch (err) {
@@ -253,17 +262,25 @@ export default function AWBMissingForm({ onSuccess }) {
 
   // ── Phase 2: Save ─────────────────────────────────────────────────────────
   const handleSave = async () => {
+    // Send required payload: rows, missingFromDate, missingToDate (see instructions)
+    // rows = previewData?.missing; missingFromDate, missingToDate saved
     if (!previewData?.missing?.length) {
       toast('No missing AWBs to save.', { icon: 'ℹ️' })
       return
     }
-
     setSaving(true)
     try {
-      const res = await awbAPI.saveMissing(previewData.missing)
+      
+      const savePayload = {
+        rows: previewData.missing, // rows = missing
+        missingFromDate: previewData.missingFromDate || savedPreviewDates.startDate,
+        missingToDate: previewData.missingToDate || savedPreviewDates.endDate,
+      }
+      console.log(savePayload)
+      const res = await awbAPI.saveMissing(await savePayload)
       if (res.data?.success) {
         toast.success(res.data.message || 'Missing AWBs saved successfully.')
-        onSuccess?.()
+        if (typeof onSuccess === 'function') onSuccess()
         resetAll()
       }
     } catch (err) {
@@ -281,6 +298,7 @@ export default function AWBMissingForm({ onSuccess }) {
     setBrandId('')
     setStartDate('')
     setEndDate('')
+    setSavedPreviewDates({ startDate: '', endDate: '' })
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -470,6 +488,11 @@ export default function AWBMissingForm({ onSuccess }) {
     }
   }
 
+  // The date range used for preview should always show the saved preview dates in phase 2
+  // Fallback to startDate/endDate in case of manual navigation bugs (shouldn't happen)
+  const displayStartDate = previewData?.missingFromDate || savedPreviewDates.startDate || startDate
+  const displayEndDate = previewData?.missingToDate || savedPreviewDates.endDate || endDate
+
   return (
     <div className="space-y-5 w-full">
 
@@ -506,7 +529,7 @@ export default function AWBMissingForm({ onSuccess }) {
         <div className="flex flex-wrap gap-4 text-xs text-slate-600 pt-1">
           <span><span className="font-medium">Partner:</span> {cpName}</span>
           <span><span className="font-medium">Brand:</span> {brandName}</span>
-          <span><span className="font-medium">Date range:</span> {dayjs(startDate).format('MMM D')} – {dayjs(endDate).format('MMM D, YYYY')}</span>
+          <span><span className="font-medium">Date range:</span> {dayjs(displayStartDate).format('MMM D')} – {dayjs(displayEndDate).format('MMM D, YYYY')}</span>
           <span><span className="font-medium">Source:</span> {partnerLabel}</span>
           <span><span className="font-medium">File:</span> {file?.name}</span>
         </div>

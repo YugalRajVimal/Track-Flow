@@ -18,6 +18,6 @@ export const awbAPI = {
     api.post('/awb/missing/preview', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  saveMissing: (rows) =>
-    api.post('/awb/missing/save', { rows }),
+  saveMissing: ({ rows, missingFromDate, missingToDate }) =>
+    api.post('/awb/missing/save', { rows, missingFromDate, missingToDate }),
 }
