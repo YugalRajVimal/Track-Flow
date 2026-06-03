@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react'
-import { RiSearchLine, RiDownloadLine, RiRefreshLine, RiFileDownloadLine, RiUpload2Fill } from 'react-icons/ri'
+import { RiSearchLine, RiRefreshLine, RiUpload2Fill } from 'react-icons/ri'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import { awbAPI } from '../../api/awb'
 import toast from 'react-hot-toast'
 
-// Generate light theme utility styles (override Tailwind's dark palette)
+// Orange & white theme utility styles (#f58021)
+const orange = "#f58021"
+const orangeBorder = "border-orange-200"
+const orangeFocus = "focus:border-[#f58021] focus:ring-[#f58021]/20"
 const lightTheme = {
   container: "space-y-3 bg-white p-4 rounded-md shadow-sm",
-  label: "text-gray-700 font-medium",
-  input: "input-field pl-9 w-full bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-blue-200",
-  select: "select-field w-auto min-w-[140px] bg-white border border-gray-300 text-gray-900 focus:border-blue-400 focus:ring-blue-200",
-  selectPartner: "select-field w-auto min-w-[160px] bg-white border border-gray-300 text-gray-900 focus:border-blue-400 focus:ring-blue-200",
-  button: "btn-secondary bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200",
+  label: "text-[#f58021] font-medium",
+  input: `input-field pl-9 w-full bg-white border ${orangeBorder} text-[#191919] placeholder-orange-200 ${orangeFocus}`,
+  select: `select-field w-auto min-w-[140px] bg-white border ${orangeBorder} text-[#f58021] ${orangeFocus}`,
+  selectPartner: `select-field w-auto min-w-[160px] bg-white border ${orangeBorder} text-[#f58021] ${orangeFocus}`,
+  button: `btn-secondary bg-[#fff8f2] hover:bg-[#f58021] hover:text-white text-[#f58021] border ${orangeBorder} font-medium transition`,
   buttonDisabled: "opacity-60 cursor-not-allowed",
-  dateInput: "input-field w-auto bg-white border border-gray-300 text-gray-900 focus:border-blue-400 focus:ring-blue-200",
-  icon: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400",
-  to: "text-gray-500 text-sm"
+  dateInput: `input-field w-auto bg-white border ${orangeBorder} text-[#191919] ${orangeFocus}`,
+  icon: "absolute left-3 top-1/2 -translate-y-1/2 text-orange-200",
+  to: "text-orange-400 text-sm"
 }
 
 export default function AWBFilterBar({ filters, onChange, onRefresh }) {
@@ -72,7 +75,6 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
           <option value="dispatched">Dispatched</option>
           <option value="cancelled">Cancelled</option>
           <option value="missing">Missing</option>
-
         </select>
 
         {/* Channel Partner */}
@@ -133,7 +135,7 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
             className={`${lightTheme.button} ${exporting ? lightTheme.buttonDisabled : ''}`}
             type="button"
           >
-            <RiUpload2Fill/>
+            <RiUpload2Fill />
             {exporting ? 'Exporting...' : 'Export CSV'}
           </button>
         </div>

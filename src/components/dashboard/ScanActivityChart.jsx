@@ -4,17 +4,22 @@ import {
   ResponsiveContainer, Legend
 } from 'recharts'
 
-// Light theme tooltip and colors
+// White and #f58021 color theme for tooltip/items
+const ORANGE = '#f58021'
+const LIGHT_ORANGE_BG = '#fff8f2'
+const GRAY_TEXT = '#b35c23'    // Muted orange for axis/legend ticks
+const DARK_TEXT = '#191919'
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow p-3 text-xs">
-      <div className="text-gray-500 mb-2 font-medium">{label}</div>
+    <div className="bg-white border border-orange-200 rounded-lg shadow p-3 text-xs">
+      <div className="text-[#f58021] mb-2 font-medium">{label}</div>
       {payload.map((p) => (
         <div key={p.name} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-          <span className="text-gray-500 capitalize">{p.name}:</span>
-          <span className="text-gray-900 font-semibold">{p.value}</span>
+          <span className="text-[#f58021] capitalize">{p.name}:</span>
+          <span className="text-[#191919] font-semibold">{p.value}</span>
         </div>
       ))}
     </div>
@@ -24,7 +29,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function ScanActivityChart({ data }) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
+      <div className="flex items-center justify-center h-48 text-orange-200 text-sm">
         No activity data available
       </div>
     )
@@ -35,46 +40,48 @@ export default function ScanActivityChart({ data }) {
       <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="colorScans" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.13} />
-            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+            <stop offset="5%" stopColor={ORANGE} stopOpacity={0.17} />
+            <stop offset="95%" stopColor={ORANGE} stopOpacity={0} />
           </linearGradient>
           <linearGradient id="colorDispatched" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#10b981" stopOpacity={0.13} />
-            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+            <stop offset="5%" stopColor="#FFB16A" stopOpacity={0.13} />
+            <stop offset="95%" stopColor="#FFB16A" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#ffe1cc" />
         <XAxis
           dataKey="date"
-          stroke="#cbd5e1"
+          stroke="#fed7aa"
           tick={{
             fontSize: 11,
-            fill: '#64748b', // gray-500/600
+            fill: GRAY_TEXT,
             fontFamily: 'JetBrains Mono, monospace'
           }}
           tickLine={false}
-          axisLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#fff4ec' }}
         />
         <YAxis
-          stroke="#cbd5e1"
+          stroke="#fed7aa"
           tick={{
             fontSize: 11,
-            fill: '#64748b',
+            fill: GRAY_TEXT,
             fontFamily: 'JetBrains Mono, monospace'
           }}
           tickLine={false}
-          axisLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#fff4ec' }}
         />
         <Tooltip content={<CustomTooltip />} />
         <Legend
           wrapperStyle={{ fontSize: '12px', paddingTop: '16px' }}
-          formatter={(val) => <span style={{ color: '#64748b', textTransform: 'capitalize' }}>{val}</span>}
+          formatter={(val) => (
+            <span style={{ color: ORANGE, textTransform: 'capitalize' }}>{val}</span>
+          )}
         />
         <Area
           type="monotone"
           dataKey="scans"
           name="scans"
-          stroke="#6366f1"
+          stroke={ORANGE}
           strokeWidth={2}
           fill="url(#colorScans)"
           dot={false}
@@ -83,7 +90,7 @@ export default function ScanActivityChart({ data }) {
           type="monotone"
           dataKey="dispatched"
           name="dispatched"
-          stroke="#10b981"
+          stroke="#FFB16A"
           strokeWidth={2}
           fill="url(#colorDispatched)"
           dot={false}

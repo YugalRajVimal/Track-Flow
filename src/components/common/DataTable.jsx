@@ -1,25 +1,26 @@
 import React from 'react'
 import { RiArrowLeftLine, RiArrowRightLine, RiLoader4Line } from 'react-icons/ri'
 
-// Light theme overrides for table elements
-const lightTableHeader =
-  "px-4 py-3 text-left text-xs font-semibold text-gray-700 bg-gray-50 border-b border-gray-200"
-const lightTableRow = "bg-white even:bg-gray-50 border-b border-gray-200 hover:bg-blue-50 transition"
-const lightTableCell = "px-4 py-3 text-sm text-gray-800"
-const lightLoader = "animate-spin text-blue-500 text-3xl"
-const lightEmptyArea =
-  "flex flex-col items-center justify-center py-20 text-gray-400"
-const lightEmptyIcon = "text-4xl mb-3"
-const lightEmptyMsg = "text-sm"
-const lightPaginationContainer =
-  "flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-4 border-t border-gray-200"
-const lightPaginationSpan = "text-xs text-gray-500"
-const lightBtnSecondary =
-  "btn-secondary px-3 py-2 bg-white border border-gray-300 text-blue-700 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
-const lightPageNumActive =
-  "w-8 h-8 rounded-lg text-xs font-medium bg-blue-600 text-white"
-const lightPageNum =
-  "w-8 h-8 rounded-lg text-xs font-medium text-gray-500 hover:bg-blue-100 hover:text-blue-700 transition-all"
+// Orange & white theme overrides for table elements
+const orange = "#f58021"
+const tableHeader =
+  "px-4 py-3 text-left text-xs font-semibold text-[#f58021] bg-[#fff8f2] border-b border-orange-200"
+const tableRow = "bg-white even:bg-[#fff8f2] border-b border-orange-200 hover:bg-[#f58021]/10 transition"
+const tableCell = "px-4 py-3 text-sm text-orange-900"
+const loaderClass = "animate-spin text-[#f58021] text-3xl"
+const emptyArea =
+  "flex flex-col items-center justify-center py-20 text-orange-200"
+const emptyIcon = "text-4xl mb-3"
+const emptyMsg = "text-sm"
+const paginationContainer =
+  "flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-4 border-t border-orange-200"
+const paginationSpan = "text-xs text-orange-400"
+const btnSecondary =
+  "btn-secondary px-3 py-2 bg-white border border-orange-200 text-[#f58021] hover:bg-[#f58021]/10 hover:border-[#f58021] hover:text-[#f58021] disabled:opacity-40 disabled:cursor-not-allowed transition"
+const pageNumActive =
+  "w-8 h-8 rounded-lg text-xs font-medium bg-[#f58021] text-white ring-2 ring-orange-200"
+const pageNum =
+  "w-8 h-8 rounded-lg text-xs font-medium text-orange-500 hover:bg-[#f58021]/10 hover:text-[#f58021] transition-all"
 
 // Helper to format date as YYYY-MM-DD
 function formatDate(val) {
@@ -47,16 +48,16 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <RiLoader4Line className={lightLoader} />
+        <RiLoader4Line className={loaderClass} />
       </div>
     )
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className={lightEmptyArea}>
-        <div className={lightEmptyIcon}>📭</div>
-        <div className={lightEmptyMsg}>{emptyMessage}</div>
+      <div className={emptyArea}>
+        <div className={emptyIcon}>📭</div>
+        <div className={emptyMsg}>{emptyMessage}</div>
       </div>
     )
   }
@@ -77,13 +78,13 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] bg-white border border-gray-200 rounded-xl shadow-sm">
+      <table className="w-full min-w-[640px] bg-white border border-orange-200 rounded-xl shadow-sm">
         <thead>
           <tr>
             {patchedColumns.map((col) => (
               <th
                 key={col.key}
-                className={lightTableHeader}
+                className={tableHeader}
                 style={{ width: col.width }}
                 scope="col"
               >
@@ -92,30 +93,30 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
             ))}
             {/* If any row has missingFromDate or missingToDate, add headers if not already present in columns */}
             {data.some(r => r.missingFromDate) && !patchedColumns.find(col => col.key === 'missingFromDate') && (
-              <th className={lightTableHeader} scope="col" style={{width: 130}}>Missing From</th>
+              <th className={tableHeader} scope="col" style={{width: 130}}>Missing From</th>
             )}
             {data.some(r => r.missingToDate) && !patchedColumns.find(col => col.key === 'missingToDate') && (
-              <th className={lightTableHeader} scope="col" style={{width: 130}}>Missing To</th>
+              <th className={tableHeader} scope="col" style={{width: 130}}>Missing To</th>
             )}
           </tr>
         </thead>
         <tbody>
           {data.map((row, i) => (
-            <tr key={row._id || i} className={lightTableRow}>
+            <tr key={row._id || i} className={tableRow}>
               {patchedColumns.map((col) => (
-                <td key={col.key} className={lightTableCell}>
+                <td key={col.key} className={tableCell}>
                   {col.render ? col.render(row[col.key], row) : row[col.key] ?? '—'}
                 </td>
               ))}
               {/* Show missingFromDate if present and not already rendered by column */}
               {data.some(r => r.missingFromDate) && !patchedColumns.find(col => col.key === 'missingFromDate') && (
-                <td className={lightTableCell}>
+                <td className={tableCell}>
                   {row.missingFromDate ? formatDate(row.missingFromDate) : '—'}
                 </td>
               )}
               {/* Show missingToDate if present and not already rendered by column */}
               {data.some(r => r.missingToDate) && !patchedColumns.find(col => col.key === 'missingToDate') && (
-                <td className={lightTableCell}>
+                <td className={tableCell}>
                   {row.missingToDate ? formatDate(row.missingToDate) : '—'}
                 </td>
               )}
@@ -133,7 +134,7 @@ export function Pagination({ pagination, onChange }) {
   const from = (page - 1) * limit + 1
   const to = Math.min(page * limit, total)
 
-  // Generate page buttons (light theme)
+  // Generate page buttons (orange theme)
   const getPageNumbers = () => {
     let nums = []
     const max = Math.min(pages, 7)
@@ -148,15 +149,15 @@ export function Pagination({ pagination, onChange }) {
   }
 
   return (
-    <div className={lightPaginationContainer}>
-      <span className={lightPaginationSpan}>
+    <div className={paginationContainer}>
+      <span className={paginationSpan}>
         Showing {from}–{to} of {total} records
       </span>
       <div className="flex items-center gap-2">
         <button
           onClick={() => onChange(page - 1)}
           disabled={page <= 1}
-          className={lightBtnSecondary}
+          className={btnSecondary}
           aria-label="Previous"
         >
           <RiArrowLeftLine />
@@ -166,7 +167,7 @@ export function Pagination({ pagination, onChange }) {
             <button
               key={p}
               onClick={() => onChange(p)}
-              className={p === page ? lightPageNumActive : lightPageNum}
+              className={p === page ? pageNumActive : pageNum}
             >
               {p}
             </button>
@@ -175,7 +176,7 @@ export function Pagination({ pagination, onChange }) {
         <button
           onClick={() => onChange(page + 1)}
           disabled={page >= pages}
-          className={lightBtnSecondary}
+          className={btnSecondary}
           aria-label="Next"
         >
           <RiArrowRightLine />

@@ -7,19 +7,22 @@ import { awbAPI } from '../../api/awb'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
 
+// Orange theme colors
+const PRIMARY_ORANGE = '#f58021'
+
 // ── Scan Alert Box Component ──
 function ScanAlertBox({ scanInfo }) {
   if (!scanInfo) return null
 
-  // Red for Meesho/QR, Blue for other/barcode
+  // Orange for all, special for QR (darker bg), both use orange border/text
   const boxClass = scanInfo.type === 'qr'
-    ? 'bg-red-50 border border-red-300 text-red-700'
-    : 'bg-blue-50 border border-blue-300 text-blue-800'
+    ? 'bg-[#fff3e6] border border-[#f58021] text-[#f58021]'
+    : 'bg-white border border-[#f58021] text-[#f58021]'
 
   const icon = scanInfo.type === 'qr' ? (
-    <RiQrScanLine className="text-2xl mr-2 text-red-500" />
+    <RiQrScanLine className="text-2xl mr-2" style={{ color: PRIMARY_ORANGE }} />
   ) : (
-    <RiBarcodeLine className="text-2xl mr-2 text-blue-600" />
+    <RiBarcodeLine className="text-2xl mr-2" style={{ color: PRIMARY_ORANGE }} />
   )
 
   return (
@@ -170,15 +173,16 @@ export default function AWBScanForm({ onSuccess }) {
     awbInputRef.current = el
   }
 
+  // THEME CLASSES: Orange + White theme, not blue
   const baseInput =
-    'input-field pl-9 font-mono bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:ring-blue-200'
+    'input-field pl-9 font-mono bg-white border border-orange-200 text-[#191919] placeholder-orange-200 focus:border-[#f58021] focus:ring-[#f58021]/20'
   const baseSelect =
-    'select-field bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:ring-blue-200'
-  const baseLabel = 'label text-slate-700'
+    'select-field bg-white border border-orange-200 text-[#f58021] placeholder-orange-200 focus:border-[#f58021] focus:ring-[#f58021]/20'
+  const baseLabel = 'label text-[#f58021] font-medium'
   const baseButtonSecondary =
-    'btn-secondary px-3 flex-shrink-0 bg-slate-100 border border-slate-300 hover:bg-blue-100 text-blue-600'
+    'btn-secondary px-3 flex-shrink-0 bg-[#fff8f2] border border-orange-200 hover:bg-[#f58021] hover:text-white text-[#f58021] font-medium transition'
   const baseButtonPrimary =
-    'btn-primary px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 font-semibold'
+    'btn-primary px-4 py-2 rounded bg-[#f58021] text-white hover:bg-orange-500 flex items-center gap-1 font-semibold'
   const errorText = 'text-pink-600 text-xs mt-1'
 
   return (
@@ -241,7 +245,7 @@ export default function AWBScanForm({ onSuccess }) {
           <label className={baseLabel}>AWB ID *</label>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <RiBarcodeLine className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" />
+              <RiBarcodeLine className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: PRIMARY_ORANGE }} />
               <input
                 {...awbRegister}
                 ref={mergedRef}

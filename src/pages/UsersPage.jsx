@@ -7,20 +7,20 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import EntityFormModal from '../components/admin/EntityFormModal'
 import dayjs from 'dayjs'
 
-// Light theme color palette
+// Custom orange (#f58021) and white color palette
 const styles = {
-  labelSecondary: 'text-slate-600',
-  labelSecondaryStrong: 'text-brand-700',
-  border: 'border-slate-200',
-  cardBg: 'bg-white shadow-sm border border-slate-200',
-  neutral: 'text-slate-800',
-  muted: 'text-slate-400',
-  btnPrimary: 'bg-blue-600 text-white hover:bg-blue-700',
-  btn: 'p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-all',
-  tagAdmin: 'text-blue-700 bg-blue-100 border-blue-200',
-  tagUser: 'text-slate-600 bg-slate-100 border-slate-200',
-  tagActive: 'text-green-700 bg-green-100 border-green-200',
-  tagInactive: 'text-red-700 bg-red-100 border-red-200'
+  labelSecondary: 'text-[#f58021]', // orange text for subtitles
+  labelSecondaryStrong: 'text-[#f58021] font-semibold',
+  border: 'border-[#f58021]/30', // slight orange tint border
+  cardBg: 'bg-white shadow-sm border border-[#f58021]/20', // card background white w/ soft orange border
+  neutral: 'text-[#222]', // darker, readable
+  muted: 'text-[#d1d5db]', // muted gray for disabled/inactive
+  btnPrimary: 'bg-[#f58021] text-white hover:bg-[#ff9841]',
+  btn: 'p-1.5 text-[#222] hover:text-white hover:bg-[#f58021]/80 rounded-lg transition-all',
+  tagAdmin: 'text-white bg-[#f58021] border-[#f58021]',
+  tagUser: 'text-[#f58021] bg-[#fff6ed] border-[#f58021]/30',
+  tagActive: 'text-white bg-[#f58021] border-[#f58021]',
+  tagInactive: 'text-[#f58021] bg-[#fff6ed] border-[#f58021]/50'
 }
 
 const USER_FIELDS = [
@@ -135,22 +135,24 @@ export default function UsersPage() {
     },
     {
       key: 'createdAt', label: 'Created',
-      render: v => v ? <span className="text-xs text-slate-400">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
+      render: v => v ? <span className="text-xs text-[#b4b4b4]">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
     },
     {
       key: 'actions', label: 'Actions',
       render: (_, row) => (
         <div className="flex items-center gap-1.5">
           <button onClick={() => { setEditing(row); setModalOpen(true) }}
-            className={styles.btn}>
+            className={styles.btn} style={{ border: '1px solid #f58021', backgroundColor: 'white' }}>
             <RiEditLine />
           </button>
           <button onClick={() => handleToggleStatus(row)}
-            className={`${styles.btn} hover:text-amber-600 hover:bg-amber-100`}>
+            className={styles.btn + " hover:text-white"}
+            style={{ border: '1px solid #f58021', backgroundColor: 'white' }}>
             <RiToggleLine />
           </button>
           <button onClick={() => setDeleteItem(row)}
-            className={`${styles.btn} hover:text-red-600 hover:bg-red-100`}>
+            className={styles.btn + " hover:text-white"}
+            style={{ border: '1px solid #f58021', backgroundColor: 'white' }}>
             <RiDeleteBinLine />
           </button>
         </div>
@@ -184,12 +186,13 @@ export default function UsersPage() {
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="page-title text-slate-900">Users</h1>
+            <h1 className="page-title text-[#222]">Users</h1>
             <p className={`${styles.labelSecondary} text-sm mt-1`}>Manage platform users</p>
           </div>
           <button
             onClick={() => { setEditing(null); setModalOpen(true) }}
-            className={`btn-primary flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm ${styles.btnPrimary}`}
+            className={`btn-primary flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm ${styles.btnPrimary} border border-[#f58021]`}
+            style={{ backgroundColor: '#f58021', color: '#fff', borderColor: '#f58021' }}
           >
             <RiAddLine /> Add User
           </button>

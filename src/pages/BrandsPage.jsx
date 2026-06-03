@@ -7,6 +7,20 @@ import { DataTable, Pagination } from '../components/common/DataTable'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EntityFormModal from '../components/admin/EntityFormModal'
 
+// Color palette: orange (#f58021) and white
+const ORANGE = '#f58021'
+const textBrand = 'text-[#f58021]'
+const textBrandSubtle = 'text-orange-400'
+const textDark = 'text-slate-800'
+const textSubtle = 'text-orange-500'
+const borderLight = 'border-orange-200'
+const bgLight = 'bg-white'
+const bgHighlight = 'bg-[#f58021]/10'
+const accent = 'text-[#f58021]'
+const accentBorder = 'border-[#f58021]'
+const cardShadow = 'shadow'
+const cardBorder = 'border border-orange-200'
+
 export default function BrandsPage() {
   const [brands, setBrands] = useState([])
   const [partners, setPartners] = useState([])
@@ -38,7 +52,7 @@ export default function BrandsPage() {
 
   useEffect(() => { fetch() }, [fetch])
 
-  // Light theme tweaks: softer colors, use gray-700 for base, gray-400 for subtext, blue as accent
+  // Light theme tweaks: orange as accent
   const FIELDS = [
     { name: 'name', label: 'Brand Name', required: true, placeholder: 'e.g. Nike' },
     {
@@ -90,30 +104,30 @@ export default function BrandsPage() {
   const columns = [
     { key: 'name', label: 'Brand Name',
       render: (val) => (
-        <span className="font-medium text-gray-700">{val || '—'}</span>
+        <span className={`font-medium ${textDark}`}>{val || '—'}</span>
       )
     },
     {
       key: 'channelPartner', label: 'Channel Partner',
       render: (val) => (
-        <span className="text-xs text-gray-500">{val?.name || '—'}</span>
+        <span className="text-xs text-orange-400">{val?.name || '—'}</span>
       )
     },
-    { key: 'description', label: 'Description', render: v => <span className="text-gray-400 text-xs">{v || '—'}</span> },
+    { key: 'description', label: 'Description', render: v => <span className="text-orange-300 text-xs">{v || '—'}</span> },
     {
       key: 'createdAt', label: 'Created',
-      render: v => v ? <span className="text-xs text-gray-400">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
+      render: v => v ? <span className="text-xs text-orange-300">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
     },
     {
       key: 'actions', label: 'Actions',
       render: (_, row) => (
         <div className="flex items-center gap-1.5">
           <button onClick={() => { setEditing(row); setModalOpen(true) }}
-            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-all">
+            className="p-1.5 text-orange-400 hover:text-[#f58021] hover:bg-[#f58021]/10 rounded-lg transition-all">
             <RiEditLine />
           </button>
           <button onClick={() => setDeleteItem(row)}
-            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all">
+            className="p-1.5 text-orange-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all">
             <RiDeleteBinLine />
           </button>
         </div>
@@ -148,17 +162,17 @@ export default function BrandsPage() {
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Brands</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage brands under channel partners</p>
+            <h1 className={`text-2xl font-semibold ${textBrand}`}>Brands</h1>
+            <p className="text-orange-400 text-sm mt-1">Manage brands under channel partners</p>
           </div>
           <button
             onClick={() => { setEditing(null); setModalOpen(true) }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium shadow hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#f58021] text-white text-sm font-medium shadow hover:bg-[#f58021]/90 transition-colors"
           >
             <RiAddLine /> Add Brand
           </button>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+        <div className="rounded-xl border border-orange-200 bg-white overflow-hidden shadow-sm">
           <div className="p-5">
             <DataTable columns={columns} data={brands} loading={loading} emptyMessage="No brands found" />
             <Pagination pagination={pagination} onChange={setPage} />

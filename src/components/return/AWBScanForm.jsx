@@ -7,6 +7,11 @@ import { returnAPI } from '../../api/return'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
 
+const orange = '#f58021'
+const orangeLight = '#fff5e6'
+const orangeBorder = '#f58021'
+const orangeText = '#f58021'
+
 export default function AWBScanForm({ onSuccess }) {
   const [partners, setPartners] = useState([])
   const [brands, setBrands] = useState([])
@@ -128,15 +133,16 @@ export default function AWBScanForm({ onSuccess }) {
     awbInputRef.current = el
   }
 
+  // Style classes with orange theme
   const baseInput =
-    'input-field pl-9 font-mono bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:ring-blue-200'
+    `input-field pl-9 font-mono bg-white border border-[${orangeBorder}] text-gray-900 placeholder-gray-400 focus:border-[${orange}] focus:ring-[${orange}]`
   const baseSelect =
-    'select-field bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:ring-blue-200'
-  const baseLabel = 'label text-slate-700'
+    `select-field bg-white border border-[${orangeBorder}] text-gray-900 placeholder-gray-400 focus:border-[${orange}] focus:ring-[${orange}]`
+  const baseLabel = 'label text-gray-700'
   const baseButtonSecondary =
-    'btn-secondary px-3 flex-shrink-0 bg-slate-100 border border-slate-300 hover:bg-blue-100 text-blue-600'
+    `btn-secondary px-3 flex-shrink-0 bg-[${orangeLight}] border border-[${orangeBorder}] hover:bg-[${orange}] hover:text-white text-[${orangeText}]`
   const baseButtonPrimary =
-    'btn-primary px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 font-semibold'
+    `btn-primary px-4 py-2 rounded bg-[${orange}] text-white hover:bg-orange-600 flex items-center gap-1 font-semibold`
   const errorText = 'text-pink-600 text-xs mt-1'
 
   // --- SCAN TYPE ALERT LOGIC ---
@@ -152,9 +158,9 @@ export default function AWBScanForm({ onSuccess }) {
   // Alert box component
   function ScanAlertBox({ scanInfo }) {
     if (!scanInfo) return null
-    // Always blue for barcode
-    const boxClass = 'bg-blue-50 border border-blue-300 text-blue-800'
-    const icon = <RiBarcodeLine className="text-2xl mr-2 text-blue-600" />
+    // Orange themed alert
+    const boxClass = 'bg-[#fff5e6] border border-[#f58021] text-[#f58021]'
+    const icon = <RiBarcodeLine className="text-2xl mr-2" style={{ color: orange }} />
     return (
       <div className={`flex items-center gap-2 p-3 rounded mb-4 font-semibold ${boxClass}`}>
         {icon}
@@ -223,7 +229,7 @@ export default function AWBScanForm({ onSuccess }) {
           <label className={baseLabel}>AWB ID *</label>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <RiBarcodeLine className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" />
+              <RiBarcodeLine className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: orange }} />
               <input
                 {...awbRegister}
                 ref={mergedRef}
@@ -242,13 +248,13 @@ export default function AWBScanForm({ onSuccess }) {
               title="Scan barcode"
               disabled={submitting}
             >
-              <RiBarcodeLine className="text-lg" />
+              <RiBarcodeLine className="text-lg" style={{ color: orange }} />
             </button>
           </div>
           {errors.awbId && <p className={errorText}>{errors.awbId.message}</p>}
         </div>
 
-        <button type="submit" disabled={submitting} className={baseButtonPrimary}>
+        <button type="submit" disabled={submitting} className={baseButtonPrimary} style={{ backgroundColor: orange }}>
           {submitting ? (
             <><RiLoader4Line className="animate-spin" /> Scanning...</>
           ) : (

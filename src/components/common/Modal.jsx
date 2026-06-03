@@ -26,21 +26,25 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className={`bg-white text-slate-900 shadow-xl rounded-lg w-full ${maxWidth} modal-content`}
+            className={`bg-white text-[#191919] shadow-xl rounded-lg w-full ${maxWidth} modal-content border-2 border-orange-200`}
             onClick={e => e.stopPropagation()}
           >
             {title && (
-              <div className="flex items-center justify-between p-5 border-b border-slate-100">
-                <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+              <div className="flex items-center justify-between p-5 border-b border-orange-200 bg-[#fff8f2] rounded-t-lg">
+                <h2 className="text-base font-semibold text-[#f58021]">{title}</h2>
                 <button
                   onClick={onClose}
-                  className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded-lg hover:bg-slate-200"
+                  className="text-[#f58021] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#f58021]/90 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                  style={{
+                    border: '1px solid #f58021',
+                    background: 'white'
+                  }}
                 >
                   <RiCloseLine className="text-xl" />
                 </button>
               </div>
             )}
-            <div className="p-5">{children}</div>
+            <div className="p-5 bg-white">{children}</div>
           </motion.div>
         </div>
       )}

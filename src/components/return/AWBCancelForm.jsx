@@ -5,6 +5,9 @@ import { RiLoader4Line } from 'react-icons/ri'
 import { returnAPI } from '../../api/return'
 import BarcodeScanner from './BarcodeScanner'
 
+// Theme color
+const PRIMARY_ORANGE = '#f58021'
+
 // Passcode modal for 5-digit entry
 function PasscodeModal({ open, onVerify, onClose, verifying }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
@@ -15,33 +18,63 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-      <div className="bg-white rounded-xl shadow-lg max-w-xs w-full px-6 py-8 relative border border-slate-200">
+      <div
+        className="bg-white rounded-xl shadow-lg max-w-xs w-full px-6 py-8 relative border"
+        style={{ borderColor: PRIMARY_ORANGE }}
+      >
         <button
-          className="absolute right-3 top-3 text-xl text-slate-400 hover:text-slate-600"
+          className="absolute right-3 top-3 text-xl"
+          style={{
+            color: PRIMARY_ORANGE,
+            fontWeight: 700,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+          }}
           onClick={onClose}
           aria-label="Close"
           type="button"
         >&times;</button>
         <form onSubmit={handleSubmit(handlePasscode)} className="space-y-4">
-          <h2 className="text-lg font-semibold text-center mb-2">Enter 5-digit Passcode</h2>
+          <h2
+            className="text-lg font-semibold text-center mb-2"
+            style={{ color: PRIMARY_ORANGE }}
+          >
+            Enter 5-digit Passcode
+          </h2>
           <input
             {...register('passcode', {
               required: 'Passcode required',
               pattern: { value: /^\d{5}$/, message: '5-digit numeric passcode' }
             })}
-            className="input-field w-full text-center tracking-widest text-lg"
-            placeholder="_____" 
-            minLength={5} maxLength={5}
+            className="w-full text-center tracking-widest text-lg rounded border px-4 py-2 transition-all"
+            style={{
+              borderColor: PRIMARY_ORANGE,
+              color: PRIMARY_ORANGE,
+              background: 'white',
+            }}
+            placeholder="_____"
+            minLength={5}
+            maxLength={5}
             inputMode="numeric"
             autoFocus
             autoComplete="one-time-code"
             disabled={verifying}
           />
-          {errors.passcode && <p className="text-red-500 text-xs mt-1 text-center">{errors.passcode.message}</p>}
+          {errors.passcode && (
+            <p className="text-xs mt-1 text-center" style={{ color: '#e53e3e' }}>
+              {errors.passcode.message}
+            </p>
+          )}
           <button
             type="submit"
-            className="btn-brand w-full flex items-center justify-center gap-2 py-2"
+            className="w-full flex items-center justify-center gap-2 py-2 font-semibold rounded transition-all"
             disabled={verifying}
+            style={{
+              background: PRIMARY_ORANGE,
+              color: 'white',
+              opacity: verifying ? 0.6 : 1,
+            }}
           >
             {verifying ? (
               <>
@@ -126,7 +159,13 @@ export default function AWBCancelForm({ onSuccess, userId }) {
   }
 
   return (
-    <div className="space-y-4 bg-white p-6 rounded-2xl shadow border border-slate-200 flex flex-col items-center">
+    <div
+      className="space-y-4 p-6 rounded-2xl shadow flex flex-col items-center border"
+      style={{
+        background: 'white',
+        borderColor: PRIMARY_ORANGE,
+      }}
+    >
       <BarcodeScanner
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
@@ -135,13 +174,18 @@ export default function AWBCancelForm({ onSuccess, userId }) {
       />
 
       <div className="flex flex-col items-center gap-3 w-full justify-center pt-4">
-        <p className="font-semibold text-lg text-slate-700">Scan AWB to Cancel</p>
-        <p className="text-sm text-slate-500 text-center">
-          This operation <b>immediately cancels</b> AWB upon scanning.<br/>
+        <p
+          className="font-semibold text-lg"
+          style={{ color: PRIMARY_ORANGE }}
+        >
+          Scan AWB to Cancel
+        </p>
+        <p className="text-sm text-center" style={{ color: PRIMARY_ORANGE, fontWeight: 500 }}>
+          This operation <b style={{ color: '#d12e2e' }}>immediately cancels</b> AWB upon scanning.<br />
           No confirmation. Please scan carefully.
         </p>
         {submitting && (
-          <div className="flex items-center gap-2 text-red-600 text-base mt-2">
+          <div className="flex items-center gap-2 text-base mt-2" style={{ color: '#d12e2e' }}>
             <RiLoader4Line className="animate-spin" />
             Cancelling AWB...
           </div>

@@ -12,7 +12,6 @@ import Modal from '../common/Modal'
 // Format sets
 // ─────────────────────────────────────────────
 
-/** Standard 1-D barcode formats — used for every partner except Meesho */
 const BARCODE_1D_FORMATS = [
   BarcodeFormat.CODE_128,
   BarcodeFormat.EAN_13,
@@ -24,7 +23,6 @@ const BARCODE_1D_FORMATS = [
   BarcodeFormat.CODABAR,
 ]
 
-/** 2-D / QR formats — used only when partner is Meesho */
 const QR_2D_FORMATS = [
   BarcodeFormat.QR_CODE,
   BarcodeFormat.DATA_MATRIX,
@@ -32,7 +30,6 @@ const QR_2D_FORMATS = [
   BarcodeFormat.PDF_417,
 ]
 
-/** Everything NOT in the active set should be ignored */
 const ALL_BLOCKED_1D = new Set(BARCODE_1D_FORMATS)
 const ALL_BLOCKED_2D = new Set(QR_2D_FORMATS)
 
@@ -40,7 +37,6 @@ const ALL_BLOCKED_2D = new Set(QR_2D_FORMATS)
 // Helpers
 // ─────────────────────────────────────────────
 
-/** Returns true when the partner name matches Meesho (case-insensitive) */
 const isMeeshoPartner = (name = '') => /meesho/i.test(name)
 
 function createReader(formats, tryHarder = false) {
@@ -58,32 +54,17 @@ function createReader(formats, tryHarder = false) {
 // Component
 // ─────────────────────────────────────────────
 
-/**
- * BarcodeScanner
- *
- * Props:
- *   open         – boolean, controls modal visibility
- *   onClose      – () => void
- *   onScan       – (decodedText: string) => void
- *   title        – string (modal header)
- *   partnerName  – string — when this matches "meesho" the scanner
- *                  switches to QR / 2-D codes only; otherwise it
- *                  scans 1-D barcodes only (original behaviour).
- */
 export default function BarcodeScanner({
   open,
   onClose,
   onScan,
   title = 'Scan Barcode',
-  partnerName = '',   // ← NEW prop
+  partnerName = '',
 }) {
-  // ── derive scan mode from partner ──────────────────────────────────
   const isMeesho     = isMeeshoPartner(partnerName)
   const activeFormats = isMeesho ? QR_2D_FORMATS : BARCODE_1D_FORMATS
-  // Formats that must be silently rejected when the reader fires
   const blockedSet    = isMeesho ? ALL_BLOCKED_1D : ALL_BLOCKED_2D
 
-  // ── refs ───────────────────────────────────────────────────────────
   const cameraReaderRef = useRef(null)
   const videoRef        = useRef(null)
   const fileInputRef    = useRef(null)
@@ -91,7 +72,6 @@ export default function BarcodeScanner({
   const onScanRef       = useRef(onScan)
   useEffect(() => { onScanRef.current = onScan }, [onScan])
 
-  // ── state ──────────────────────────────────────────────────────────
   const [mode, setMode]                     = useState('camera')
   const [error, setError]                   = useState(null)
   const [scanning, setScanning]             = useState(false)
@@ -103,24 +83,23 @@ export default function BarcodeScanner({
 
   const preferredDeviceIdRef = useRef(null)
 
-  // ── reader factory — recreated whenever the format set changes ─────
+  const brandColor = "#f58021"
+
   const getReader = useCallback(() => {
     if (!cameraReaderRef.current) {
       cameraReaderRef.current = createReader(activeFormats)
     }
     return cameraReaderRef.current
-  }, [activeFormats])                         // ← rebuilds when isMeesho flips
+  }, [activeFormats])
 
-  // ── stop camera ────────────────────────────────────────────────────
   const stopCamera = useCallback(() => {
     lockedRef.current = false
     try { cameraReaderRef.current?.reset() } catch (_) {}
-    cameraReaderRef.current = null             // force fresh reader next start
+    cameraReaderRef.current = null
     setScanning(false)
     setTorchOn(false)
   }, [])
 
-  // ── start camera ───────────────────────────────────────────────────
   const startCamera = useCallback(
     async (preferredDeviceId = null, preferredFacing = null) => {
       setError(null)
@@ -161,8 +140,6 @@ export default function BarcodeScanner({
             if (lockedRef.current || !result) return
 
             const fmt = result.getBarcodeFormat()
-
-            // ── KEY LOGIC: reject formats not in the active set ─────
             if (blockedSet.has(fmt)) return
 
             const text = result.getText()
@@ -174,7 +151,6 @@ export default function BarcodeScanner({
             stopCamera()
             onScanRef.current(text)
 
-            // restart for next scan
             setTimeout(() => {
               if (preferredDeviceIdRef.current) {
                 setLastScannedValue(null)
@@ -195,10 +171,9 @@ export default function BarcodeScanner({
           setError('Camera failed to start. Try uploading an image instead.')
       }
     },
-    [getReader, stopCamera, blockedSet],       // ← depends on blockedSet (isMeesho)
+    [getReader, stopCamera, blockedSet],
   )
 
-  // ── flip / switch camera ───────────────────────────────────────────
   const flipCamera = useCallback(async () => {
     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
     stopCamera()
@@ -210,7 +185,6 @@ export default function BarcodeScanner({
     setTimeout(() => startCamera(deviceId, null), 150)
   }, [stopCamera, startCamera])
 
-  // ── torch ──────────────────────────────────────────────────────────
   const toggleTorch = useCallback(async () => {
     const track = videoRef.current?.srcObject?.getVideoTracks()[0]
     if (!track) return
@@ -220,7 +194,6 @@ export default function BarcodeScanner({
     } catch (_) {}
   }, [torchOn])
 
-  // ── file upload ────────────────────────────────────────────────────
   const handleFileChange = useCallback(
     async (e) => {
       const file = e.target.files?.[0]
@@ -228,7 +201,7 @@ export default function BarcodeScanner({
       setError(null)
 
       try {
-        const reader = createReader(activeFormats, true)   // tryHarder=true for files
+        const reader = createReader(activeFormats, true)
         const url    = URL.createObjectURL(file)
         const img    = new Image()
         await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
@@ -289,7 +262,6 @@ export default function BarcodeScanner({
     [activeFormats, blockedSet, isMeesho],
   )
 
-  // ── open / close effects ───────────────────────────────────────────
   useEffect(() => {
     if (!open) return
     if (mode === 'camera') {
@@ -304,8 +276,6 @@ export default function BarcodeScanner({
     if (!open) stopCamera()
   }, [open])                     // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When the partner changes while the modal is open, restart so the
-  // correct format set is loaded into the reader.
   useEffect(() => {
     if (!open || mode !== 'camera') return
     stopCamera()
@@ -324,7 +294,6 @@ export default function BarcodeScanner({
     if (m !== mode) { setError(null); setMode(m) }
   }
 
-  // ── hint text ──────────────────────────────────────────────────────
   const scanHint = isMeesho
     ? mode === 'camera'
       ? 'Meesho order — point camera at the QR code'
@@ -341,16 +310,17 @@ export default function BarcodeScanner({
 
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
-      <div className="space-y-4 bg-white text-slate-800">
+      <div className="space-y-4 bg-white" style={{color: '#444'}}>
 
-        {/* ── Partner badge ─────────────────────────────────────────── */}
+        {/* ── Partner badge with orange brand color ─────────────── */}
         {partnerName && (
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium w-fit ${
-              isMeesho
-                ? 'bg-orange-50 border border-orange-200 text-orange-700'
-                : 'bg-blue-50 border border-blue-200 text-blue-700'
-            }`}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium w-fit`}
+            style={{
+              background: '#fff9f3',
+              border: `1px solid #f58021`,
+              color: '#f58021',
+            }}
           >
             <ScanIcon className="shrink-0" />
             <span>
@@ -361,7 +331,7 @@ export default function BarcodeScanner({
           </div>
         )}
 
-        {/* ── Mode tabs ─────────────────────────────────────────────── */}
+        {/* ── Mode tabs with orange/white theme ────────────────── */}
         <div className="flex gap-2">
           {[
             ['camera', <RiCameraLine />, 'Camera'],
@@ -370,39 +340,52 @@ export default function BarcodeScanner({
             <button
               key={m}
               onClick={() => switchMode(m)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={
                 mode === m
-                  ? 'bg-brand-500 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+                  ? {
+                      background: brandColor,
+                      color: '#fff',
+                    }
+                  : {
+                      background: '#fff9f3',
+                      color: '#f58021',
+                      border: `1.5px solid #f58021`,
+                      fontWeight: 500,
+                    }
+              }
             >
               {icon} {label}
             </button>
           ))}
         </div>
 
-        {/* ── Hint ─────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <ScanIcon className="text-brand-500 shrink-0" />
+        {/* ── Hint colored orange ──────────────────────────────── */}
+        <div className="flex items-center gap-2 text-sm" style={{color: "#f58021"}}>
+          <ScanIcon className="shrink-0" style={{color: "#f58021"}} />
           <span>{scanHint}</span>
         </div>
 
-        {/* ── Error ────────────────────────────────────────────────── */}
+        {/* ── Error with red styles, no change needed ───────────── */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
-            {error}
-          </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">{error}</div>
         )}
 
-        {/* ── Success flash ─────────────────────────────────────────── */}
+        {/* ── Success flash with orange accent ─────────────────── */}
         {lastScannedValue && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-green-700 text-sm flex items-center gap-2">
-            <span className="font-semibold">✓ Scanned:</span>
+          <div
+            className="rounded-xl p-3 text-sm flex items-center gap-2"
+            style={{
+              background: "#fff9f3",
+              border: "1.5px solid #f58021",
+              color: "#f58021",
+            }}>
+            <span className="font-semibold" style={{color: "#20ac51"}}>✓ Scanned:</span>
             <span className="font-mono break-all">{lastScannedValue}</span>
           </div>
         )}
 
-        {/* ── Camera view ───────────────────────────────────────────── */}
+        {/* ── Camera view with orange accents ──────────────────── */}
         {mode === 'camera' && (
           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
             <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
@@ -411,16 +394,30 @@ export default function BarcodeScanner({
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="absolute inset-0 bg-black/30" />
                 {isMeesho ? (
-                  /* Square viewfinder for QR codes */
-                  <div className="relative z-10 w-48 h-48 border-2 border-brand-400 rounded">
-                    <div className="absolute inset-x-0 h-0.5 bg-brand-400"
-                      style={{ animation: 'scanline-square 1.4s ease-in-out infinite' }} />
+                  <div
+                    className="relative z-10 w-48 h-48 rounded"
+                    style={{border: `2px solid ${brandColor}`}}
+                  >
+                    <div
+                      className="absolute inset-x-0 h-0.5"
+                      style={{
+                        background: brandColor,
+                        animation: 'scanline-square 1.4s ease-in-out infinite',
+                      }}
+                    />
                   </div>
                 ) : (
-                  /* Wide short viewfinder for 1-D barcodes */
-                  <div className="relative z-10 w-4/5 h-20 border-2 border-brand-400 rounded">
-                    <div className="absolute inset-x-0 h-0.5 bg-brand-400"
-                      style={{ animation: 'scanline 1.4s ease-in-out infinite' }} />
+                  <div
+                    className="relative z-10 w-4/5 h-20 rounded"
+                    style={{border: `2px solid ${brandColor}`}}
+                  >
+                    <div
+                      className="absolute inset-x-0 h-0.5"
+                      style={{
+                        background: brandColor,
+                        animation: 'scanline 1.4s ease-in-out infinite',
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -430,9 +427,12 @@ export default function BarcodeScanner({
               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
                 <button
                   onClick={toggleTorch}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium shadow transition-colors ${
-                    torchOn ? 'bg-yellow-400 text-yellow-900' : 'bg-black/60 text-white'
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium shadow transition-colors`}
+                  style={
+                    torchOn
+                      ? {background: "#ffe4b8", color: "#e66000" }
+                      : {background: "#202020e0", color: "#fff"}
+                  }
                 >
                   🔦 {torchOn ? 'On' : 'Off'}
                 </button>
@@ -440,7 +440,8 @@ export default function BarcodeScanner({
                   {devices.length > 1 && (
                     <button
                       onClick={flipCamera}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-black/60 text-white shadow active:scale-95 transition-transform"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium shadow active:scale-95 transition-transform"
+                      style={{background: "#202020e0", color: "#fff"}}
                     >
                       <span style={{ fontSize: 15 }}>🔄</span>
                       <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
@@ -450,8 +451,8 @@ export default function BarcodeScanner({
                     <select
                       value={activeDeviceId || ''}
                       onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
-                      className="bg-black/60 text-white px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
-                      style={{ maxWidth: 130 }}
+                      className="px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
+                      style={{background:'#202020e0', color:'#fff', maxWidth:130}}
                     >
                       {devices.map((d, i) => (
                         <option value={d.deviceId} key={d.deviceId}>
@@ -472,27 +473,33 @@ export default function BarcodeScanner({
           </div>
         )}
 
-        {/* ── File upload ───────────────────────────────────────────── */}
+        {/* ── File upload with orange accents ───────────────────── */}
         {mode === 'file' && (
           <>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full py-10 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 hover:border-brand-400 hover:text-brand-500 transition-colors text-sm flex flex-col items-center gap-2"
+              className="w-full py-10 border-2 border-dashed rounded-xl text-sm flex flex-col items-center gap-2"
+              style={{
+                borderColor: "#f58021",
+                color: "#f58021",
+                background: "#fff9f3",
+                fontWeight: 500,
+              }}
             >
-              <RiImageLine className="text-3xl" />
+              <RiImageLine className="text-3xl" style={{color: brandColor}}/>
               <span>
                 {isMeesho
                   ? 'Tap to choose a photo of the QR code'
                   : 'Tap to choose a photo of the barcode'}
               </span>
-              <span className="text-xs text-slate-300">JPG · PNG · WebP</span>
+              <span className="text-xs" style={{color: '#f9c798'}}>JPG · PNG · WebP</span>
             </button>
           </>
         )}
 
-        {/* ── Footer note ───────────────────────────────────────────── */}
-        <p className="text-xs text-slate-400 text-center">
+        {/* ── Footer note in orange ─────────────────────────────── */}
+        <p className="text-xs text-center" style={{color:"#f58021"}}>
           {formatLine}<br />
           <b>{isMeesho ? 'Barcodes are always ignored for Meesho.' : 'QR codes and 2D codes are always ignored.'}</b>
         </p>

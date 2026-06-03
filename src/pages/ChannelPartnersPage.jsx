@@ -7,16 +7,17 @@ import { DataTable, Pagination } from '../components/common/DataTable'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EntityFormModal from '../components/admin/EntityFormModal'
 
-// --- Light theme color palette ---
+// --- Orange (#f58021) & White color palette theme ---
+const ORANGE = '#f58021'
 const textPrimary = 'text-slate-800'
-const textSecondary = 'text-slate-500'
-const borderLight = 'border-slate-200'
+const textSecondary = 'text-orange-500'
+const borderLight = 'border-orange-200'
 const bgCard = 'bg-white'
-const bgHighlight = 'bg-blue-50'
-const accent = 'text-brand-600'
-const accentSubtle = 'text-brand-400'
-const btnPrimary = 'bg-brand-600 hover:bg-brand-700 text-white'
-const btnPrimaryOutline = 'border border-brand-200 bg-white hover:bg-brand-50 text-brand-600'
+const bgHighlight = '[background-color:#fff4ec]' // subtle orange tint
+const accent = 'text-[#f58021]'
+const accentSubtle = 'text-orange-400'
+const btnPrimary = 'bg-[#f58021] hover:bg-[#e46e06] text-white border-[#f58021]'
+const btnPrimaryOutline = 'border border-[#f58021] bg-white hover:bg-[#f58021]/10 text-[#f58021]'
 const shadow = 'shadow'
 const rounded = 'rounded-xl'
 
@@ -94,13 +95,25 @@ export default function ChannelPartnersPage() {
 
   const columns = [
     { key: 'name', label: 'Partner Name', render: v => <span className={textPrimary}>{v}</span> },
-    { key: 'code', label: 'Code', render: v => <span className="font-mono text-xs text-brand-400">{v}</span> },
-    { key: 'email', label: 'Email', render: v => <span className={`${textSecondary} text-xs`}>{v || '—'}</span> },
-    { key: 'phone', label: 'Phone', render: v => <span className={`${textSecondary} text-xs`}>{v || '—'}</span> },
+    {
+      key: 'code',
+      label: 'Code',
+      render: v => <span className="font-mono text-xs text-orange-400">{v}</span>
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      render: v => <span className={`${textSecondary} text-xs`}>{v || '—'}</span>
+    },
+    {
+      key: 'phone',
+      label: 'Phone',
+      render: v => <span className={`${textSecondary} text-xs`}>{v || '—'}</span>
+    },
     {
       key: 'createdAt', label: 'Created',
       render: v =>
-        v ? <span className="text-xs text-slate-400">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
+        v ? <span className="text-xs text-orange-300">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
     },
     {
       key: 'actions', label: 'Actions',
@@ -108,7 +121,7 @@ export default function ChannelPartnersPage() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => { setEditing(row); setModalOpen(true) }}
-            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all"
+            className="p-1.5 text-orange-400 hover:text-[#f58021] hover:bg-[#f58021]/10 rounded-lg transition-all"
             aria-label="Edit"
             style={{ outline: 'none' }}
           >
@@ -116,7 +129,7 @@ export default function ChannelPartnersPage() {
           </button>
           <button
             onClick={() => setDeleteItem(row)}
-            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+            className="p-1.5 text-orange-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
             aria-label="Delete"
             style={{ outline: 'none' }}
           >
@@ -150,7 +163,7 @@ export default function ChannelPartnersPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold leading-tight text-slate-800">Channel Partners</h1>
-            <p className="text-slate-500 text-sm mt-1">Manage logistics and channel partners</p>
+            <p className="text-orange-400 text-sm mt-1">Manage logistics and channel partners</p>
           </div>
           <button
             onClick={() => { setEditing(null); setModalOpen(true) }}
