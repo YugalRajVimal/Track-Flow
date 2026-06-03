@@ -454,6 +454,11 @@ export default function DashboardPage() {
     fetchStats(start, end, _channel, _brand)
   }
 
+  // Calculate Return Percentage vs Dispatched
+  const dispatched = stats?.totalDispatched ?? 0;
+  const returned = stats?.totalReturnRecords ?? 0;
+  const returnPercentage = dispatched > 0 ? ((returned / dispatched) * 100) : 0;
+
   // ── Stat cards config ─────────────────────────────────────────────
   const statCards = [
     { icon: RiBarcodeLine,        label: 'Total Scans',         value: stats?.totalScansToday,         color: 'brand'    },
@@ -526,6 +531,29 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* Percentage Dispatched Vs Returns */}
+      <div className={`mt-1`}>
+        <div
+          className={`rounded-xl border ${borderLight} ${bgCard} p-4 flex items-center gap-4`}
+        >
+          <span className="font-semibold text-slate-900">
+            Dispatched vs Returns:
+          </span>
+          <span className="text-slate-900 text-lg font-mono">
+            {dispatched} Dispatched
+            <span className="mx-2 text-slate-400">/</span>
+            {returned} Returns
+          </span>
+          <span className="ml-6 px-2 py-1 rounded text-xs font-medium"
+                style={{
+                  backgroundColor: '#FEF3C7',
+                  color: '#92400E'
+                }}>
+            {`Return % of Dispatched: ${dispatched > 0 ? returnPercentage.toFixed(2) : '0.00'}%`}
+          </span>
+        </div>
+      </div>
+
       {/* Charts row */}
       <div className={`grid grid-cols-1 xl:grid-cols-3 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`}>
         <motion.div
@@ -559,7 +587,7 @@ export default function DashboardPage() {
           transition={{ delay: 0.35 }}
           className={`rounded-xl border ${borderLight} ${bgCard} p-5`}
         >
-          <h2 className="section-title mb-4 text-slate-900">Channel Partner Analytics</h2>
+          <h2 className="section-title mb-4 text-slate-900">Dispatched Analytics</h2>
           {stats?.channelPartnerAnalytics?.length > 0 ? (
             <div className="space-y-3">
               {stats.channelPartnerAnalytics.map((cp, i) => {
@@ -587,11 +615,50 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        {/* Recent Activities */}
+        {/* Return Analytics */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
+          className={`rounded-xl border ${borderLight} ${bgCard} p-5`}
+        >
+          <h2 className="section-title mb-4 text-slate-900">Return Analytics</h2>
+          {stats?.returnAnalytics?.length > 0 ? (
+            <div className="space-y-3">
+              {stats.returnAnalytics.map((ra, i) => {
+                const total = stats.returnAnalytics.reduce((s, x) => s + (x.totalReturns || x.count || 0), 0)
+                const count = ra.totalReturns || ra.count || 0
+                const pct   = total > 0 ? Math.round((count / total) * 100) : 0
+                return (
+                  <div key={i}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className={textSubtle}>
+                        {ra.channelPartnerName || ra.partnerName || ra.name}
+                      </span>
+                      <span className="text-slate-500 font-mono">{count}</span>
+                    </div>
+                    <div className={`h-2 rounded-full overflow-hidden ${progressBg}`}>
+                      <div
+                        className={`h-full ${progressBar} rounded-full transition-all duration-500`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className={`${textSecondary} text-sm`}>No return data for selected range</p>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Bottom row 2: Recent Activities */}
+      <div className={`mt-4`}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
           className={`rounded-xl border ${borderLight} ${bgCard} p-5`}
         >
           <h2 className="section-title mb-4 flex items-center gap-2 text-slate-900">

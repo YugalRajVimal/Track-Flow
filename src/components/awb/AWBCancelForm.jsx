@@ -55,45 +55,39 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Meesho toggle — pill-style switch with label
+// Multi select toggles for Scan type
 // ─────────────────────────────────────────────────────────────────────────────
-function MeeshoToggle({ value, onChange, disabled }) {
+function ScanTypeMultiSelect({ isMeesho, onChange, disabled }) {
+  // Only one mode can be selected at a time: Meesho QR or Barcode
   return (
-    <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 w-full">
-      <div className="flex items-center gap-2">
-        {value ? (
-          <RiQrScanLine className="text-orange-500 text-lg shrink-0" />
-        ) : (
-          <RiBarcodeLine className="text-blue-500 text-lg shrink-0" />
-        )}
-        <div>
-          <p className="text-sm font-medium text-slate-700 leading-tight">
-            {value ? 'Meesho QR Scan Mode' : 'Standard AWB Barcode Mode'}
-          </p>
-          <p className="text-xs text-slate-400 leading-tight mt-0.5">
-            {value
-              ? 'Scan QR code printed on Meesho packet only'
-              : 'Scan AWB barcode (not Meesho QR) only'}
-          </p>
-        </div>
-      </div>
-
-      {/* Toggle switch */}
+    <div className="flex items-center gap-4 justify-center w-full mb-3">
       <button
         type="button"
-        role="switch"
-        aria-checked={value}
         disabled={disabled}
-        onClick={() => onChange(!value)}
-        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-orange-400 disabled:opacity-50 ${
-          value ? 'bg-orange-500' : 'bg-slate-300'
-        }`}
+        className={`flex items-center gap-2 px-4 py-2 border rounded-xl font-medium transition 
+          ${!isMeesho ? 'bg-blue-100 border-blue-400 text-blue-700 shadow' : 'bg-white border-slate-300 text-slate-700'}
+          hover:border-blue-600 hover:bg-blue-50
+          ${disabled ? 'opacity-60 cursor-not-allowed' : ''}
+        `}
+        aria-pressed={!isMeesho}
+        onClick={() => !disabled && onChange(false)}
       >
-        <span
-          className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-            value ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
+        <RiBarcodeLine className="text-lg" />
+        Barcode Scan
+      </button>
+      <button
+        type="button"
+        disabled={disabled}
+        className={`flex items-center gap-2 px-4 py-2 border rounded-xl font-medium transition 
+          ${isMeesho ? 'bg-orange-100 border-orange-400 text-orange-700 shadow' : 'bg-white border-slate-300 text-slate-700'}
+          hover:border-orange-500 hover:bg-orange-50
+          ${disabled ? 'opacity-60 cursor-not-allowed' : ''}
+        `}
+        aria-pressed={isMeesho}
+        onClick={() => !disabled && onChange(true)}
+      >
+        <RiQrScanLine className="text-lg" />
+        QR Scan
       </button>
     </div>
   )
@@ -103,7 +97,6 @@ function MeeshoToggle({ value, onChange, disabled }) {
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Requires userId prop
 export default function AWBCancelForm({ onSuccess, userId }) {
   // Camera (scanner) should NOT open initially
   const [scannerOpen, setScannerOpen]           = useState(false)
@@ -112,7 +105,7 @@ export default function AWBCancelForm({ onSuccess, userId }) {
   const [passcodeModal, setPasscodeModal]       = useState(true)
   const [verifyingPasscode, setVerifyingPasscode] = useState(false)
 
-  // ── NEW: Meesho toggle state ──────────────────────────────────────
+  // ── NEW: scan type multi select state ───────────────────────────────
   const [isMeeshoOrder, setIsMeeshoOrder] = useState(false)
   // Derive the partnerName string BarcodeScanner expects:
   // pass "Meesho" when toggled on, empty string otherwise.
@@ -232,10 +225,10 @@ export default function AWBCancelForm({ onSuccess, userId }) {
         partnerName={partnerName}
       />
 
-      {/* ── Meesho toggle ─────────────────────────────────────────── */}
+      {/* ── Multi-Select Scan Type Buttons ─────────────────────────── */}
       <div className="w-full">
-        <MeeshoToggle
-          value={isMeeshoOrder}
+        <ScanTypeMultiSelect
+          isMeesho={isMeeshoOrder}
           onChange={(next) => {
             setIsMeeshoOrder(next)
             // If scanner is open, closing + reopening forces BarcodeScanner
@@ -246,6 +239,12 @@ export default function AWBCancelForm({ onSuccess, userId }) {
           }}
           disabled={submitting}
         />
+        <div className="mt-1 text-xs text-gray-500 text-center">
+          {isMeeshoOrder
+            ? 'Scan QR code printed on Meesho packet only'
+            : 'Scan AWB barcode (not Meesho QR) only'
+          }
+        </div>
       </div>
 
       {/* ── AWB input field ───────────────────────────────────────── */}

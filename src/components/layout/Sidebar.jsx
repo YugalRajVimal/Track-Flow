@@ -9,7 +9,7 @@ import { useAuthStore } from '../../store/authStore'
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: RiDashboardLine, label: 'Dashboard' },
-  { to: '/awb-management', icon: RiBarcodeLine, label: 'AWB Management' },
+  { to: '/awb-management', icon: RiBarcodeLine, label: 'Dispatch Management' },
   { to: '/return-management', icon: RiCloseLine, label: 'Return Management' },
   // { to: '/audit-logs', icon: RiFileListLine, label: 'Audit Logs' },
 ]

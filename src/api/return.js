@@ -7,7 +7,7 @@ export const returnAPI = {
   update: (id, data) => api.put(`/returns/${id}`, data),
   delete: (id) => api.delete(`/returns/${id}`),
   exportCsv: (params) =>
-    api.get('/export/awb-csv', {
+    api.get('/export/return-csv', {
       params,
       responseType: 'blob',
     }),

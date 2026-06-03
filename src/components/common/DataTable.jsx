@@ -21,6 +21,22 @@ const lightPageNumActive =
 const lightPageNum =
   "w-8 h-8 rounded-lg text-xs font-medium text-gray-500 hover:bg-blue-100 hover:text-blue-700 transition-all"
 
+// Helper to format date as YYYY-MM-DD
+function formatDate(val) {
+  if (!val) return '—'
+  try {
+    const d = new Date(val)
+    if (isNaN(d.getTime())) return String(val)
+    // Pad month and day
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  } catch (e) {
+    return String(val)
+  }
+}
+
 export function DataTable({ columns, data, loading, emptyMessage = 'No records found' }) {
   if (loading) {
     return (
@@ -54,6 +70,13 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
                 {col.label}
               </th>
             ))}
+            {/* If any row has missingFromDate or missingToDate, add headers if not already present in columns */}
+            {data.some(r => r.missingFromDate) && !columns.find(col => col.key === 'missingFromDate') && (
+              <th className={lightTableHeader} scope="col" style={{width: 130}}>Missing From</th>
+            )}
+            {data.some(r => r.missingToDate) && !columns.find(col => col.key === 'missingToDate') && (
+              <th className={lightTableHeader} scope="col" style={{width: 130}}>Missing To</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -64,6 +87,18 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
                   {col.render ? col.render(row[col.key], row) : row[col.key] ?? '—'}
                 </td>
               ))}
+              {/* Show missingFromDate if present and not already rendered by column */}
+              {data.some(r => r.missingFromDate) && !columns.find(col => col.key === 'missingFromDate') && (
+                <td className={lightTableCell}>
+                  {row.missingFromDate ? formatDate(row.missingFromDate) : '—'}
+                </td>
+              )}
+              {/* Show missingToDate if present and not already rendered by column */}
+              {data.some(r => r.missingToDate) && !columns.find(col => col.key === 'missingToDate') && (
+                <td className={lightTableCell}>
+                  {row.missingToDate ? formatDate(row.missingToDate) : '—'}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

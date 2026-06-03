@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 
 const BREADCRUMBS = {
   '/dashboard': ['Dashboard'],
-  '/awb-management': ['AWB Management'],
+  '/awb-management': ['Dispatch Management'],
   '/audit-logs': ['Audit Logs'],
   '/users': ['Admin', 'Users'],
   '/channel-partners': ['Admin', 'Channel Partners'],

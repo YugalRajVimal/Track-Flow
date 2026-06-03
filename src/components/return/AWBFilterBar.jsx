@@ -160,10 +160,39 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
     brandsAPI.list().then(r => setBrands(r.data?.data || []))
   }, [])
 
+  // const handleExport = async () => {
+  //   setExporting(true)
+  //   try {
+  //     const res = await returnAPI.exportCsv(filters)
+  //     const url = window.URL.createObjectURL(new Blob([res.data]))
+  //     const a = document.createElement('a')
+  //     a.href = url
+  //     a.download = `awb-export-${Date.now()}.csv`
+  //     a.click()
+  //     window.URL.revokeObjectURL(url)
+  //     toast.success('Export downloaded')
+  //   } catch {
+  //     toast.error('Export failed')
+  //   } finally {
+  //     setExporting(false)
+  //   }
+  // }
   const handleExport = async () => {
     setExporting(true)
     try {
-      const res = await returnAPI.exportCsv(filters)
+      // Pass ALL active filters — same ones used by the table fetch
+      const exportFilters = {
+        ...(filters.search        && { search:          filters.search }),
+        ...(filters.status        && { status:          filters.status }),
+        ...(filters.channelPartnerId && { channelPartnerId: filters.channelPartnerId }),
+        ...(filters.brandId       && { brandId:         filters.brandId }),
+        ...(filters.startDate     && { startDate:        filters.startDate }),
+        ...(filters.endDate       && { endDate:          filters.endDate }),
+        // Don't send page/limit — export should return all matched records
+        sortBy:    filters.sortBy    || 'createdAt',
+        sortOrder: filters.sortOrder || 'desc',
+      }
+      const res = await returnAPI.exportCsv(exportFilters)
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const a = document.createElement('a')
       a.href = url

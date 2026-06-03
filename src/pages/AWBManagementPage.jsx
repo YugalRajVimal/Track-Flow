@@ -194,7 +194,7 @@
 //         {/* Header */}
 //         <div className="flex flex-wrap items-center justify-between gap-3">
 //           <div>
-//             <h1 className={`${textDark} text-2xl font-bold tracking-tight`}>AWB Management</h1>
+//             <h1 className={`${textDark} text-2xl font-bold tracking-tight`}>Dispatch Management</h1>
 //             <p className={`${textSubtle} text-sm mt-1`}>Scan, track, and manage AWB barcodes</p>
 //           </div>
 //         </div>
@@ -331,10 +331,11 @@ export default function AWBManagementPage() {
       const res = await awbAPI.list(filters)
       if (res.data?.success) {
         setAwbs(res.data.data || [])
+        console.log(res.data.data);
         setPagination(res.data.pagination || null)
       }
     } catch {
-      toast.error('Failed to load AWB records')
+      toast.error('Failed to load AWB records');
     } finally {
       setLoading(false)
     }
@@ -484,7 +485,7 @@ export default function AWBManagementPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className={`${textDark} text-2xl font-bold tracking-tight`}>AWB Management</h1>
+            <h1 className={`${textDark} text-2xl font-bold tracking-tight`}>Dispatch Management</h1>
             <p className={`${textSubtle} text-sm mt-1`}>Scan, track, and manage AWB barcodes</p>
           </div>
         </div>
