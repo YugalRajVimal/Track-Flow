@@ -323,7 +323,7 @@ export default function AWBMissingForm({ onSuccess }) {
         </div>
 
         {/* Scan Alert Box */}
-        <ScanAlertBox scanInfo={scanInfo} />
+        {/* <ScanAlertBox scanInfo={scanInfo} /> */}
 
         {/* Channel Partner */}
         <div>

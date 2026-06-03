@@ -37,6 +37,12 @@ function formatDate(val) {
   }
 }
 
+// Helper to transform status
+function getDisplayStatus(value) {
+  // If value is exactly "-" (explicit string), show "Returned"
+  return value === '-' ? 'Returned' : (value ?? '—')
+}
+
 export function DataTable({ columns, data, loading, emptyMessage = 'No records found' }) {
   if (loading) {
     return (
@@ -55,12 +61,26 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
     )
   }
 
+  // We need to know which column (if any) is "status"
+  // `columns` is an array of { key, label, ... }
+  // Patch the render function for the column with key === 'status'
+  // so that if value is '-', we display 'Returned'
+  const patchedColumns = columns.map(col => {
+    if (col.key === 'status') {
+      return {
+        ...col,
+        render: (value, row) => getDisplayStatus(value)
+      }
+    }
+    return col
+  })
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] bg-white border border-gray-200 rounded-xl shadow-sm">
         <thead>
           <tr>
-            {columns.map((col) => (
+            {patchedColumns.map((col) => (
               <th
                 key={col.key}
                 className={lightTableHeader}
@@ -71,10 +91,10 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
               </th>
             ))}
             {/* If any row has missingFromDate or missingToDate, add headers if not already present in columns */}
-            {data.some(r => r.missingFromDate) && !columns.find(col => col.key === 'missingFromDate') && (
+            {data.some(r => r.missingFromDate) && !patchedColumns.find(col => col.key === 'missingFromDate') && (
               <th className={lightTableHeader} scope="col" style={{width: 130}}>Missing From</th>
             )}
-            {data.some(r => r.missingToDate) && !columns.find(col => col.key === 'missingToDate') && (
+            {data.some(r => r.missingToDate) && !patchedColumns.find(col => col.key === 'missingToDate') && (
               <th className={lightTableHeader} scope="col" style={{width: 130}}>Missing To</th>
             )}
           </tr>
@@ -82,19 +102,19 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
         <tbody>
           {data.map((row, i) => (
             <tr key={row._id || i} className={lightTableRow}>
-              {columns.map((col) => (
+              {patchedColumns.map((col) => (
                 <td key={col.key} className={lightTableCell}>
                   {col.render ? col.render(row[col.key], row) : row[col.key] ?? '—'}
                 </td>
               ))}
               {/* Show missingFromDate if present and not already rendered by column */}
-              {data.some(r => r.missingFromDate) && !columns.find(col => col.key === 'missingFromDate') && (
+              {data.some(r => r.missingFromDate) && !patchedColumns.find(col => col.key === 'missingFromDate') && (
                 <td className={lightTableCell}>
                   {row.missingFromDate ? formatDate(row.missingFromDate) : '—'}
                 </td>
               )}
               {/* Show missingToDate if present and not already rendered by column */}
-              {data.some(r => r.missingToDate) && !columns.find(col => col.key === 'missingToDate') && (
+              {data.some(r => r.missingToDate) && !patchedColumns.find(col => col.key === 'missingToDate') && (
                 <td className={lightTableCell}>
                   {row.missingToDate ? formatDate(row.missingToDate) : '—'}
                 </td>

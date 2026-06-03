@@ -462,11 +462,11 @@ export default function DashboardPage() {
   // ── Stat cards config ─────────────────────────────────────────────
   const statCards = [
     { icon: RiBarcodeLine,        label: 'Total Scans',         value: stats?.totalScansToday,         color: 'brand'    },
-    { icon: RiSendPlaneLine,      label: 'Total Dispatched',    value: stats?.totalDispatched,         color: 'emerald'  },
+    { icon: RiSendPlaneLine,      label: 'Net Dispatched',    value: stats?.totalDispatched,         color: 'emerald'  },
     { icon: RiCloseCircleLine,    label: 'Total Cancelled',     value: stats?.totalCancelled,          color: 'red'      },
     { icon: RiExchangeDollarLine, label: 'Total Return',        value: stats?.totalReturnRecords,      color: 'amber'    },
-    { icon: TbAlertCircle,        label: 'AddAWB Missing',      value: stats?.awbMissingRecordsCount, color: 'orange', bg: 'bg-orange-50', text: 'text-orange-500'},
-    { icon: TbAlertTriangle,      label: 'Return Missing',      value: stats?.returnMissingRecordsCount, color: 'fuchsia', bg: 'bg-fuchsia-50', text: 'text-fuchsia-700' },
+    { icon: TbAlertCircle,        label: 'Total Missed Packages',      value: stats?.awbMissingRecordsCount, color: 'orange', bg: 'bg-orange-50', text: 'text-orange-500'},
+    { icon: TbAlertTriangle,      label: 'Total Missed Returns',      value: stats?.returnMissingRecordsCount, color: 'fuchsia', bg: 'bg-fuchsia-50', text: 'text-fuchsia-700' },
   ]
 
   // ── Skeleton ──────────────────────────────────────────────────────

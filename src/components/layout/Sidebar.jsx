@@ -7,6 +7,8 @@ import {
 } from 'react-icons/ri'
 import { useAuthStore } from '../../store/authStore'
 
+const BRAND_ORANGE = "#f58021"
+
 const NAV_ITEMS = [
   { to: '/dashboard', icon: RiDashboardLine, label: 'Dashboard' },
   { to: '/awb-management', icon: RiBarcodeLine, label: 'Dispatch Management' },
@@ -14,28 +16,30 @@ const NAV_ITEMS = [
   // { to: '/audit-logs', icon: RiFileListLine, label: 'Audit Logs' },
 ]
 
-const ADMIN_ITEMS = [
+const ADMIN_ITEMS = [ 
   { to: '/users', icon: RiUserLine, label: 'Users' },
   { to: '/channel-partners', icon: RiTeamLine, label: 'Channel Partners' },
   { to: '/brands', icon: RiShieldCheckLine, label: 'Brands' },
 ]
 
-// Light theme color map for accent colors (feel free to use in future customizations)
+// Orange-White theme color map for accent colors
 const sidebarColors = {
   background: "bg-white",
   border: "border-gray-200",
-  logoBg: "bg-brand-600", // main accent
-  navActiveBg: "bg-brand-50",
-  navActiveText: "text-brand-600",
-  navHoverText: "hover:text-brand-600",
+  logoBg: "bg-white",
+  navActiveBg: "bg-[#fff7f2]", // very light orange-ish background
+  navActiveText: "text-[#f58021] font-semibold",
+  navHoverText: "hover:text-[#f58021]",
+  navHoverBg: "hover:bg-[#fff7f2]",
   navInactiveText: "text-gray-700",
-  sectionHeader: "text-slate-500",
+  sectionHeader: "text-gray-500",
   userBoxBg: "bg-gray-100",
-  userInitialsBg: "bg-brand-100 text-brand-600",
+  userInitialsBg: "bg-[#ffe1c0] text-[#f58021]",
   userText: "text-gray-900",
-  roleText: "text-slate-500",
-  logoutBtn: "text-slate-500 hover:text-red-500 hover:bg-red-50",
-  closeBtn: "text-slate-400 hover:text-brand-600",
+  roleText: "text-gray-500",
+  logoutBtn: "text-gray-500 hover:text-red-500 hover:bg-red-50",
+  closeBtn: "text-gray-400 hover:text-[#f58021]",
+  borderBrand: "border-[#f58021]",
 }
 
 export default function Sidebar({ open, onClose }) {
@@ -78,11 +82,11 @@ export default function Sidebar({ open, onClose }) {
         {/* Desktop collapse/expand button */}
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="hidden lg:flex items-center justify-center text-xl rounded-full p-1.5 border border-transparent hover:border-slate-200 transition-colors"
+          className="hidden lg:flex items-center justify-center text-xl rounded-full p-1.5 border border-transparent hover:border-[#ffe1c0] transition-colors"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           style={{ marginLeft: !collapsed ? 8 : 0 }}
         >
-          {collapsed ? <RiArrowRightSLine /> : <RiArrowLeftSLine />}
+          {collapsed ? <RiArrowRightSLine color={BRAND_ORANGE} /> : <RiArrowLeftSLine color={BRAND_ORANGE} />}
         </button>
 
         {/* Mobile close button */}
@@ -107,12 +111,15 @@ export default function Sidebar({ open, onClose }) {
               onClick={onClose}
               className={({ isActive }) =>
                 isActive
-                  ? `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.navActiveBg} ${sidebarColors.navActiveText} border border-brand-200 mb-1 ${collapsed ? "justify-center px-2" : ""}`
-                  : `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.navInactiveText} hover:bg-gray-50 ${sidebarColors.navHoverText} transition-colors mb-1 ${collapsed ? "justify-center px-2" : ""}`
+                  ? `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.navActiveBg} ${sidebarColors.navActiveText} border ${sidebarColors.borderBrand} mb-1 ${collapsed ? "justify-center px-2" : ""}`
+                  : `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.navInactiveText} ${sidebarColors.navHoverBg} ${sidebarColors.navHoverText} transition-colors mb-1 ${collapsed ? "justify-center px-2" : ""}`
               }
               style={collapsed ? { justifyContent: "center" } : {}}
             >
-              <Icon className="text-lg flex-shrink-0" />
+              <Icon
+                className="text-lg flex-shrink-0"
+                color={BRAND_ORANGE}
+              />
               {!collapsed && label}
             </NavLink>
           ))}
@@ -130,12 +137,15 @@ export default function Sidebar({ open, onClose }) {
                 onClick={onClose}
                 className={({ isActive }) =>
                   isActive
-                    ? `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.navActiveBg} ${sidebarColors.navActiveText} border border-brand-200 mb-1 ${collapsed ? "justify-center px-2" : ""}`
-                    : `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.navInactiveText} hover:bg-gray-50 ${sidebarColors.navHoverText} transition-colors mb-1 ${collapsed ? "justify-center px-2" : ""}`
+                    ? `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.navActiveBg} ${sidebarColors.navActiveText} border ${sidebarColors.borderBrand} mb-1 ${collapsed ? "justify-center px-2" : ""}`
+                    : `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.navInactiveText} ${sidebarColors.navHoverBg} ${sidebarColors.navHoverText} transition-colors mb-1 ${collapsed ? "justify-center px-2" : ""}`
                 }
                 style={collapsed ? { justifyContent: "center" } : {}}
               >
-                <Icon className="text-lg flex-shrink-0" />
+                <Icon
+                  className="text-lg flex-shrink-0"
+                  color={BRAND_ORANGE}
+                />
                 {!collapsed && label}
               </NavLink>
             ))}
@@ -160,7 +170,7 @@ export default function Sidebar({ open, onClose }) {
           onClick={handleLogout}
           className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium ${sidebarColors.logoutBtn} transition-all duration-200 ${collapsed ? "justify-center px-2" : ""}`}
         >
-          <RiLogoutBoxLine className="text-lg" />
+          <RiLogoutBoxLine className="text-lg" color={BRAND_ORANGE} />
           {!collapsed && "Sign Out"}
         </button>
       </div>
