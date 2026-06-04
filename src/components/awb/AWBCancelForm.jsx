@@ -118,7 +118,7 @@ function ScanTypeMultiSelect({ isMeesho, onChange, disabled }) {
         }}
       >
         <RiQrScanLine className="text-lg" style={{ color: '#f58021' }} />
-        <span>QR Scan</span>
+        <span>MEESHO PACKAGE QR SCAN</span>
       </button>
     </div>
   )
@@ -244,7 +244,7 @@ export default function AWBCancelForm({ onSuccess, userId }) {
 
   return (
     <div
-      className="space-y-4 p-6 rounded-2xl shadow border flex flex-col items-center w-full max-w-md mx-auto"
+      className="space-y-4 p-6 rounded-2xl shadow border flex flex-col items-center w-full max-w-xl mx-auto"
       style={{
         background: '#fff',
         borderColor: '#f58021',

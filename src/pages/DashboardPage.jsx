@@ -355,9 +355,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Percentage Dispatched Vs Returns */}
-      <div className={`mt-1`}>
+      <div className="mt-1">
         <div
-          className={`rounded-xl border ${borderLight} ${bgCard} p-4 flex items-center gap-4`}
+          className={`
+            rounded-xl border ${borderLight} ${bgCard} p-4 
+            flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4
+          `}
         >
           <span className="font-semibold text-[#f58021]">
             Dispatched vs Returns:
@@ -367,16 +370,19 @@ export default function DashboardPage() {
             <span className="mx-2 text-orange-400">/</span>
             {returned} Returns
           </span>
-          <span className="ml-6 px-2 py-1 rounded text-xs font-medium"
-                style={{
-                  backgroundColor: '#f58021',
-                  color: '#fff',
-                  border: '1px solid #f58021'
-                }}>
+          <span
+            className="sm:ml-6 px-2 py-1 rounded text-xs font-medium mt-2 sm:mt-0"
+            style={{
+              backgroundColor: '#f58021',
+              color: '#fff',
+              border: '1px solid #f58021'
+            }}
+          >
             {`Return % of Dispatched: ${dispatched > 0 ? returnPercentage.toFixed(2) : '0.00'}%`}
           </span>
         </div>
       </div>
+ 
 
       {/* Charts row */}
       <div className={`grid grid-cols-1 xl:grid-cols-3 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`}>

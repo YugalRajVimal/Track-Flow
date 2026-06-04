@@ -227,60 +227,65 @@ export default function AWBManagementPage() {
           </div>
         </div>
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 gap-6">
-
-          {/* ── Left: tab panel ─────────────────────────────────────────── */}
-          <div className={`${bgLight} ${cardBorder} ${cardShadow} rounded-xl overflow-hidden`}>
-
-            {/* Tabs */}
-            <div className={`flex border-b ${borderLight} bg-white`}>
-              {TABS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-3.5 text-xs font-medium transition-all border-b-2 ${
-                    activeTab === id
-                      ? TAB_ACTIVE_CLASSES[id]
-                      : `${textSubtle} border-transparent ${TAB_HOVER_CLASSES[id]}`
-                  }`}
-                  style={{ outline: 'none' }}
-                >
-                  <Icon className="shrink-0" />
-                  <span className="truncate">{label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="p-5">
-              {activeTab === 'scan' && <AWBScanForm onSuccess={fetchAWBs} />}
-              {activeTab === 'cancel' && <AWBCancelForm onSuccess={fetchAWBs} />}
-              {activeTab === 'missing' && <AWBMissingForm onSuccess={fetchAWBs} />}
+        {/* Responsive Layout */}
+        <div className="grid grid-cols-1 2xl:grid-cols-4 gap-6">
+          {/* Tab panel on first col (1fr on mobile, 1 on lg, 1 on xl) */}
+          <div className="col-span-1">
+            <div className={`${bgLight} ${cardBorder} ${cardShadow} rounded-xl overflow-hidden`}>
+              {/* Tabs */}
+              <div className={`flex flex-col sm:flex-row border-b ${borderLight} bg-white`}>
+                {TABS.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className={`w-full sm:w-auto flex-1 flex items-center justify-center gap-1.5 px-2 py-3.5 text-xs font-medium transition-all border-b-2 sm:border-b-0 sm:border-r-2 sm:last:border-r-0 ${
+                      activeTab === id
+                        ? TAB_ACTIVE_CLASSES[id]
+                        : `${textSubtle} border-transparent ${TAB_HOVER_CLASSES[id]}`
+                    }`}
+                    style={{ outline: 'none' }}
+                  >
+                    <Icon className="shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="p-5">
+                {activeTab === 'scan' && <AWBScanForm onSuccess={fetchAWBs} />}
+                {activeTab === 'cancel' && <AWBCancelForm onSuccess={fetchAWBs} />}
+                {activeTab === 'missing' && <AWBMissingForm onSuccess={fetchAWBs} />}
+              </div>
             </div>
           </div>
 
-          {/* ── Right: table ─────────────────────────────────────────────── */}
-          <div className={`xl:col-span-2 ${bgLight} ${cardShadow} ${cardBorder} rounded-xl overflow-hidden`}>
-            <div className={`p-5 border-b ${borderLight} [background-color:#fff8f2]`}>
-              <h2 className={`${accent} text-lg font-semibold mb-4`}>AWB Records</h2>
-              <AWBFilterBar
-                filters={filters}
-                onChange={handleFilterChange}
-                onRefresh={fetchAWBs}
-              />
-            </div>
+          {/* Table on right (fills remainder), spans 2 columns on lg, 3 on 2xl */}
+          <div className="col-span-1 lg:col-span-2 2xl:col-span-3">
+            <div className={`${bgLight} ${cardShadow} ${cardBorder} rounded-xl overflow-hidden`}>
+              <div className={`p-5 border-b ${borderLight} [background-color:#fff8f2]`}>
+                <h2 className={`${accent} text-lg font-semibold mb-4`}>AWB Records</h2>
+                <AWBFilterBar
+                  filters={filters}
+                  onChange={handleFilterChange}
+                  onRefresh={fetchAWBs}
+                />
+              </div>
 
-            <div className="p-5">
-              <DataTable
-                columns={columns}
-                data={awbs}
-                loading={loading}
-                emptyMessage="No AWB records found"
-              />
-              <Pagination
-                pagination={pagination}
-                onChange={(page) => handleFilterChange({ page })}
-              />
+              <div className="p-0 sm:p-5">
+                <div className="overflow-x-auto">
+                  <DataTable
+                    columns={columns}
+                    data={awbs}
+                    loading={loading}
+                    emptyMessage="No AWB records found"
+                  />
+                </div>
+                <div className="mt-4">
+                  <Pagination
+                    pagination={pagination}
+                    onChange={(page) => handleFilterChange({ page })}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

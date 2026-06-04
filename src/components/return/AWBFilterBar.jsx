@@ -1,12 +1,11 @@
 
-
 import React, { useEffect, useState } from 'react'
-import { RiSearchLine, RiDownloadLine, RiRefreshLine, RiFileDownloadLine, RiUpload2Fill } from 'react-icons/ri'
+import { RiSearchLine, RiRefreshLine, RiUpload2Fill } from 'react-icons/ri'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import { returnAPI } from '../../api/return'
 import toast from 'react-hot-toast'
 
-// Generate orange theme utility styles (override Tailwind's palette)
+// Theme colors
 const orange = '#f58021'
 const orangeLight = '#fff5e6'
 const orangeBorder = '#f58021'
@@ -18,14 +17,14 @@ const orangeTheme = {
   input:
     `input-field pl-9 w-full bg-white border border-[${orangeBorder}] text-gray-900 placeholder-gray-400 focus:border-[${orange}] focus:ring-[${orange}]`,
   select:
-    `select-field w-auto min-w-[140px] bg-white border border-[${orangeBorder}] text-gray-900 focus:border-[${orange}] focus:ring-[${orange}]`,
+    `select-field w-full sm:w-auto min-w-[140px] bg-white border border-[${orangeBorder}] text-gray-900 focus:border-[${orange}] focus:ring-[${orange}]`,
   selectPartner:
-    `select-field w-auto min-w-[160px] bg-white border border-[${orangeBorder}] text-gray-900 focus:border-[${orange}] focus:ring-[${orange}]`,
+    `select-field w-full sm:w-auto min-w-[160px] bg-white border border-[${orangeBorder}] text-gray-900 focus:border-[${orange}] focus:ring-[${orange}]`,
   button:
     `btn-secondary flex items-center gap-2 bg-[${orangeLight}] hover:bg-[${orange}] hover:text-white text-[${orangeText}] border border-[${orangeBorder}] transition-all duration-100`,
   buttonDisabled: "opacity-60 cursor-not-allowed",
   dateInput:
-    `input-field w-auto bg-white border border-[${orangeBorder}] text-gray-900 focus:border-[${orange}] focus:ring-[${orange}]`,
+    `input-field w-full sm:w-auto bg-white border border-[${orangeBorder}] text-gray-900 focus:border-[${orange}] focus:ring-[${orange}]`,
   icon: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400",
   to: "text-gray-500 text-sm"
 }
@@ -43,7 +42,6 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
   const handleExport = async () => {
     setExporting(true)
     try {
-      // Pass ALL active filters — same ones used by the table fetch
       const exportFilters = {
         ...(filters.search        && { search:          filters.search }),
         ...(filters.status        && { status:          filters.status }),
@@ -51,7 +49,6 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
         ...(filters.brandId       && { brandId:         filters.brandId }),
         ...(filters.startDate     && { startDate:        filters.startDate }),
         ...(filters.endDate       && { endDate:          filters.endDate }),
-        // Don't send page/limit — export should return all matched records
         sortBy:    filters.sortBy    || 'createdAt',
         sortOrder: filters.sortOrder || 'desc',
       }
@@ -72,10 +69,10 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
 
   return (
     <div className={orangeTheme.container}>
-      <div className="flex flex-wrap gap-3 items-center">
+      {/* Filters and search row - Responsive */}
+      <div className="flex flex-col md:flex-row md:flex-wrap gap-3 w-full items-stretch md:items-center">
 
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-[180px]">
           <RiSearchLine className={orangeTheme.icon} />
           <input
             type="text"
@@ -90,56 +87,57 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
           />
         </div>
 
-        {/* Status */}
-        <select
-          value={filters.status || ''}
-          onChange={e => onChange({ status: e.target.value, page: 1 })}
-          className={orangeTheme.select}
-          style={{
-            borderColor: orange,
-            outlineColor: orange,
-          }}
-        >
-          <option value="">All Status</option>
-          <option value="missing">Missing</option>
-        </select>
+        <div className="flex flex-col sm:flex-row gap-3 flex-1">
+          <select
+            value={filters.status || ''}
+            onChange={e => onChange({ status: e.target.value, page: 1 })}
+            className={orangeTheme.select + " flex-1"}
+            style={{
+              borderColor: orange,
+              outlineColor: orange,
+            }}
+          >
+            <option value="">All Status</option>
+            <option value="missing">Missing</option>
+            <option value="-">Returned</option>
+          </select>
+          
+          <select
+            value={filters.channelPartnerId || ''}
+            onChange={e => onChange({ channelPartnerId: e.target.value, page: 1 })}
+            className={orangeTheme.selectPartner + " flex-1"}
+            style={{
+              borderColor: orange,
+              outlineColor: orange,
+            }}
+          >
+            <option value="">All Partners</option>
+            {partners.map(p => (
+              <option key={p._id} value={p._id}>{p.name}</option>
+            ))}
+          </select>
 
-        {/* Channel Partner */}
-        <select
-          value={filters.channelPartnerId || ''}
-          onChange={e => onChange({ channelPartnerId: e.target.value, page: 1 })}
-          className={orangeTheme.selectPartner}
-          style={{
-            borderColor: orange,
-            outlineColor: orange,
-          }}
-        >
-          <option value="">All Partners</option>
-          {partners.map(p => (
-            <option key={p._id} value={p._id}>{p.name}</option>
-          ))}
-        </select>
-
-        {/* Brand */}
-        <select
-          value={filters.brandId || ''}
-          onChange={e => onChange({ brandId: e.target.value, page: 1 })}
-          className={orangeTheme.select}
-          style={{
-            borderColor: orange,
-            outlineColor: orange,
-          }}
-        >
-          <option value="">All Brands</option>
-          {brands.map(b => (
-            <option key={b._id} value={b._id}>{b.displayName ? b.displayName : b.name}</option>
-          ))}
-        </select>
+          <select
+            value={filters.brandId || ''}
+            onChange={e => onChange({ brandId: e.target.value, page: 1 })}
+            className={orangeTheme.select + " flex-1"}
+            style={{
+              borderColor: orange,
+              outlineColor: orange,
+            }}
+          >
+            <option value="">All Brands</option>
+            {brands.map(b => (
+              <option key={b._id} value={b._id}>{b.displayName ? b.displayName : b.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
-        {/* Date range */}
-        <div className="flex items-center gap-2">
+      {/* Date and Action Buttons - Responsive */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center w-full mt-2">
+        {/* Date Range */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
           <input
             type="date"
             value={filters.startDate || ''}
@@ -150,7 +148,7 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
               outlineColor: orange,
             }}
           />
-          <span className={orangeTheme.to}>to</span>
+          <span className={orangeTheme.to + " sm:px-1"}>to</span>
           <input
             type="date"
             value={filters.endDate || ''}
@@ -163,7 +161,8 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
           />
         </div>
 
-        <div className="flex gap-2 ml-auto">
+        {/* Right-aligned buttons, stacked on mobile */}
+        <div className="flex flex-row gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
           <button
             onClick={onRefresh}
             className={orangeTheme.button}
@@ -174,8 +173,8 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
               borderColor: orangeBorder,
             }}
           >
-            <RiRefreshLine />
-            Refresh
+            <RiRefreshLine className="shrink-0" />
+            <span className="hidden xs:inline">Refresh</span>
           </button>
           <button
             onClick={handleExport}
@@ -188,8 +187,9 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
               borderColor: orangeBorder,
             }}
           >
-            <RiUpload2Fill />
-            {exporting ? 'Exporting...' : 'Export CSV'}
+            <RiUpload2Fill className="shrink-0" />
+            <span className="hidden xs:inline">{exporting ? 'Exporting...' : 'Export CSV'}</span>
+            <span className="inline xs:hidden">{exporting ? '...' : 'CSV'}</span>
           </button>
         </div>
       </div>

@@ -12,11 +12,11 @@ const lightTheme = {
   container: "space-y-3 bg-white p-4 rounded-md shadow-sm",
   label: "text-[#f58021] font-medium",
   input: `input-field pl-9 w-full bg-white border ${orangeBorder} text-[#191919] placeholder-orange-200 ${orangeFocus}`,
-  select: `select-field w-auto min-w-[140px] bg-white border ${orangeBorder} text-[#f58021] ${orangeFocus}`,
-  selectPartner: `select-field w-auto min-w-[160px] bg-white border ${orangeBorder} text-[#f58021] ${orangeFocus}`,
-  button: `btn-secondary bg-[#fff8f2] hover:bg-[#f58021] hover:text-white text-[#f58021] border ${orangeBorder} font-medium transition`,
+  select: `select-field w-full sm:w-auto min-w-[140px] bg-white border ${orangeBorder} text-[#f58021] ${orangeFocus}`,
+  selectPartner: `select-field w-full sm:w-auto min-w-[160px] bg-white border ${orangeBorder} text-[#f58021] ${orangeFocus}`,
+  button: `btn-secondary bg-[#fff8f2] hover:bg-[#f58021] hover:text-white text-[#f58021] border ${orangeBorder} font-medium transition whitespace-nowrap`,
   buttonDisabled: "opacity-60 cursor-not-allowed",
-  dateInput: `input-field w-auto bg-white border ${orangeBorder} text-[#191919] ${orangeFocus}`,
+  dateInput: `input-field w-full sm:w-auto bg-white border ${orangeBorder} text-[#191919] ${orangeFocus}`,
   icon: "absolute left-3 top-1/2 -translate-y-1/2 text-orange-200",
   to: "text-orange-400 text-sm"
 }
@@ -51,10 +51,10 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
 
   return (
     <div className={lightTheme.container}>
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
 
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-[180px]">
           <RiSearchLine className={lightTheme.icon} />
           <input
             type="text"
@@ -66,52 +66,58 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
         </div>
 
         {/* Status */}
-        <select
-          value={filters.status || ''}
-          onChange={e => onChange({ status: e.target.value, page: 1 })}
-          className={lightTheme.select}
-        >
-          <option value="">All Status</option>
-          <option value="dispatched">Dispatched</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="missing">Missing</option>
-        </select>
+        <div className="w-full sm:w-auto">
+          <select
+            value={filters.status || ''}
+            onChange={e => onChange({ status: e.target.value, page: 1 })}
+            className={lightTheme.select}
+          >
+            <option value="">All Status</option>
+            <option value="dispatched">Dispatched</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="missing">Missing</option>
+          </select>
+        </div>
 
         {/* Channel Partner */}
-        <select
-          value={filters.channelPartnerId || ''}
-          onChange={e => onChange({ channelPartnerId: e.target.value, page: 1 })}
-          className={lightTheme.selectPartner}
-        >
-          <option value="">All Partners</option>
-          {partners.map(p => (
-            <option key={p._id} value={p._id}>{p.name}</option>
-          ))}
-        </select>
+        <div className="w-full sm:w-auto">
+          <select
+            value={filters.channelPartnerId || ''}
+            onChange={e => onChange({ channelPartnerId: e.target.value, page: 1 })}
+            className={lightTheme.selectPartner}
+          >
+            <option value="">All Partners</option>
+            {partners.map(p => (
+              <option key={p._id} value={p._id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
 
         {/* Brand */}
-        <select
-          value={filters.brandId || ''}
-          onChange={e => onChange({ brandId: e.target.value, page: 1 })}
-          className={lightTheme.select}
-        >
-          <option value="">All Brands</option>
-          {brands.map(b => (
-            <option key={b._id} value={b._id}>{b.displayName ? b.displayName : b.name}</option>
-          ))}
-        </select>
+        <div className="w-full sm:w-auto">
+          <select
+            value={filters.brandId || ''}
+            onChange={e => onChange({ brandId: e.target.value, page: 1 })}
+            className={lightTheme.select}
+          >
+            <option value="">All Brands</option>
+            {brands.map(b => (
+              <option key={b._id} value={b._id}>{b.displayName ? b.displayName : b.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
         {/* Date range */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <input
             type="date"
             value={filters.startDate || ''}
             onChange={e => onChange({ startDate: e.target.value, page: 1 })}
             className={lightTheme.dateInput}
           />
-          <span className={lightTheme.to}>to</span>
+          <span className={lightTheme.to + " self-center"}>to</span>
           <input
             type="date"
             value={filters.endDate || ''}
@@ -120,14 +126,14 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
           />
         </div>
 
-        <div className="flex gap-2 ml-auto">
+        <div className="flex gap-2 mt-2 sm:mt-0 sm:ml-auto w-full sm:w-auto">
           <button
             onClick={onRefresh}
             className={lightTheme.button}
             type="button"
           >
             <RiRefreshLine />
-            Refresh
+            <span className="sr-only sm:not-sr-only">Refresh</span>
           </button>
           <button
             onClick={handleExport}
@@ -136,7 +142,7 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
             type="button"
           >
             <RiUpload2Fill />
-            {exporting ? 'Exporting...' : 'Export CSV'}
+            <span className="sr-only sm:not-sr-only">{exporting ? 'Exporting...' : 'Export CSV'}</span>
           </button>
         </div>
       </div>

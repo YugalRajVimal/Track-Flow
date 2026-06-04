@@ -6,6 +6,7 @@ import { RiBarcodeLine, RiSendPlane2Line, RiLoader4Line } from 'react-icons/ri'
 import { returnAPI } from '../../api/return'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
+import { useAuthStore } from '../../store/authStore' // <-- new import
 
 const orange = '#f58021'
 const orangeLight = '#fff5e6'
@@ -21,6 +22,10 @@ export default function AWBScanForm({ onSuccess }) {
 
   const awbInputRef = useRef(null)
 
+  // Get auth details and derive isAdmin from the store
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
+
   const {
     register,
     handleSubmit,
@@ -34,10 +39,13 @@ export default function AWBScanForm({ onSuccess }) {
       channelPartnerId: '',
       brandId: '',
       awbId: '',
+      backDateScan: false,
+      backDate: '',
     },
   })
 
   const selectedPartner = watch('channelPartnerId')
+  const backDateScanSelected = watch('backDateScan')
 
   // ── Derive the selected partner object so we can read its name ──
   const selectedPartnerObj = partners.find(p => p._id === selectedPartner) || null
@@ -63,11 +71,16 @@ export default function AWBScanForm({ onSuccess }) {
       awbInputRef.current.value = ''
       setTimeout(() => { awbInputRef.current?.focus() }, 0)
     }
-  }, [setValue, clearErrors])
+    // Also reset backDate if present
+    if (isAdmin) {
+      setValue('backDate', '', { shouldValidate: false, shouldDirty: false })
+      setValue('backDateScan', false, { shouldValidate: false, shouldDirty: false })
+    }
+  }, [setValue, clearErrors, isAdmin])
 
   const doSubmit = useCallback(
     async (data) => {
-      const { channelPartnerId, brandId, awbId } = data
+      const { channelPartnerId, brandId, awbId, backDateScan, backDate } = data
 
       if (!channelPartnerId) {
         toast.error('Please select a Channel Partner before scanning or submitting')
@@ -84,10 +97,22 @@ export default function AWBScanForm({ onSuccess }) {
         clearAWB()
         return
       }
+      // If admin & backdate selected, validate date
+      if (isAdmin && backDateScan) {
+        if (!backDate) {
+          toast.error('Please select a date for backdate scan')
+          return
+        }
+      }
 
       try {
         setSubmitting(true)
-        const res = await returnAPI.scan({ channelPartnerId, brandId, awbId })
+        const apiPayload = { channelPartnerId, brandId, awbId }
+        if (isAdmin && backDateScan) {
+          apiPayload.backDateScan = true
+          apiPayload.backDate = backDate // pass as 'date'
+        }
+        const res = await returnAPI.scan(apiPayload)
         if (res.data?.success) {
           toast.success(res.data.message || `AWB ${awbId} scanned successfully`)
           onSuccess?.()
@@ -100,18 +125,24 @@ export default function AWBScanForm({ onSuccess }) {
         clearAWB()
       }
     },
-    [clearAWB, onSuccess],
+    [clearAWB, onSuccess, isAdmin],
   )
 
   const onScan = useCallback(
     async (scannedValue) => {
-      await doSubmit({
+      // build data according to whether backdate and admin applies
+      const data = {
         channelPartnerId: getValues('channelPartnerId'),
         brandId: getValues('brandId'),
         awbId: scannedValue,
-      })
+      }
+      if (isAdmin && getValues('backDateScan')) {
+        data.backDateScan = true
+        data.backDate = getValues('backDate')
+      }
+      await doSubmit(data)
     },
-    [doSubmit, getValues],
+    [doSubmit, getValues, isAdmin],
   )
 
   const handleAWBKeyDown = (e) => {
@@ -253,6 +284,34 @@ export default function AWBScanForm({ onSuccess }) {
           </div>
           {errors.awbId && <p className={errorText}>{errors.awbId.message}</p>}
         </div>
+
+        {/* Admin-only: Backdate Scan Logic */}
+        {isAdmin && (
+          <div>
+            <label className={baseLabel}>
+              <input
+                type="checkbox"
+                {...register('backDateScan')}
+                className="mr-2"
+                disabled={submitting}
+              />
+              Backdate Scan
+            </label>
+          </div>
+        )}
+        {/* Admin-only: Date field, only if backDateScan is selected */}
+        {isAdmin && backDateScanSelected && (
+          <div>
+            <label className={baseLabel}>Backdate *</label>
+            <input
+              type="date"
+              {...register('backDate', { required: 'Backdate is required' })}
+              className={baseInput}
+              disabled={submitting}
+            />
+            {errors.backDate && <p className={errorText}>{errors.backDate.message}</p>}
+          </div>
+        )}
 
         <button type="submit" disabled={submitting} className={baseButtonPrimary} style={{ backgroundColor: orange }}>
           {submitting ? (
