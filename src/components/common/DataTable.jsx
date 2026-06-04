@@ -1,26 +1,26 @@
 import React from 'react'
 import { RiArrowLeftLine, RiArrowRightLine, RiLoader4Line } from 'react-icons/ri'
 
-// Orange & white theme overrides for table elements
+// Black & white theme overrides for table elements (except orange buttons/icons)
 const orange = "#f58021"
 const tableHeader =
-  "px-4 py-3 text-left text-xs font-semibold text-[#f58021] bg-[#fff8f2] border-b border-orange-200"
-const tableRow = "bg-white even:bg-[#fff8f2] border-b border-orange-200 hover:bg-[#f58021]/10 transition"
-const tableCell = "px-4 py-3 text-sm text-orange-900"
+  "px-4 py-3 text-left text-xs font-semibold text-black bg-white border-b border-black/10"
+const tableRow = "bg-white even:bg-[#f6f6f6] border-b border-black/10 hover:bg-black/5 transition"
+const tableCell = "px-4 py-3 text-sm text-black"
 const loaderClass = "animate-spin text-[#f58021] text-3xl"
 const emptyArea =
-  "flex flex-col items-center justify-center py-20 text-orange-200"
+  "flex flex-col items-center justify-center py-20 text-black/25"
 const emptyIcon = "text-4xl mb-3"
 const emptyMsg = "text-sm"
 const paginationContainer =
-  "flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-4 border-t border-orange-200"
-const paginationSpan = "text-xs text-orange-400"
+  "flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-4 border-t border-black/10"
+const paginationSpan = "text-xs text-black/40"
 const btnSecondary =
-  "btn-secondary px-3 py-2 bg-white border border-orange-200 text-[#f58021] hover:bg-[#f58021]/10 hover:border-[#f58021] hover:text-[#f58021] disabled:opacity-40 disabled:cursor-not-allowed transition"
+  "btn-secondary px-3 py-2 bg-[#f58021] border border-[#f58021] text-white hover:bg-white hover:text-[#f58021] hover:border-[#f58021] disabled:opacity-40 disabled:cursor-not-allowed transition"
 const pageNumActive =
-  "w-8 h-8 rounded-lg text-xs font-medium bg-[#f58021] text-white ring-2 ring-orange-200"
+  "w-8 h-8 rounded-lg text-xs font-medium bg-[#f58021] text-white ring-2 ring-[#f58021]"
 const pageNum =
-  "w-8 h-8 rounded-lg text-xs font-medium text-orange-500 hover:bg-[#f58021]/10 hover:text-[#f58021] transition-all"
+  "w-8 h-8 rounded-lg text-xs font-medium text-[#f58021] hover:bg-black/10 hover:text-[#f58021] transition-all"
 
 // Helper to format date as YYYY-MM-DD
 function formatDate(val) {
@@ -78,7 +78,7 @@ export function DataTable({ columns, data, loading, emptyMessage = 'No records f
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] bg-white border border-orange-200 rounded-xl shadow-sm">
+      <table className="w-full min-w-[640px] bg-white border border-black/10 rounded-xl shadow-sm">
         <thead>
           <tr>
             {patchedColumns.map((col) => (
@@ -160,7 +160,7 @@ export function Pagination({ pagination, onChange }) {
           className={btnSecondary}
           aria-label="Previous"
         >
-          <RiArrowLeftLine />
+          <RiArrowLeftLine color={orange} />
         </button>
         <div className="flex items-center gap-1">
           {getPageNumbers().map((p) => (
@@ -179,7 +179,7 @@ export function Pagination({ pagination, onChange }) {
           className={btnSecondary}
           aria-label="Next"
         >
-          <RiArrowRightLine />
+          <RiArrowRightLine color={orange} />
         </button>
       </div>
     </div>

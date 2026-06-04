@@ -17,8 +17,8 @@ export default function EntityFormModal({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {fields.map((field) => (
           <div key={field.name}>
-            <label className="block text-sm font-semibold text-slate-800 mb-2">
-              {field.label} {field.required && <span className="text-red-500">*</span>}
+            <label className="block text-sm font-semibold text-black mb-2">
+              {field.label} {field.required && <span className="text-orange-600">*</span>}
             </label>
             {field.type === 'select' ? (
               <select
@@ -26,7 +26,7 @@ export default function EntityFormModal({
                   required: field.required ? `${field.label} is required` : false,
                   ...(field.validation || {}),
                 })}
-                className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg px-4 py-2 text-sm transition-all duration-200 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-300 appearance-none cursor-pointer"
+                className="w-full bg-white border border-black text-black rounded-lg px-4 py-2 text-sm transition-all duration-200 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-300 appearance-none cursor-pointer"
               >
                 <option value="">Select {field.label}...</option>
                 {field.options?.map(opt => (
@@ -38,7 +38,7 @@ export default function EntityFormModal({
                 {...register(field.name, {
                   required: field.required ? `${field.label} is required` : false,
                 })}
-                className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg px-4 py-2 text-sm transition-all duration-200 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-300 resize-none"
+                className="w-full bg-white border border-black text-black rounded-lg px-4 py-2 text-sm transition-all duration-200 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-300 resize-none"
                 rows={3}
                 placeholder={field.placeholder}
               />
@@ -49,13 +49,13 @@ export default function EntityFormModal({
                   required: field.required ? `${field.label} is required` : false,
                   ...(field.validation || {}),
                 })}
-                className="w-full bg-white border border-slate-300 text-slate-900 rounded-lg px-4 py-2 text-sm transition-all duration-200 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-300"
+                className="w-full bg-white border border-black text-black rounded-lg px-4 py-2 text-sm transition-all duration-200 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-300"
                 placeholder={field.placeholder}
                 autoComplete="off"
               />
             )}
             {errors[field.name] && (
-              <p className="text-red-500 text-xs mt-1">{errors[field.name].message}</p>
+              <p className="text-orange-600 text-xs mt-1">{errors[field.name].message}</p>
             )}
           </div>
         ))}
@@ -64,18 +64,18 @@ export default function EntityFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium"
+            className="px-4 py-2 rounded-md bg-orange-500 border border-orange-600 text-white hover:bg-orange-600 transition-colors text-sm font-medium"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className={`px-4 py-2 rounded-md bg-brand-500 text-white text-sm font-medium transition-colors flex items-center gap-2 ${
-              loading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-brand-600'
+            className={`px-4 py-2 rounded-md bg-orange-500 text-white text-sm font-medium transition-colors flex items-center gap-2 ${
+              loading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-orange-600'
             }`}
           >
-            {loading ? <><RiLoader4Line className="animate-spin" /> Saving...</> : 'Save'}
+            {loading ? <><RiLoader4Line className="animate-spin text-orange-200" /> Saving...</> : 'Save'}
           </button>
         </div>
       </form>

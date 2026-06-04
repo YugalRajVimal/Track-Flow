@@ -22,12 +22,12 @@ const PARTNER_LABELS = {
   website:  'Website (Excel)',
 }
 
-// Overwrite partner colors for orange (#f58021) and white theme, fallback to orange/white if unknown
+// For theme: Only buttons, backgrounds, and icons should be orange, everything else is black/white
 const PARTNER_COLORS = {
-  flipkart: 'bg-white border-[#f58021] text-[#f58021]',
-  meesho:   'bg-white border-[#f58021] text-[#f58021]',
-  myntra:   'bg-white border-[#f58021] text-[#f58021]',
-  website:  'bg-white border-[#f58021] text-[#f58021]',
+  flipkart: 'bg-white border-[#f58021] text-black',
+  meesho:   'bg-white border-[#f58021] text-black',
+  myntra:   'bg-white border-[#f58021] text-black',
+  website:  'bg-white border-[#f58021] text-black',
 }
 
 function FileIcon({ name }) {
@@ -45,7 +45,7 @@ function FileIcon({ name }) {
 function PartnerBadge({ partner }) {
   if (!partner) return null
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${PARTNER_COLORS[partner] || 'bg-white border-[#f58021] text-[#f58021]'}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${PARTNER_COLORS[partner] || 'bg-white border-[#f58021] text-black'}`}>
       {PARTNER_LABELS[partner] || partner} format detected
     </span>
   )
@@ -53,11 +53,12 @@ function PartnerBadge({ partner }) {
 
 function PreviewTable({ rows, partnerName }) {
   if (!rows || rows.length === 0) {
+    // Background, Icon and Button - orange. All other text black.
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-[#f58021] gap-3 bg-white border border-[#f58021] rounded-xl">
+      <div className="flex flex-col items-center justify-center py-12 text-black gap-3 bg-white border border-[#f58021] rounded-xl">
         <RiCheckDoubleLine className="text-5xl text-[#f58021]" />
-        <p className="text-base font-semibold text-[#f58021]">No missing AWBs found!</p>
-        <p className="text-sm text-center">All AWBs in the file are already present in the database.</p>
+        <p className="text-base font-semibold text-black">No missing AWBs found!</p>
+        <p className="text-sm text-center text-black">All AWBs in the file are already present in the database.</p>
       </div>
     )
   }
@@ -66,29 +67,29 @@ function PreviewTable({ rows, partnerName }) {
     <div className="overflow-x-auto rounded-xl border border-[#f58021] bg-white">
       <table className="min-w-full text-sm">
         <thead>
-          <tr className="bg-[#fff7f2] border-b border-[#f58021]">
-            <th className="px-4 py-3 text-left text-xs font-semibold text-[#f58021] uppercase tracking-wide">#</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-[#f58021] uppercase tracking-wide">AWB ID</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-[#f58021] uppercase tracking-wide">Missing At</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-[#f58021] uppercase tracking-wide">Status</th>
+          <tr className="bg-white border-b border-[#f58021]">
+            <th className="px-4 py-3 text-left text-xs font-semibold text-black uppercase tracking-wide">#</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-black uppercase tracking-wide">AWB ID</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-black uppercase tracking-wide">Missing At</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-black uppercase tracking-wide">Status</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#ffe5cf]">
+        <tbody className="divide-y divide-[#f1f1f1]">
           {rows.map((row, i) => (
             <tr key={row.awbId} className="hover:bg-[#fff2e6] transition-colors">
-              <td className="px-4 py-3 text-[#f58021] text-xs">{i + 1}</td>
+              <td className="px-4 py-3 text-black text-xs">{i + 1}</td>
               <td className="px-4 py-3">
-                <span className="font-mono text-xs bg-[#fff4e6] border border-[#f58021] text-[#f58021] px-2 py-1 rounded-lg">
+                <span className="font-mono text-xs bg-white border border-[#f58021] text-black px-2 py-1 rounded-lg">
                   {row.awbId}
                 </span>
               </td>
-              <td className="px-4 py-3 text-[#f58021] text-xs">
+              <td className="px-4 py-3 text-black text-xs">
                 {row.missingAt ? dayjs(row.missingAt).format('MMM D, YYYY') : '—'}
               </td>
               <td className="px-4 py-3">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ffe5cf] text-[#f58021] text-xs font-medium border border-[#f58021]">
-                  <RiAlertLine className="shrink-0" />
-                  Missing
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[#f58021] text-xs font-medium border border-[#f58021]">
+                  <RiAlertLine className="shrink-0 text-[#f58021]" />
+                  <span className="text-black">Missing</span>
                 </span>
               </td>
             </tr>
@@ -105,8 +106,8 @@ function PreviewTable({ rows, partnerName }) {
 
 function ScanAlertBox({ scanInfo }) {
   if (!scanInfo) return null
-  // Orange for both QR and barcode
-  const boxClass = 'bg-white border border-[#f58021] text-[#f58021]'
+  // Only background and icon orange, text black
+  const boxClass = 'bg-white border border-[#f58021] text-black'
 
   const icon = scanInfo.type === 'qr' ? (
     <RiQrScanLine className="text-2xl mr-2 text-[#f58021]" />
@@ -131,9 +132,8 @@ export default function AWBMissingForm({ onSuccess }) {
   const [partners, setPartners] = useState([])
   const [brands, setBrands] = useState([])
   const [loadingBrands, setLoadingBrands] = useState(false)
-  const [phase, setPhase] = useState('upload') // 'upload' | 'preview'
+  const [phase, setPhase] = useState('upload')
 
-  // ── Upload phase state ────────────────────────────────────────────────────
   const [channelPartnerId, setChannelPartnerId] = useState('')
   const [brandId, setBrandId] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -142,20 +142,15 @@ export default function AWBMissingForm({ onSuccess }) {
   const [loading, setLoading] = useState(false)
   const fileInputRef = useRef(null)
 
-  // ── Preview phase state ───────────────────────────────────────────────────
-  const [previewData, setPreviewData] = useState(null)   // { partner, totalInFile, missing[] }
+  const [previewData, setPreviewData] = useState(null)
   const [saving, setSaving] = useState(false)
 
-  // ── Save date range locally for passing to save API ───────────────────────
-  // We need to keep the date range that was used for preview so it doesn't get reset by state changes before save
   const [savedPreviewDates, setSavedPreviewDates] = useState({ startDate: '', endDate: '' })
 
-  // ── Load channel partners ─────────────────────────────────────────────────
   useEffect(() => {
     channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
   }, [])
 
-  // ── Load brands when channelPartnerId changes ─────────────────────────────
   useEffect(() => {
     if (!channelPartnerId) {
       setBrands([]); setBrandId('');
@@ -171,7 +166,6 @@ export default function AWBMissingForm({ onSuccess }) {
       .finally(() => setLoadingBrands(false))
   }, [channelPartnerId])
 
-  // ── File selection ────────────────────────────────────────────────────────
   const handleFileDrop = (e) => {
     e.preventDefault()
     const dropped = e.dataTransfer?.files?.[0]
@@ -181,7 +175,6 @@ export default function AWBMissingForm({ onSuccess }) {
   const handleFileChange = (e) => {
     const chosen = e.target.files?.[0]
     if (chosen) validateAndSetFile(chosen)
-    // reset input so the same file can be re-selected after clearing
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -198,7 +191,6 @@ export default function AWBMissingForm({ onSuccess }) {
     setFile(f)
   }
 
-  // ── Scan Alert Info Calculation ──────────────────────────────────────────
   let scanInfo = null
   const selectedPartnerObj = partners.find(p => p._id === channelPartnerId)
   if (selectedPartnerObj) {
@@ -217,7 +209,6 @@ export default function AWBMissingForm({ onSuccess }) {
     }
   }
 
-  // ── Phase 1: Preview ──────────────────────────────────────────────────────
   const handlePreview = async () => {
     if (!channelPartnerId) { toast.error('Please select a Channel Partner.'); return }
     if (!brandId) { toast.error('Please select a Brand.'); return }
@@ -251,7 +242,6 @@ export default function AWBMissingForm({ onSuccess }) {
     }
   }
 
-  // ── Phase 2: Save ─────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!previewData?.missing?.length) {
       toast('No missing AWBs to save.', { icon: 'ℹ️' })
@@ -265,7 +255,6 @@ export default function AWBMissingForm({ onSuccess }) {
         missingFromDate: previewData.missingFromDate || savedPreviewDates.startDate,
         missingToDate: previewData.missingToDate || savedPreviewDates.endDate,
       }
-      console.log(savePayload)
       const res = await returnAPI.saveMissing(savePayload)
 
       if (res.data?.success) {
@@ -291,14 +280,17 @@ export default function AWBMissingForm({ onSuccess }) {
     setSavedPreviewDates({ startDate: '', endDate: '' })
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  // Form fields - borders orange (for clarity), background white, text black
+  const inputCls = 'w-full px-3 py-2.5 rounded-xl border border-[#f58021] bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-[#f58021]/30 focus:border-[#f58021] transition-all placeholder-[#b8b8b8] disabled:opacity-60'
+  const labelCls = 'block text-sm font-medium text-black mb-1.5'
 
-  const inputCls = 'w-full px-3 py-2.5 rounded-xl border border-[#f58021] bg-white text-[#f58021] text-sm focus:outline-none focus:ring-2 focus:ring-[#f58021]/30 focus:border-[#f58021] transition-all placeholder-[#ffbc80] disabled:opacity-60'
-  const labelCls = 'block text-sm font-medium text-[#f58021] mb-1.5'
+  // Buttons: bg orange, icon orange, text white/black as required
+  const orangeButton =
+    'w-full py-2.5 rounded-xl bg-[#f58021] hover:bg-[#ffa84c] text-white font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
+  const orangeOutlineButton =
+    'flex-1 py-2.5 rounded-xl border border-[#f58021] bg-white text-[#f58021] font-semibold flex items-center justify-center gap-2 hover:bg-[#fff7ef] transition-colors disabled:opacity-60'
 
-  // ─── PHASE 1: Upload form ─────────────────────────────────────────────────
+  // PHASE 1: Upload form
   if (phase === 'upload') {
     return (
       <div className="space-y-5 w-full">
@@ -306,8 +298,8 @@ export default function AWBMissingForm({ onSuccess }) {
         {/* Info banner */}
         <div className="flex gap-2.5 p-3.5 rounded-xl bg-white border border-[#f58021]">
           <RiInformationLine className="text-[#f58021] text-xl shrink-0 mt-0.5" />
-          <div className="text-xs text-[#f58021] space-y-1">
-            <p className="font-semibold">How this works:</p>
+          <div className="text-xs text-black space-y-1">
+            <p className="font-semibold text-black">How this works:</p>
             <p>Upload a Flipkart CSV, Meesho CSV, Myntra CSV, or Website Excel. The system will compare AWB IDs in the file against scanned records in the selected date range and flag any that are missing.</p>
           </div>
         </div>
@@ -361,7 +353,7 @@ export default function AWBMissingForm({ onSuccess }) {
               className={inputCls}
               disabled={loading}
             />
-            <span className="text-[#f58021] text-sm shrink-0">to</span>
+            <span className="text-black text-sm shrink-0">to</span>
             <input
               type="date"
               value={endDate}
@@ -377,33 +369,31 @@ export default function AWBMissingForm({ onSuccess }) {
           <label className={labelCls}>Upload File (CSV / XLS / XLSX) *</label>
 
           {file ? (
-            /* File selected — show chip */
             <div className="flex items-center gap-3 p-3 rounded-xl border border-[#f58021] bg-white">
               <FileIcon name={file.name} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#f58021] truncate">{file.name}</p>
-                <p className="text-xs text-[#ffbc80]">{(file.size / 1024).toFixed(1)} KB</p>
+                <p className="text-sm font-medium text-black truncate">{file.name}</p>
+                <p className="text-xs text-black">{(file.size / 1024).toFixed(1)} KB</p>
               </div>
               <button
                 type="button"
                 onClick={() => setFile(null)}
-                className="p-1.5 rounded-lg text-[#f58021]/80 hover:text-red-500 hover:bg-[#fff0e6] transition-colors"
+                className="p-1.5 rounded-lg text-[#f58021] hover:text-red-500 hover:bg-[#fff0e6] transition-colors"
                 disabled={loading}
               >
                 <RiCloseLine />
               </button>
             </div>
           ) : (
-            /* Drop zone */
             <div
               onDragOver={e => e.preventDefault()}
               onDrop={handleFileDrop}
               onClick={() => fileInputRef.current?.click()}
               className="cursor-pointer flex flex-col items-center justify-center gap-2 py-8 rounded-xl border-2 border-dashed border-[#f58021] bg-white hover:border-[#f58021] hover:bg-[#fff7f2] transition-colors"
             >
-              <RiUpload2Line className="text-3xl text-[#f58021]/30" />
-              <p className="text-sm text-[#f58021] font-medium">Click or drag & drop</p>
-              <p className="text-xs text-[#ffbc80]">CSV · XLS · XLSX — max 10 MB</p>
+              <RiUpload2Line className="text-3xl text-[#f58021]" />
+              <p className="text-sm text-black font-medium">Click or drag & drop</p>
+              <p className="text-xs text-black">CSV · XLS · XLSX — max 10 MB</p>
             </div>
           )}
 
@@ -418,13 +408,13 @@ export default function AWBMissingForm({ onSuccess }) {
         </div>
 
         {/* Supported formats note */}
-        <div className="rounded-xl border border-[#ffe5cf] bg-white p-3 text-xs text-[#f58021] space-y-1.5">
-          <p className="font-semibold text-[#f58021]">Supported file formats:</p>
+        <div className="rounded-xl border border-[#ffe5cf] bg-white p-3 text-xs text-black space-y-1.5">
+          <p className="font-semibold text-black">Supported file formats:</p>
           <ul className="space-y-1 list-none pl-0">
-            <li><span className="font-medium text-[#f58021]">Flipkart CSV</span> — column: <code className="bg-[#fff7f2] px-1 rounded">Tracking ID</code></li>
-            <li><span className="font-medium text-[#f58021]">Meesho CSV</span> — column: <code className="bg-[#fff7f2] px-1 rounded">Packet Id</code> (only SHIPPED rows)</li>
-            <li><span className="font-medium text-[#f58021]">Myntra CSV</span> — column: <code className="bg-[#fff7f2] px-1 rounded">AWB Number</code></li>
-            <li><span className="font-medium text-[#f58021]">Website Excel</span> — sheet: <code className="bg-[#fff7f2] px-1 rounded">AWB wise Details</code>, column: <code className="bg-[#fff7f2] px-1 rounded">AWB NO.</code></li>
+            <li><span className="font-medium text-black">Flipkart CSV</span> — column: <code className="bg-white px-1 rounded text-black">Tracking ID</code></li>
+            <li><span className="font-medium text-black">Meesho CSV</span> — column: <code className="bg-white px-1 rounded text-black">Packet Id</code> (only SHIPPED rows)</li>
+            <li><span className="font-medium text-black">Myntra CSV</span> — column: <code className="bg-white px-1 rounded text-black">AWB Number</code></li>
+            <li><span className="font-medium text-black">Website Excel</span> — sheet: <code className="bg-white px-1 rounded text-black">AWB wise Details</code>, column: <code className="bg-white px-1 rounded text-black">AWB NO.</code></li>
           </ul>
         </div>
 
@@ -433,19 +423,19 @@ export default function AWBMissingForm({ onSuccess }) {
           type="button"
           onClick={handlePreview}
           disabled={loading}
-          className="w-full py-2.5 rounded-xl bg-[#f58021] hover:bg-[#ffa84c] text-white font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          className={orangeButton}
         >
           {loading ? (
-            <><RiLoader4Line className="animate-spin" /> Analysing file...</>
+            <><RiLoader4Line className="animate-spin text-white" /> Analysing file...</>
           ) : (
-            <><RiAlertLine /> Find Missing AWBs</>
+            <><RiAlertLine className="text-white" /> Find Missing AWBs</>
           )}
         </button>
       </div>
     )
   }
 
-  // ─── PHASE 2: Preview + Confirm ───────────────────────────────────────────
+  // PHASE 2: Preview + Confirm
   const missingCount = previewData?.missing?.length ?? 0
   const totalInFile = previewData?.totalInFile ?? 0
   const foundCount = totalInFile - missingCount
@@ -453,7 +443,6 @@ export default function AWBMissingForm({ onSuccess }) {
   const cpName = partners.find(p => p._id === channelPartnerId)?.name || channelPartnerId
   const brandName = brands.find(b => b._id === brandId)?.name || brandId
 
-  // Scan Alert Info for Preview Phase (Try to use preview partner if found, else selected partner)
   let previewScanInfo = null
   let previewPartnerName = previewData?.partner || ''
   let previewPartnerObj = partners.find(
@@ -475,45 +464,43 @@ export default function AWBMissingForm({ onSuccess }) {
     }
   }
 
-  // The date range used for preview should always show the saved preview dates in phase 2
-  // Fallback to startDate/endDate in case of manual navigation bugs (shouldn't happen)
   const displayStartDate = previewData?.missingFromDate || savedPreviewDates.startDate || startDate
   const displayEndDate = previewData?.missingToDate || savedPreviewDates.endDate || endDate
 
   return (
     <div className="space-y-5 w-full">
 
-      {/* Back button */}
+      {/* Back button (outline orange, icon orange, text black) */}
       <button
         type="button"
         onClick={resetAll}
         className="flex items-center gap-1.5 text-sm text-[#f58021] hover:text-[#d16d00] transition-colors"
         disabled={saving}
       >
-        <RiArrowLeftLine />
+        <RiArrowLeftLine className="text-[#f58021]" />
         Back to upload
       </button>
 
       {/* Scan Alert Box */}
       <ScanAlertBox scanInfo={previewScanInfo} />
 
-      {/* Summary banner */}
-      <div className={`rounded-xl border p-4 space-y-2 ${missingCount > 0 ? 'bg-[#ffe5cf] border-[#f58021]' : 'bg-white border-[#f58021]'}`}>
+      {/* Summary banner: orange border when missingCount>0, bg/other text black/white */}
+      <div className={`rounded-xl border p-4 space-y-2 ${missingCount > 0 ? 'bg-white border-[#f58021]' : 'bg-white border-[#f58021]'}`}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <p className={`font-bold text-lg ${missingCount > 0 ? 'text-[#f58021]' : 'text-[#f58021]'}`}>
+            <p className={`font-bold text-lg text-black`}>
               {missingCount > 0
                 ? `${missingCount} Missing AWB${missingCount !== 1 ? 's' : ''} Found`
                 : 'All AWBs Accounted For'}
             </p>
-            <p className="text-xs text-[#f58021] mt-0.5">
+            <p className="text-xs text-black mt-0.5">
               {totalInFile} AWBs in file · {foundCount} already in DB · {missingCount} missing
             </p>
           </div>
           <PartnerBadge partner={previewData?.partner} />
         </div>
 
-        <div className="flex flex-wrap gap-4 text-xs text-[#f58021] pt-1">
+        <div className="flex flex-wrap gap-4 text-xs text-black pt-1">
           <span><span className="font-medium">Partner:</span> {cpName}</span>
           <span><span className="font-medium">Brand:</span> {brandName}</span>
           <span><span className="font-medium">Date range:</span> {dayjs(displayStartDate).format('MMM D')} – {dayjs(displayEndDate).format('MMM D, YYYY')}</span>
@@ -532,21 +519,21 @@ export default function AWBMissingForm({ onSuccess }) {
             type="button"
             onClick={resetAll}
             disabled={saving}
-            className="flex-1 py-2.5 rounded-xl border border-[#f58021] bg-white text-[#f58021] font-semibold flex items-center justify-center gap-2 hover:bg-[#fff7ef] transition-colors disabled:opacity-60"
+            className={orangeOutlineButton}
           >
-            <RiCloseLine />
-            Cancel
+            <RiCloseLine className="text-[#f58021]" />
+            <span className="text-black">Cancel</span>
           </button>
           <button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-[#f58021] hover:bg-[#ffa84c] text-white font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className={orangeButton}
           >
             {saving ? (
-              <><RiLoader4Line className="animate-spin" /> Saving...</>
+              <><RiLoader4Line className="animate-spin text-white" /> Saving...</>
             ) : (
-              <><RiCheckDoubleLine /> Confirm & Save {missingCount} Record{missingCount !== 1 ? 's' : ''}</>
+              <><RiCheckDoubleLine className="text-white"/> Confirm & Save {missingCount} Record{missingCount !== 1 ? 's' : ''}</>
             )}
           </button>
         </div>

@@ -5,10 +5,11 @@ import { RiLoader4Line } from 'react-icons/ri'
 import { returnAPI } from '../../api/return'
 import BarcodeScanner from './BarcodeScanner'
 
-// Theme color
+// Orange only for buttons and icons; black/white everywhere else
 const PRIMARY_ORANGE = '#f58021'
+const TEXT_BLACK = '#18181b'
+const BORDER_BLACK = '#18181b'
 
-// Passcode modal for 5-digit entry
 function PasscodeModal({ open, onVerify, onClose, verifying }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
   const handlePasscode = ({ passcode }) => {
@@ -20,7 +21,7 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
       <div
         className="bg-white rounded-xl shadow-lg max-w-xs w-full px-6 py-8 relative border"
-        style={{ borderColor: PRIMARY_ORANGE }}
+        style={{ borderColor: BORDER_BLACK }}
       >
         <button
           className="absolute right-3 top-3 text-xl"
@@ -38,7 +39,7 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
         <form onSubmit={handleSubmit(handlePasscode)} className="space-y-4">
           <h2
             className="text-lg font-semibold text-center mb-2"
-            style={{ color: PRIMARY_ORANGE }}
+            style={{ color: TEXT_BLACK }}
           >
             Enter 5-digit Passcode
           </h2>
@@ -49,8 +50,8 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
             })}
             className="w-full text-center tracking-widest text-lg rounded border px-4 py-2 transition-all"
             style={{
-              borderColor: PRIMARY_ORANGE,
-              color: PRIMARY_ORANGE,
+              borderColor: BORDER_BLACK,
+              color: TEXT_BLACK,
               background: 'white',
             }}
             placeholder="_____"
@@ -78,7 +79,8 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
           >
             {verifying ? (
               <>
-                <RiLoader4Line className="animate-spin" />
+                {/* Only the icon is orange, text is white */}
+                <RiLoader4Line className="animate-spin" style={{ color: 'white' }} />
                 Verifying...
               </>
             ) : 'Verify Passcode'}
@@ -89,9 +91,8 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
   )
 }
 
-// Requires userId prop
 export default function AWBCancelForm({ onSuccess, userId }) {
-  const [scannerOpen, setScannerOpen] = useState(true) // open scanner by default
+  const [scannerOpen, setScannerOpen] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [passcodeVerified, setPasscodeVerified] = useState(false)
   const [passcodeModal, setPasscodeModal] = useState(true)
@@ -130,16 +131,13 @@ export default function AWBCancelForm({ onSuccess, userId }) {
       toast.error(err.response?.data?.message || `Failed to cancel AWB ${awbId}`)
     } finally {
       setSubmitting(false)
-      // Open scanner again for next scan
       setScannerOpen(true)
     }
   }
 
   const onScan = (awbId) => {
-    // Always toast on every scan that this id status set to cancel
     toast(`AWB ${awbId} status set to cancel`, { icon: '⚠️' })
     if (submitting) {
-      // Ignore scan while canceling previous AWB
       return
     }
     setScannerOpen(false)
@@ -163,7 +161,7 @@ export default function AWBCancelForm({ onSuccess, userId }) {
       className="space-y-4 p-6 rounded-2xl shadow flex flex-col items-center border"
       style={{
         background: 'white',
-        borderColor: PRIMARY_ORANGE,
+        borderColor: BORDER_BLACK,
       }}
     >
       <BarcodeScanner
@@ -171,22 +169,26 @@ export default function AWBCancelForm({ onSuccess, userId }) {
         onClose={() => setScannerOpen(false)}
         onScan={onScan}
         title="Scan to Cancel AWB"
+        accentColor={PRIMARY_ORANGE}
+        iconColor={PRIMARY_ORANGE}
+        // (BarcodeScanner should use accentColor/iconColor for orange, otherwise stays b/w themed)
       />
 
       <div className="flex flex-col items-center gap-3 w-full justify-center pt-4">
         <p
           className="font-semibold text-lg"
-          style={{ color: PRIMARY_ORANGE }}
+          style={{ color: TEXT_BLACK }}
         >
           Scan AWB to Cancel
         </p>
-        <p className="text-sm text-center" style={{ color: PRIMARY_ORANGE, fontWeight: 500 }}>
+        <p className="text-sm text-center" style={{ color: TEXT_BLACK, fontWeight: 500 }}>
           This operation <b style={{ color: '#d12e2e' }}>immediately cancels</b> AWB upon scanning.<br />
           No confirmation. Please scan carefully.
         </p>
         {submitting && (
           <div className="flex items-center gap-2 text-base mt-2" style={{ color: '#d12e2e' }}>
-            <RiLoader4Line className="animate-spin" />
+            {/* The loader icon itself should be orange for visual affordance */}
+            <RiLoader4Line className="animate-spin" style={{ color: PRIMARY_ORANGE }} />
             Cancelling AWB...
           </div>
         )}

@@ -7,20 +7,20 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import EntityFormModal from '../components/admin/EntityFormModal'
 import dayjs from 'dayjs'
 
-// Custom orange (#f58021) and white color palette
+// Black & white theme, with orange buttons/icons
 const styles = {
-  labelSecondary: 'text-[#f58021]', // orange text for subtitles
-  labelSecondaryStrong: 'text-[#f58021] font-semibold',
-  border: 'border-[#f58021]/30', // slight orange tint border
-  cardBg: 'bg-white shadow-sm border border-[#f58021]/20', // card background white w/ soft orange border
-  neutral: 'text-[#222]', // darker, readable
-  muted: 'text-[#d1d5db]', // muted gray for disabled/inactive
-  btnPrimary: 'bg-[#f58021] text-white hover:bg-[#ff9841]',
-  btn: 'p-1.5 text-[#222] hover:text-white hover:bg-[#f58021]/80 rounded-lg transition-all',
-  tagAdmin: 'text-white bg-[#f58021] border-[#f58021]',
-  tagUser: 'text-[#f58021] bg-[#fff6ed] border-[#f58021]/30',
-  tagActive: 'text-white bg-[#f58021] border-[#f58021]',
-  tagInactive: 'text-[#f58021] bg-[#fff6ed] border-[#f58021]/50'
+  labelSecondary: 'text-black',                  // Black text
+  labelSecondaryStrong: 'text-black font-semibold',
+  border: 'border-black/10',                     // Faint black border
+  cardBg: 'bg-white shadow-sm border border-black/10',
+  neutral: 'text-black',                         // Black text for main content
+  muted: 'text-black/30',                        // Light black for muted/disabled
+  btnPrimary: 'bg-orange-500 text-white hover:bg-orange-600', // Orange button, white text
+  btn: 'p-1.5 text-orange-500 hover:text-white hover:bg-orange-500 rounded-lg transition-all', // Orange icon/buttons
+  tagAdmin: 'text-black bg-white border-black/20',   // Black/white
+  tagUser: 'text-black bg-white border-black/10',    // Black/white
+  tagActive: 'text-black bg-white border-black/10',  // Black/white
+  tagInactive: 'text-black bg-white border-black/10' // Black/white
 }
 
 const USER_FIELDS = [
@@ -135,25 +135,23 @@ export default function UsersPage() {
     },
     {
       key: 'createdAt', label: 'Created',
-      render: v => v ? <span className="text-xs text-[#b4b4b4]">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
+      render: v => v ? <span className="text-xs text-black/30">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
     },
     {
       key: 'actions', label: 'Actions',
       render: (_, row) => (
         <div className="flex items-center gap-1.5">
           <button onClick={() => { setEditing(row); setModalOpen(true) }}
-            className={styles.btn} style={{ border: '1px solid #f58021', backgroundColor: 'white' }}>
-            <RiEditLine />
+            className={styles.btn}>
+            <RiEditLine className="text-orange-500" />
           </button>
           <button onClick={() => handleToggleStatus(row)}
-            className={styles.btn + " hover:text-white"}
-            style={{ border: '1px solid #f58021', backgroundColor: 'white' }}>
-            <RiToggleLine />
+            className={styles.btn}>
+            <RiToggleLine className="text-orange-500" />
           </button>
           <button onClick={() => setDeleteItem(row)}
-            className={styles.btn + " hover:text-white"}
-            style={{ border: '1px solid #f58021', backgroundColor: 'white' }}>
-            <RiDeleteBinLine />
+            className={styles.btn}>
+            <RiDeleteBinLine className="text-orange-500" />
           </button>
         </div>
       )
@@ -186,15 +184,14 @@ export default function UsersPage() {
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="page-title text-[#222]">Users</h1>
+            <h1 className="page-title text-black">Users</h1>
             <p className={`${styles.labelSecondary} text-sm mt-1`}>Manage platform users</p>
           </div>
           <button
             onClick={() => { setEditing(null); setModalOpen(true) }}
-            className={`btn-primary flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm ${styles.btnPrimary} border border-[#f58021]`}
-            style={{ backgroundColor: '#f58021', color: '#fff', borderColor: '#f58021' }}
+            className={`btn-primary flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm ${styles.btnPrimary}`}
           >
-            <RiAddLine /> Add User
+            <RiAddLine className="text-white" /> Add User
           </button>
         </div>
         <div className={`overflow-hidden rounded-2xl ${styles.cardBg}`}>

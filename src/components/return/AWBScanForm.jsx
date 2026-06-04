@@ -6,12 +6,9 @@ import { RiBarcodeLine, RiSendPlane2Line, RiLoader4Line } from 'react-icons/ri'
 import { returnAPI } from '../../api/return'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
-import { useAuthStore } from '../../store/authStore' // <-- new import
+import { useAuthStore } from '../../store/authStore'
 
 const orange = '#f58021'
-const orangeLight = '#fff5e6'
-const orangeBorder = '#f58021'
-const orangeText = '#f58021'
 
 export default function AWBScanForm({ onSuccess }) {
   const [partners, setPartners] = useState([])
@@ -130,7 +127,6 @@ export default function AWBScanForm({ onSuccess }) {
 
   const onScan = useCallback(
     async (scannedValue) => {
-      // build data according to whether backdate and admin applies
       const data = {
         channelPartnerId: getValues('channelPartnerId'),
         brandId: getValues('brandId'),
@@ -164,20 +160,19 @@ export default function AWBScanForm({ onSuccess }) {
     awbInputRef.current = el
   }
 
-  // Style classes with orange theme
+  // Style classes for black & white, orange only for buttons and icons
   const baseInput =
-    `input-field pl-9 font-mono bg-white border border-[${orangeBorder}] text-gray-900 placeholder-gray-400 focus:border-[${orange}] focus:ring-[${orange}]`
+    `input-field pl-9 font-mono bg-white border border-black text-black placeholder-gray-400 focus:border-black focus:ring-black`
   const baseSelect =
-    `select-field bg-white border border-[${orangeBorder}] text-gray-900 placeholder-gray-400 focus:border-[${orange}] focus:ring-[${orange}]`
-  const baseLabel = 'label text-gray-700'
+    `select-field bg-white border border-black text-black placeholder-gray-400 focus:border-black focus:ring-black`
+  const baseLabel = 'label text-black'
   const baseButtonSecondary =
-    `btn-secondary px-3 flex-shrink-0 bg-[${orangeLight}] border border-[${orangeBorder}] hover:bg-[${orange}] hover:text-white text-[${orangeText}]`
+    `btn-secondary px-3 flex-shrink-0 bg-[${orange}] border border-[${orange}] hover:bg-black hover:text-[${orange}] text-white`
   const baseButtonPrimary =
-    `btn-primary px-4 py-2 rounded bg-[${orange}] text-white hover:bg-orange-600 flex items-center gap-1 font-semibold`
+    `btn-primary px-4 py-2 rounded bg-[${orange}] text-white hover:bg-black hover:text-[${orange}] flex items-center gap-1 font-semibold`
   const errorText = 'text-pink-600 text-xs mt-1'
 
   // --- SCAN TYPE ALERT LOGIC ---
-  // Always use barcode for all partners including Meesho
   let scanInfo = null
   if (selectedPartnerObj) {
     scanInfo = {
@@ -186,11 +181,9 @@ export default function AWBScanForm({ onSuccess }) {
     }
   }
 
-  // Alert box component
   function ScanAlertBox({ scanInfo }) {
     if (!scanInfo) return null
-    // Orange themed alert
-    const boxClass = 'bg-[#fff5e6] border border-[#f58021] text-[#f58021]'
+    const boxClass = 'bg-white border border-black text-black'
     const icon = <RiBarcodeLine className="text-2xl mr-2" style={{ color: orange }} />
     return (
       <div className={`flex items-center gap-2 p-3 rounded mb-4 font-semibold ${boxClass}`}>
@@ -315,9 +308,15 @@ export default function AWBScanForm({ onSuccess }) {
 
         <button type="submit" disabled={submitting} className={baseButtonPrimary} style={{ backgroundColor: orange }}>
           {submitting ? (
-            <><RiLoader4Line className="animate-spin" /> Scanning...</>
+            <>
+              <RiLoader4Line className="animate-spin" style={{ color: "white" }} />
+              <span>Scanning...</span>
+            </>
           ) : (
-            <><RiSendPlane2Line /> Submit Scan</>
+            <>
+              <RiSendPlane2Line style={{ color: "white" }} />
+              <span>Submit Scan</span>
+            </>
           )}
         </button>
       </form>

@@ -4,22 +4,23 @@ import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import { awbAPI } from '../../api/awb'
 import toast from 'react-hot-toast'
 
-// Orange & white theme utility styles (#f58021)
-const orange = "#f58021"
-const orangeBorder = "border-orange-200"
-const orangeFocus = "focus:border-[#f58021] focus:ring-[#f58021]/20"
+// Orange for buttons/icons/bg. Black & white for rest.
+const orange = "#f58021";
+const black = "#191919";
+const white = "#fff";
 const lightTheme = {
   container: "space-y-3 bg-white p-4 rounded-md shadow-sm",
-  label: "text-[#f58021] font-medium",
-  input: `input-field pl-9 w-full bg-white border ${orangeBorder} text-[#191919] placeholder-orange-200 ${orangeFocus}`,
-  select: `select-field w-full sm:w-auto min-w-[140px] bg-white border ${orangeBorder} text-[#f58021] ${orangeFocus}`,
-  selectPartner: `select-field w-full sm:w-auto min-w-[160px] bg-white border ${orangeBorder} text-[#f58021] ${orangeFocus}`,
-  button: `btn-secondary bg-[#fff8f2] hover:bg-[#f58021] hover:text-white text-[#f58021] border ${orangeBorder} font-medium transition whitespace-nowrap`,
+  label: "text-black font-medium",
+  input: `input-field pl-9 w-full bg-white border border-black text-black placeholder-[#888] focus:border-black focus:ring-black/20`,
+  select: `select-field w-full sm:w-auto min-w-[140px] bg-white border border-black text-black focus:border-black focus:ring-black/20`,
+  selectPartner: `select-field w-full sm:w-auto min-w-[160px] bg-white border border-black text-black focus:border-black focus:ring-black/20`,
+  button:
+    `btn-secondary bg-[${orange}] hover:bg-black hover:text-[${orange}] text-white border border-[${orange}] font-medium transition whitespace-nowrap`,
   buttonDisabled: "opacity-60 cursor-not-allowed",
-  dateInput: `input-field w-full sm:w-auto bg-white border ${orangeBorder} text-[#191919] ${orangeFocus}`,
-  icon: "absolute left-3 top-1/2 -translate-y-1/2 text-orange-200",
-  to: "text-orange-400 text-sm"
-}
+  dateInput: `input-field w-full sm:w-auto bg-white border border-black text-black focus:border-black focus:ring-black/20`,
+  icon: `absolute left-3 top-1/2 -translate-y-1/2 text-[${orange}]`,
+  to: "text-black text-sm"
+};
 
 export default function AWBFilterBar({ filters, onChange, onRefresh }) {
   const [partners, setPartners] = useState([])
@@ -55,7 +56,7 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
 
         {/* Search */}
         <div className="relative flex-1 min-w-[180px]">
-          <RiSearchLine className={lightTheme.icon} />
+          <RiSearchLine className={lightTheme.icon} style={{ color: orange }} />
           <input
             type="text"
             placeholder="Search AWB..."
@@ -131,8 +132,16 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
             onClick={onRefresh}
             className={lightTheme.button}
             type="button"
+            style={{
+              background: orange,
+              color: white,
+              borderColor: orange,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5em'
+            }}
           >
-            <RiRefreshLine />
+            <RiRefreshLine style={{ color: white }} />
             <span className="sr-only sm:not-sr-only">Refresh</span>
           </button>
           <button
@@ -140,8 +149,16 @@ export default function AWBFilterBar({ filters, onChange, onRefresh }) {
             disabled={exporting}
             className={`${lightTheme.button} ${exporting ? lightTheme.buttonDisabled : ''}`}
             type="button"
+            style={{
+              background: orange,
+              color: white,
+              borderColor: orange,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5em'
+            }}
           >
-            <RiUpload2Fill />
+            <RiUpload2Fill style={{ color: white }} />
             <span className="sr-only sm:not-sr-only">{exporting ? 'Exporting...' : 'Export CSV'}</span>
           </button>
         </div>

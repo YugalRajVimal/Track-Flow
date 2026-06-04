@@ -7,7 +7,7 @@ import { awbAPI } from '../../api/awb'
 import BarcodeScanner from './BarcodeScanner'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Passcode modal — color theme update (white + #f58021)
+// Passcode modal — themed: only buttons/icons orange, bg black/white
 // ─────────────────────────────────────────────────────────────────────────────
 function PasscodeModal({ open, onVerify, onClose, verifying }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
@@ -16,10 +16,7 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
       <div
-        className="bg-white rounded-xl shadow-lg max-w-xs w-full px-6 py-8 relative border"
-        style={{
-          borderColor: '#f58021'
-        }}
+        className="bg-white rounded-xl shadow-lg max-w-xs w-full px-6 py-8 relative border border-black"
       >
         <button
           className="absolute right-3 top-3 text-xl"
@@ -31,7 +28,7 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
           type="button"
         >&times;</button>
         <form onSubmit={handleSubmit(handlePasscode)} className="space-y-4">
-          <h2 className="text-lg font-semibold text-center mb-2" style={{ color: '#f58021' }}>
+          <h2 className="text-lg font-semibold text-center mb-2 text-black">
             Enter 5-digit Passcode
           </h2>
           <input
@@ -39,7 +36,7 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
               required: 'Passcode required',
               pattern: { value: /^\d{5}$/, message: '5-digit numeric passcode' },
             })}
-            className="input-field w-full text-center tracking-widest text-lg"
+            className="input-field w-full text-center tracking-widest text-lg border border-black bg-white text-black placeholder-black/60 focus:border-black focus:ring-black/20"
             placeholder="_____"
             minLength={5}
             maxLength={5}
@@ -47,10 +44,6 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
             autoFocus
             autoComplete="one-time-code"
             disabled={verifying}
-            style={{
-              borderColor: '#f58021',
-              background: '#fff'
-            }}
           />
           {errors.passcode && (
             <p className="text-red-500 text-xs mt-1 text-center">{errors.passcode.message}</p>
@@ -74,7 +67,7 @@ function PasscodeModal({ open, onVerify, onClose, verifying }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Multi select toggles for Scan type — white & #f58021 theme
+// Multi select toggles for Scan type — ONLY buttons/icons orange
 // ─────────────────────────────────────────────────────────────────────────────
 function ScanTypeMultiSelect({ isMeesho, onChange, disabled }) {
   // Only one mode can be selected at a time: Meesho QR or Barcode
@@ -83,12 +76,13 @@ function ScanTypeMultiSelect({ isMeesho, onChange, disabled }) {
       <button
         type="button"
         disabled={disabled}
-        className={`flex items-center gap-2 px-4 py-2 border rounded-xl font-medium transition
+        className={`
+          flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition border
           ${!isMeesho
-            ? 'bg-[#f5802115] border-[#f58021] text-[#f58021] shadow'
-            : 'bg-white border-[#f58021]/30 text-[#f58021]'
+            ? 'bg-[#f58021] border-[#f58021] text-white shadow'
+            : 'bg-white border-black text-black'
           }
-          hover:bg-[#f5802120] hover:border-[#f58021]
+          hover:bg-[#f58021]/80 hover:text-white
           ${disabled ? 'opacity-60 cursor-not-allowed' : ''}
         `}
         aria-pressed={!isMeesho}
@@ -97,18 +91,19 @@ function ScanTypeMultiSelect({ isMeesho, onChange, disabled }) {
           boxShadow: !isMeesho ? '0 1px 8px #fa89043b' : undefined,
         }}
       >
-        <RiBarcodeLine className="text-lg" style={{ color: '#f58021' }} />
+        <RiBarcodeLine className="text-lg" style={{ color: '#fff', ...(isMeesho && { color: '#f58021' }) }} />
         <span>Barcode Scan</span>
       </button>
       <button
         type="button"
         disabled={disabled}
-        className={`flex items-center gap-2 px-4 py-2 border rounded-xl font-medium transition
+        className={`
+          flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition border
           ${isMeesho
-            ? 'bg-[#f5802115] border-[#f58021] text-[#f58021] shadow'
-            : 'bg-white border-[#f58021]/30 text-[#f58021]'
+            ? 'bg-[#f58021] border-[#f58021] text-white shadow'
+            : 'bg-white border-black text-black'
           }
-          hover:bg-[#f5802120] hover:border-[#f58021]
+          hover:bg-[#f58021]/80 hover:text-white
           ${disabled ? 'opacity-60 cursor-not-allowed' : ''}
         `}
         aria-pressed={isMeesho}
@@ -117,7 +112,7 @@ function ScanTypeMultiSelect({ isMeesho, onChange, disabled }) {
           boxShadow: isMeesho ? '0 1px 8px #fa89043b' : undefined,
         }}
       >
-        <RiQrScanLine className="text-lg" style={{ color: '#f58021' }} />
+        <RiQrScanLine className="text-lg" style={{ color: '#fff', ...(!isMeesho && { color: '#f58021' }) }} />
         <span>MEESHO PACKAGE QR SCAN</span>
       </button>
     </div>
@@ -125,7 +120,7 @@ function ScanTypeMultiSelect({ isMeesho, onChange, disabled }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Main component — color theme update (white & #f58021)
+// Main component — themed: only buttons/icons orange, otherwise black/white
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AWBCancelForm({ onSuccess, userId }) {
@@ -139,7 +134,6 @@ export default function AWBCancelForm({ onSuccess, userId }) {
   // ── NEW: scan type multi select state ───────────────────────────────
   const [isMeeshoOrder, setIsMeeshoOrder] = useState(false)
   // Derive the partnerName string BarcodeScanner expects:
-  // pass "Meesho" when toggled on, empty string otherwise.
   const partnerName = isMeeshoOrder ? 'Meesho' : ''
 
   const awbInputRef = useRef(null)
@@ -223,11 +217,11 @@ export default function AWBCancelForm({ onSuccess, userId }) {
 
   const mergedRef = (el) => { rhfRef(el); awbInputRef.current = el }
 
-  // ── Class shorthands — Use only white + orange theme ──────────────
+  // ── Class shorthands — ONLY buttons/icons orange, otherwise b/w ──────
   const baseInput =
-    'input-field pl-9 font-mono bg-white border border-[#f58021] text-[#f58021] placeholder-[#f58021]/60 focus:border-[#f58021] focus:ring-[#f58021]/20'
+    'input-field pl-9 font-mono bg-white border border-black text-black placeholder-black/60 focus:border-black focus:ring-black/20'
   const baseButtonSecondary =
-    'btn-secondary px-3 flex-shrink-0 bg-white border border-[#f58021] hover:bg-[#f5802111] hover:border-[#f58021] text-[#f58021] font-semibold transition rounded-lg'
+    'btn-secondary px-3 flex-shrink-0 bg-[#f58021] border border-[#f58021] hover:bg-[#f58021]/80 text-white font-semibold transition rounded-lg'
   const errorText = 'text-pink-600 text-xs mt-1'
 
   // ── Passcode gate ─────────────────────────────────────────────────
@@ -244,10 +238,9 @@ export default function AWBCancelForm({ onSuccess, userId }) {
 
   return (
     <div
-      className="space-y-4 p-6 rounded-2xl shadow border flex flex-col items-center w-full max-w-xl mx-auto"
+      className="space-y-4 p-6 rounded-2xl shadow border border-black flex flex-col items-center w-full max-w-xl mx-auto"
       style={{
-        background: '#fff',
-        borderColor: '#f58021',
+        background: '#fff'
       }}
     >
 
@@ -270,7 +263,7 @@ export default function AWBCancelForm({ onSuccess, userId }) {
           }}
           disabled={submitting}
         />
-        <div className="mt-1 text-xs text-[#f58021] text-center font-medium">
+        <div className="mt-1 text-xs text-black text-center font-medium">
           {isMeeshoOrder
             ? 'Scan QR code printed on Meesho packet only'
             : 'Scan AWB barcode (not Meesho QR) only'
@@ -280,7 +273,7 @@ export default function AWBCancelForm({ onSuccess, userId }) {
 
       {/* ── AWB input field ────────────────────────────────────── */}
       <form className="w-full" autoComplete="off" onSubmit={handleSubmit(doSubmit)}>
-        <label className="label font-medium mb-1 block text-center" style={{ color: "#f58021" }}>
+        <label className="label font-medium mb-1 block text-center text-black">
           AWB ID *
         </label>
         <div className="flex gap-2 w-full justify-center">
@@ -308,7 +301,7 @@ export default function AWBCancelForm({ onSuccess, userId }) {
             title="Scan barcode"
             disabled={submitting}
           >
-            <RiBarcodeLine className="text-lg" style={{ color: '#f58021' }} />
+            <RiBarcodeLine className="text-lg" style={{ color: '#fff' }} />
           </button>
         </div>
         {errors.awbId && <p className={errorText + ' text-center'}>{errors.awbId.message}</p>}
@@ -317,10 +310,10 @@ export default function AWBCancelForm({ onSuccess, userId }) {
 
       {/* ── Info block ────────────────────────────────────────── */}
       <div className="flex flex-col items-center gap-3 w-full justify-center pt-2">
-        <p className="font-semibold text-lg text-[#f58021] text-center">
+        <p className="font-semibold text-lg text-black text-center">
           Scan AWB to Cancel
         </p>
-        <p className="text-sm text-[#f58021]/80 text-center max-w-xs mx-auto">
+        <p className="text-sm text-black/80 text-center max-w-xs mx-auto">
           This operation <b>immediately cancels</b> AWB upon scanning or submitting.<br />
           No confirmation. Please scan carefully.
         </p>

@@ -39,7 +39,7 @@ export default function StatCard({ icon: Icon, label, value, color = 'brand', tr
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.4 }}
       className={
-        `stat-card border ${c.border} hover:border-[#f58021] bg-white rounded-xl shadow-sm relative transition-all duration-300`
+        `stat-card border ${c.border}  h-full hover:border-[#f58021] bg-white rounded-xl shadow-sm relative transition-all duration-300`
       }
     >
       <div className="flex items-start justify-between mb-4">

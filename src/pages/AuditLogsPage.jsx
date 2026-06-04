@@ -5,12 +5,12 @@ import { auditLogsAPI } from '../api/services'
 import { DataTable, Pagination } from '../components/common/DataTable'
 import toast from 'react-hot-toast'
 
-// -- Light theme color mappings --
+// -- Orange theme for action colors, rest is black & white --
 const ACTION_COLORS = {
-  create: 'text-emerald-700 bg-emerald-100 border-emerald-200',
-  update: 'text-blue-700 bg-blue-100 border-blue-200',
-  delete: 'text-red-700 bg-red-100 border-red-200',
-  cancel: 'text-amber-700 bg-amber-100 border-amber-200',
+  create: 'text-white bg-orange-500 border-orange-700',
+  update: 'text-white bg-orange-400 border-orange-700',
+  delete: 'text-white bg-orange-700 border-orange-700',
+  cancel: 'text-white bg-orange-300 border-orange-700',
 }
 
 export default function AuditLogsPage() {
@@ -42,7 +42,7 @@ export default function AuditLogsPage() {
       key: 'actionType',
       label: 'Action',
       render: (val) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider border ${ACTION_COLORS[val] || 'text-gray-400 bg-gray-100 border-gray-200'}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider border ${ACTION_COLORS[val] || 'text-gray-600 bg-white border-gray-400'}`}>
           {val}
         </span>
       ),
@@ -55,20 +55,20 @@ export default function AuditLogsPage() {
     {
       key: 'description',
       label: 'Description',
-      render: (val) => <span className="text-gray-600 text-xs">{val || '—'}</span>,
+      render: (val) => <span className="text-black text-xs">{val || '—'}</span>,
     },
     {
       key: 'resourceId',
       label: 'Resource ID',
       render: (val) => val ? (
-        <span className="font-mono text-xs text-gray-500">{String(val).slice(-8)}</span>
+        <span className="font-mono text-xs text-black">{String(val).slice(-8)}</span>
       ) : '—',
     },
     {
       key: 'createdAt',
       label: 'Timestamp',
       render: (val) => val ? (
-        <span className="font-mono text-xs text-gray-500">
+        <span className="font-mono text-xs text-black">
           {dayjs(val).format('MMM D, YYYY HH:mm:ss')}
         </span>
       ) : '—',
@@ -76,31 +76,32 @@ export default function AuditLogsPage() {
   ]
 
   return (
-    <div className="space-y-6 animate-fade-in bg-gray-50 min-h-screen">
+    <div className="space-y-6 animate-fade-in bg-white min-h-screen">
       <div>
-        <h1 className="page-title text-gray-900">Audit Logs</h1>
-        <p className="text-gray-500 text-sm mt-1">Complete record of all system actions</p>
+        <h1 className="page-title text-black">Audit Logs</h1>
+        <p className="text-black text-sm mt-1">Complete record of all system actions</p>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-black">
         {/* Filters */}
-        <div className="p-5 border-b border-gray-100 bg-gray-50">
+        <div className="p-5 border-b border-black bg-white">
           <div className="flex flex-wrap gap-3">
             <div className="relative flex-1 min-w-[200px]">
-              <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-500" />
               <input
                 type="text"
                 placeholder="Search logs..."
                 value={filters.search}
                 onChange={e => setFilters(p => ({ ...p, search: e.target.value, page: 1 }))}
-                className="input-field pl-9 w-full border-gray-200 bg-white text-gray-800 focus:border-blue-400"
+                className="pl-9 w-full border border-black bg-white text-black focus:border-orange-500 rounded-md py-2 px-3"
               />
             </div>
 
             <select
               value={filters.actionType}
               onChange={e => setFilters(p => ({ ...p, actionType: e.target.value, page: 1 }))}
-              className="select-field w-auto min-w-[140px] border-gray-200 bg-white text-gray-800"
+              className="w-auto min-w-[140px] border border-black bg-white text-black rounded-md py-2 px-3"
+              style={{ appearance: 'none', cursor: 'pointer' }}
             >
               <option value="">All Actions</option>
               <option value="create">Create</option>
@@ -113,13 +114,13 @@ export default function AuditLogsPage() {
               type="date"
               value={filters.startDate}
               onChange={e => setFilters(p => ({ ...p, startDate: e.target.value, page: 1 }))}
-              className="input-field w-auto border-gray-200 bg-white text-gray-800"
+              className="border border-black bg-white text-black rounded-md py-2 px-3 w-auto"
             />
             <input
               type="date"
               value={filters.endDate}
               onChange={e => setFilters(p => ({ ...p, endDate: e.target.value, page: 1 }))}
-              className="input-field w-auto border-gray-200 bg-white text-gray-800"
+              className="border border-black bg-white text-black rounded-md py-2 px-3 w-auto"
             />
           </div>
         </div>
@@ -134,6 +135,7 @@ export default function AuditLogsPage() {
           <Pagination
             pagination={pagination}
             onChange={(page) => setFilters(p => ({ ...p, page }))}
+            buttonClassName="bg-orange-500 text-white border border-orange-700 hover:bg-orange-600 active:bg-orange-700 focus:ring-orange-300"
           />
         </div>
       </div>

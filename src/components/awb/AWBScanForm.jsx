@@ -6,19 +6,17 @@ import { RiBarcodeLine, RiQrScanLine, RiSendPlane2Line, RiLoader4Line } from 're
 import { awbAPI } from '../../api/awb'
 import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
-import { useAuthStore } from '../../store/authStore' // <--- Added for admin detection
+import { useAuthStore } from '../../store/authStore'
 
-// Orange theme colors
+// Orange color for buttons and icons only
 const PRIMARY_ORANGE = '#f58021'
 
-// ── Scan Alert Box Component ──
+// Scan Alert Box Component - Black/White theme
 function ScanAlertBox({ scanInfo }) {
   if (!scanInfo) return null
 
-  // Orange for all, special for QR (darker bg), both use orange border/text
-  const boxClass = scanInfo.type === 'qr'
-    ? 'bg-[#fff3e6] border border-[#f58021] text-[#f58021]'
-    : 'bg-white border border-[#f58021] text-[#f58021]'
+  // Black/White background, only icon and border are orange
+  const boxClass = 'bg-white border border-[#f58021] text-black'
 
   const icon = scanInfo.type === 'qr' ? (
     <RiQrScanLine className="text-2xl mr-2" style={{ color: PRIMARY_ORANGE }} />
@@ -40,7 +38,7 @@ export default function AWBScanForm({ onSuccess }) {
   const [loadingBrands, setLoadingBrands] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [showBackdate, setShowBackdate] = useState(false) // for admin backdate checkbox
+  const [showBackdate, setShowBackdate] = useState(false)
 
   const awbInputRef = useRef(null)
   const user = useAuthStore((state) => state.user)
@@ -59,8 +57,8 @@ export default function AWBScanForm({ onSuccess }) {
       channelPartnerId: '',
       brandId: '',
       awbId: '',
-      backDate: '', // for date input
-      backDateScan: false, // for backdate scan toggle
+      backDate: '',
+      backDateScan: false,
     },
   })
 
@@ -68,17 +66,12 @@ export default function AWBScanForm({ onSuccess }) {
   const watchBackDateScan = watch('backDateScan')
   const watchBackDate = watch('backDate')
 
-  // ── NEW: derive the selected partner object so we can read its name ──
   const selectedPartnerObj = partners.find(p => p._id === selectedPartner) || null
   const selectedPartnerName = selectedPartnerObj?.name || ''
 
-  // ── Build scanInfo based on partner type ──
   let scanInfo = null
-
   if (selectedPartnerObj) {
-    if (
-      selectedPartnerObj.name?.toLowerCase().includes('meesho')
-    ) {
+    if (selectedPartnerObj.name?.toLowerCase().includes('meesho')) {
       scanInfo = {
         type: 'qr',
         label: 'MEESHO: Scan only Packet QR Code.',
@@ -111,7 +104,6 @@ export default function AWBScanForm({ onSuccess }) {
       awbInputRef.current.value = ''
       setTimeout(() => { awbInputRef.current?.focus() }, 0)
     }
-    // Also reset backDate if present
     if (isAdmin) {
       setValue('backDate', '', { shouldValidate: false, shouldDirty: false })
       setValue('backDateScan', false, { shouldValidate: false, shouldDirty: false })
@@ -137,7 +129,6 @@ export default function AWBScanForm({ onSuccess }) {
         clearAWB()
         return
       }
-      // If admin & backdate selected, validate date
       if (isAdmin && backDateScan) {
         if (!backDate) {
           toast.error('Please select a date for backdate scan')
@@ -150,7 +141,7 @@ export default function AWBScanForm({ onSuccess }) {
         const apiPayload = { channelPartnerId, brandId, awbId }
         if (isAdmin && backDateScan) {
           apiPayload.backDateScan = true
-          apiPayload.date = backDate // pass as 'date'
+          apiPayload.date = backDate
         }
         const res = await awbAPI.scan(apiPayload)
         if (res.data?.success) {
@@ -170,7 +161,6 @@ export default function AWBScanForm({ onSuccess }) {
 
   const onScan = useCallback(
     async (scannedValue) => {
-      // build data according to whether backdate and admin applies
       const data = {
         channelPartnerId: getValues('channelPartnerId'),
         brandId: getValues('brandId'),
@@ -204,21 +194,21 @@ export default function AWBScanForm({ onSuccess }) {
     awbInputRef.current = el
   }
 
-  // THEME CLASSES: Orange + White theme, not blue
+  // Black/White theme for all fields except buttons and icons (orange)
   const baseInput =
-    'input-field pl-9 font-mono bg-white border border-orange-200 text-[#191919] placeholder-orange-200 focus:border-[#f58021] focus:ring-[#f58021]/20'
+    'input-field pl-9 font-mono bg-white border border-black text-black placeholder-gray-300 focus:border-black focus:ring-black/20'
   const baseSelect =
-    'select-field bg-white border border-orange-200 text-[#f58021] placeholder-orange-200 focus:border-[#f58021] focus:ring-[#f58021]/20'
-  const baseLabel = 'label text-[#f58021] font-medium'
+    'select-field bg-white border border-black text-black placeholder-gray-300 focus:border-black focus:ring-black/20'
+  const baseLabel = 'label text-black font-medium'
   const baseButtonSecondary =
-    'btn-secondary px-3 flex-shrink-0 bg-[#fff8f2] border border-orange-200 hover:bg-[#f58021] hover:text-white text-[#f58021] font-medium transition'
+    'btn-secondary px-3 flex-shrink-0 bg-white border border-[#f58021] hover:bg-[#f58021] hover:text-white text-[#f58021] font-medium transition'
   const baseButtonPrimary =
     'btn-primary px-4 py-2 rounded bg-[#f58021] text-white hover:bg-orange-500 flex items-center gap-1 font-semibold'
   const errorText = 'text-pink-600 text-xs mt-1'
 
   return (
     <>
-      {/* ── CHANGED: pass partnerName so BarcodeScanner knows the active partner ── */}
+      {/* Pass partnerName so BarcodeScanner knows the active partner */}
       <BarcodeScanner
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
@@ -295,7 +285,7 @@ export default function AWBScanForm({ onSuccess }) {
               title="Scan barcode"
               disabled={submitting}
             >
-              <RiQrScanLine className="text-lg" />
+              <RiQrScanLine className="text-lg" style={{ color: PRIMARY_ORANGE }} />
             </button>
           </div>
           {errors.awbId && <p className={errorText}>{errors.awbId.message}</p>}
@@ -339,9 +329,9 @@ export default function AWBScanForm({ onSuccess }) {
 
         <button type="submit" disabled={submitting} className={baseButtonPrimary}>
           {submitting ? (
-            <><RiLoader4Line className="animate-spin" /> Scanning...</>
+            <><RiLoader4Line className="animate-spin" style={{ color: 'white' }} /> Scanning...</>
           ) : (
-            <><RiSendPlane2Line /> Submit Scan</>
+            <><RiSendPlane2Line style={{ color: 'white' }} /> Submit Scan</>
           )}
         </button>
       </form>

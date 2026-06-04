@@ -7,17 +7,15 @@ import { DataTable, Pagination } from '../components/common/DataTable'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import EntityFormModal from '../components/admin/EntityFormModal'
 
-// --- Orange (#f58021) & White color palette theme ---
+// --- Orange & White/Black theme color palette ---
 const ORANGE = '#f58021'
-const textPrimary = 'text-slate-800'
-const textSecondary = 'text-orange-500'
-const borderLight = 'border-orange-200'
+const textPrimary = 'text-black'
+const textSecondary = 'text-zinc-500'
+const borderLight = 'border-zinc-200'
 const bgCard = 'bg-white'
-const bgHighlight = '[background-color:#fff4ec]' // subtle orange tint
-const accent = 'text-[#f58021]'
-const accentSubtle = 'text-orange-400'
-const btnPrimary = 'bg-[#f58021] hover:bg-[#e46e06] text-white border-[#f58021]'
-const btnPrimaryOutline = 'border border-[#f58021] bg-white hover:bg-[#f58021]/10 text-[#f58021]'
+const accent = `text-[${ORANGE}]`
+const btnPrimary = `bg-[${ORANGE}] hover:bg-[#f77200] text-white`
+const btnPrimaryOutline = `border border-[${ORANGE}] bg-white hover:bg-orange-50 text-[${ORANGE}]`
 const shadow = 'shadow'
 const rounded = 'rounded-xl'
 
@@ -93,27 +91,16 @@ export default function ChannelPartnersPage() {
     }
   }
 
+  const orangeIcon = `text-[${ORANGE}]`
   const columns = [
     { key: 'name', label: 'Partner Name', render: v => <span className={textPrimary}>{v}</span> },
-    {
-      key: 'code',
-      label: 'Code',
-      render: v => <span className="font-mono text-xs text-orange-400">{v}</span>
-    },
-    {
-      key: 'email',
-      label: 'Email',
-      render: v => <span className={`${textSecondary} text-xs`}>{v || '—'}</span>
-    },
-    {
-      key: 'phone',
-      label: 'Phone',
-      render: v => <span className={`${textSecondary} text-xs`}>{v || '—'}</span>
-    },
+    { key: 'code', label: 'Code', render: v => <span className="font-mono text-xs" style={{ color: ORANGE }}>{v}</span> },
+    { key: 'email', label: 'Email', render: v => <span className={`${textSecondary} text-xs`}>{v || '—'}</span> },
+    { key: 'phone', label: 'Phone', render: v => <span className={`${textSecondary} text-xs`}>{v || '—'}</span> },
     {
       key: 'createdAt', label: 'Created',
       render: v =>
-        v ? <span className="text-xs text-orange-300">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
+        v ? <span className="text-xs text-zinc-400">{dayjs(v).format('MMM D, YYYY')}</span> : '—'
     },
     {
       key: 'actions', label: 'Actions',
@@ -121,19 +108,19 @@ export default function ChannelPartnersPage() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => { setEditing(row); setModalOpen(true) }}
-            className="p-1.5 text-orange-400 hover:text-[#f58021] hover:bg-[#f58021]/10 rounded-lg transition-all"
+            className="p-1.5 bg-white text-zinc-400 hover:bg-orange-50 rounded-lg transition-all"
             aria-label="Edit"
             style={{ outline: 'none' }}
           >
-            <RiEditLine />
+            <RiEditLine className={orangeIcon} />
           </button>
           <button
             onClick={() => setDeleteItem(row)}
-            className="p-1.5 text-orange-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+            className="p-1.5 bg-white text-zinc-400 hover:bg-orange-50 rounded-lg transition-all"
             aria-label="Delete"
             style={{ outline: 'none' }}
           >
-            <RiDeleteBinLine />
+            <RiDeleteBinLine className={orangeIcon} />
           </button>
         </div>
       )
@@ -159,17 +146,17 @@ export default function ChannelPartnersPage() {
         defaultValues={editing || {}}
         loading={saving}
       />
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6 animate-fade-in bg-white min-h-screen">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold leading-tight text-slate-800">Channel Partners</h1>
-            <p className="text-orange-400 text-sm mt-1">Manage logistics and channel partners</p>
+            <h1 className="text-2xl font-bold leading-tight text-black">Channel Partners</h1>
+            <p className="text-zinc-500 text-sm mt-1">Manage logistics and channel partners</p>
           </div>
           <button
             onClick={() => { setEditing(null); setModalOpen(true) }}
             className={`flex items-center gap-2 px-4 py-2 ${btnPrimary} rounded-lg font-medium shadow transition-colors`}
           >
-            <RiAddLine /> Add Partner
+            <RiAddLine className="text-white" /> Add Partner
           </button>
         </div>
         <div className={`${bgCard} border ${borderLight} ${rounded} ${shadow} overflow-hidden`}>

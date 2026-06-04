@@ -2,6 +2,10 @@ import React, { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { RiCloseLine } from 'react-icons/ri'
 
+const ORANGE = '#f58021'
+const BLACK = '#191919'
+const WHITE = '#ffffff'
+
 export default function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }) {
   useEffect(() => {
     const handleEsc = (e) => { if (e.key === 'Escape') onClose() }
@@ -26,21 +30,21 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className={`bg-white text-[#191919] shadow-xl rounded-lg w-full ${maxWidth} modal-content border-2 border-orange-200`}
+            className={`bg-white text-black shadow-xl rounded-lg w-full ${maxWidth} modal-content border-2 border-orange-200`}
             onClick={e => e.stopPropagation()}
           >
             {title && (
-              <div className="flex items-center justify-between p-5 border-b border-orange-200 bg-[#fff8f2] rounded-t-lg">
-                <h2 className="text-base font-semibold text-[#f58021]">{title}</h2>
+              <div className="flex items-center justify-between p-5 border-b border-orange-200 bg-white rounded-t-lg">
+                <h2 className="text-base font-semibold text-black">{title}</h2>
                 <button
                   onClick={onClose}
-                  className="text-[#f58021] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#f58021]/90 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                  className="text-white bg-[#f58021] hover:bg-[#191919] transition-colors p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
                   style={{
-                    border: '1px solid #f58021',
-                    background: 'white'
+                    border: `1px solid ${ORANGE}`,
+                    background: ORANGE
                   }}
                 >
-                  <RiCloseLine className="text-xl" />
+                  <RiCloseLine className="text-xl" style={{ color: WHITE }} />
                 </button>
               </div>
             )}

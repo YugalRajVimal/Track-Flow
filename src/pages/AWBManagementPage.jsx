@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import dayjs from 'dayjs'
 import {
   RiBarcodeLine, RiCloseCircleLine, RiDeleteBinLine,
-  RiEyeLine, RiLoader4Line, RiAlertLine,
+  RiEyeLine, RiAlertLine,
 } from 'react-icons/ri'
 import { awbAPI } from '../api/awb'
 import { DataTable, Pagination } from '../components/common/DataTable'
@@ -17,41 +16,36 @@ import AWBCancelForm from '../components/awb/AWBCancelForm'
 import AWBFilterBar from '../components/awb/AWBFilterBar'
 import AWBMissingForm from '../components/awb/AWBMissingForm'
 
-// --- Orange ("#f58021") & White color palette theme ---
+// --- Orange, Black and White ONLY theme ---
+// Updated border colors to match ReturnManagementPage.jsx style
 const ORANGE = '#f58021'
-const textDark = 'text-slate-800'
-const textSubtle = 'text-zinc-500'
-const borderLight = 'border-slate-200'
+const textDark = 'text-black'
+const textSubtle = 'text-zinc-700'
+const borderLight = 'border-black/10'
 const bgLight = 'bg-white'
-const bgHighlight = '[background-color:#fff4ec]'
-const accent = '[color:#f58021]'
-const accentBorder = '[border-color:#f58021]'
+const bgHighlight = 'bg-white' // removed orange for highlight, just white for b/w look
+const accent = 'text-[#f58021]'
+const accentBorder = 'border-[#f58021]'
 const cardShadow = 'shadow'
-const cardBorder = 'border border-slate-200'
+const cardBorder = 'border border-black/10'
 
-// ───────────────────────────────────────────────
-// Tabs — "Scan", "Cancel", "Missing"
 const TABS = [
   { id: 'scan',    label: 'Scan AWB',    icon: RiBarcodeLine },
   { id: 'cancel',  label: 'Cancel AWB',  icon: RiCloseCircleLine },
   { id: 'missing', label: 'Missing AWB', icon: RiAlertLine },
 ]
 
-// Per-tab accent colours so the active indicator matches the operation, use orange, red/yellow
+// Only orange for active, black/white otherwise (matches ReturnManagementPage)
 const TAB_ACTIVE_CLASSES = {
-  scan:    '[color:#f58021] [border-color:#f58021] [background-color:#fff4ec]',
-  cancel:  'text-red-600 border-red-600 bg-red-50',
-  missing: 'text-amber-600 border-amber-600 bg-amber-50',
+  scan:    'text-[#f58021] border-[#f58021] bg-white',
+  cancel:  'text-[#f58021] border-[#f58021] bg-white',
+  missing: 'text-[#f58021] border-[#f58021] bg-white',
 }
-
-// Orange, red, yellow hover for tabs
 const TAB_HOVER_CLASSES = {
-  scan:    'hover:[color:#f58021] hover:[background-color:#fff4ec]',
-  cancel:  'hover:text-red-600 hover:bg-red-50',
-  missing: 'hover:text-amber-600 hover:bg-amber-50',
+  scan:    'hover:text-[#f58021] hover:bg-[#fff] hover:border-[#f58021]',
+  cancel:  'hover:text-[#f58021] hover:bg-[#fff] hover:border-[#f58021]',
+  missing: 'hover:text-[#f58021] hover:bg-[#fff] hover:border-[#f58021]',
 }
-
-// ───────────────────────────────────────────────
 
 export default function AWBManagementPage() {
   const [activeTab, setActiveTab] = useState('scan')
@@ -157,16 +151,17 @@ export default function AWBManagementPage() {
       label: 'Actions',
       render: (_, row) => (
         <div className="flex items-center gap-2">
+          {/* Orange only buttons with white icon or background, rest black and white */}
           <button
             onClick={() => setViewItem(row)}
-            className="p-1.5 text-slate-500 hover:[color:#f58021] hover:[background-color:#fff4ec] rounded-lg transition-all"
+            className="p-1.5 bg-[#f58021] text-white hover:opacity-80 rounded-lg transition-all"
             title="View"
           >
             <RiEyeLine />
           </button>
           <button
             onClick={() => setDeleteItem(row)}
-            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all"
+            className="p-1.5 bg-[#f58021] text-white hover:opacity-80 rounded-lg transition-all"
             title="Delete"
           >
             <RiDeleteBinLine />
@@ -222,8 +217,8 @@ export default function AWBManagementPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className={` text-2xl font-bold tracking-tight`}>Dispatch Management</h1>
-            <p className={`text-zinc-500 text-sm mt-1`}>Scan, track, and manage AWB barcodes</p>
+            <h1 className={` text-2xl font-bold tracking-tight ${textDark}`}>Dispatch Management</h1>
+            <p className={`text-black text-sm mt-1`}>Scan, track, and manage AWB barcodes</p>
           </div>
         </div>
 
@@ -245,7 +240,7 @@ export default function AWBManagementPage() {
                     }`}
                     style={{ outline: 'none' }}
                   >
-                    <Icon className="shrink-0" />
+                    <Icon className={`${activeTab === id ? 'text-[#f58021]' : 'text-black'} shrink-0`} />
                     <span className="truncate">{label}</span>
                   </button>
                 ))}
@@ -261,8 +256,8 @@ export default function AWBManagementPage() {
           {/* Table on right (fills remainder), spans 2 columns on lg, 3 on 2xl */}
           <div className="col-span-1 lg:col-span-2 2xl:col-span-3">
             <div className={`${bgLight} ${cardShadow} ${cardBorder} rounded-xl overflow-hidden`}>
-              <div className={`p-5 border-b ${borderLight} [background-color:#fff8f2]`}>
-                <h2 className={`${accent} text-lg font-semibold mb-4`}>AWB Records</h2>
+              <div className={`p-5 border-b ${borderLight} bg-white`}>
+                <h2 className={`text-black text-lg font-semibold mb-4 ${accent}`}>AWB Records</h2>
                 <AWBFilterBar
                   filters={filters}
                   onChange={handleFilterChange}
@@ -270,21 +265,17 @@ export default function AWBManagementPage() {
                 />
               </div>
 
-              <div className="p-0 sm:p-5">
-                <div className="overflow-x-auto">
-                  <DataTable
-                    columns={columns}
-                    data={awbs}
-                    loading={loading}
-                    emptyMessage="No AWB records found"
-                  />
-                </div>
-                <div className="mt-4">
-                  <Pagination
-                    pagination={pagination}
-                    onChange={(page) => handleFilterChange({ page })}
-                  />
-                </div>
+              <div className="p-5">
+                <DataTable
+                  columns={columns}
+                  data={awbs}
+                  loading={loading}
+                  emptyMessage="No AWB records found"
+                />
+                <Pagination
+                  pagination={pagination}
+                  onChange={(page) => handleFilterChange({ page })}
+                />
               </div>
             </div>
           </div>

@@ -84,6 +84,8 @@ export default function BarcodeScanner({
   const preferredDeviceIdRef = useRef(null)
 
   const brandColor = "#f58021"
+  const black = "#151515"
+  const white = "#fff"
 
   const getReader = useCallback(() => {
     if (!cameraReaderRef.current) {
@@ -310,19 +312,19 @@ export default function BarcodeScanner({
 
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
-      <div className="space-y-4 bg-white" style={{color: '#444'}}>
+      <div className="space-y-4" style={{ color: black, background: white }}>
 
-        {/* ── Partner badge with orange brand color ─────────────── */}
+        {/* Partner badge - black/white only */}
         {partnerName && (
           <div
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium w-fit`}
             style={{
-              background: '#fff9f3',
-              border: `1px solid #f58021`,
-              color: '#f58021',
+              background: white,
+              border: `1.5px solid ${black}`,
+              color: black
             }}
           >
-            <ScanIcon className="shrink-0" />
+            <ScanIcon className="shrink-0" style={{ color: brandColor }} />
             <span>
               {isMeesho
                 ? `${partnerName} — scanning QR codes only`
@@ -331,11 +333,11 @@ export default function BarcodeScanner({
           </div>
         )}
 
-        {/* ── Mode tabs with orange/white theme ────────────────── */}
+        {/* Mode tabs - only buttons & icons are orange */}
         <div className="flex gap-2">
           {[
-            ['camera', <RiCameraLine />, 'Camera'],
-            ['file',   <RiImageLine />,  'Upload Image'],
+            ['camera', <RiCameraLine style={{ color: brandColor }} />, 'Camera'],
+            ['file',   <RiImageLine style={{ color: brandColor }} />,  'Upload Image'],
           ].map(([m, icon, label]) => (
             <button
               key={m}
@@ -346,11 +348,13 @@ export default function BarcodeScanner({
                   ? {
                       background: brandColor,
                       color: '#fff',
+                      border: `1.5px solid ${brandColor}`,
+                      fontWeight: 600
                     }
                   : {
-                      background: '#fff9f3',
-                      color: '#f58021',
-                      border: `1.5px solid #f58021`,
+                      background: white,
+                      color: brandColor,
+                      border: `1.5px solid ${brandColor}`,
                       fontWeight: 500,
                     }
               }
@@ -360,32 +364,32 @@ export default function BarcodeScanner({
           ))}
         </div>
 
-        {/* ── Hint colored orange ──────────────────────────────── */}
-        <div className="flex items-center gap-2 text-sm" style={{color: "#f58021"}}>
-          <ScanIcon className="shrink-0" style={{color: "#f58021"}} />
+        {/* Hint - black text, orange ScanIcon */}
+        <div className="flex items-center gap-2 text-sm" style={{ color: black }}>
+          <ScanIcon className="shrink-0" style={{ color: brandColor }} />
           <span>{scanHint}</span>
         </div>
 
-        {/* ── Error with red styles, no change needed ───────────── */}
+        {/* Error flash unchanged */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">{error}</div>
         )}
 
-        {/* ── Success flash with orange accent ─────────────────── */}
+        {/* Success flash - black/white theme only */}
         {lastScannedValue && (
           <div
             className="rounded-xl p-3 text-sm flex items-center gap-2"
             style={{
-              background: "#fff9f3",
-              border: "1.5px solid #f58021",
-              color: "#f58021",
+              background: white,
+              border: `1.5px solid ${black}`,
+              color: black
             }}>
             <span className="font-semibold" style={{color: "#20ac51"}}>✓ Scanned:</span>
             <span className="font-mono break-all">{lastScannedValue}</span>
           </div>
         )}
 
-        {/* ── Camera view with orange accents ──────────────────── */}
+        {/* Camera view - background always black, scan guides/lines orange */}
         {mode === 'camera' && (
           <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
             <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
@@ -396,7 +400,7 @@ export default function BarcodeScanner({
                 {isMeesho ? (
                   <div
                     className="relative z-10 w-48 h-48 rounded"
-                    style={{border: `2px solid ${brandColor}`}}
+                    style={{ border: `2px solid ${brandColor}` }}
                   >
                     <div
                       className="absolute inset-x-0 h-0.5"
@@ -409,7 +413,7 @@ export default function BarcodeScanner({
                 ) : (
                   <div
                     className="relative z-10 w-4/5 h-20 rounded"
-                    style={{border: `2px solid ${brandColor}`}}
+                    style={{ border: `2px solid ${brandColor}` }}
                   >
                     <div
                       className="absolute inset-x-0 h-0.5"
@@ -425,25 +429,30 @@ export default function BarcodeScanner({
 
             {scanning && (
               <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+                {/* Torch button - orange only */}
                 <button
                   onClick={toggleTorch}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium shadow transition-colors`}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium shadow transition-colors"
                   style={
                     torchOn
-                      ? {background: "#ffe4b8", color: "#e66000" }
-                      : {background: "#202020e0", color: "#fff"}
+                      ? { background: brandColor, color: white }
+                      : { background: white, color: brandColor, border: `1.5px solid ${brandColor}` }
                   }
                 >
-                  🔦 {torchOn ? 'On' : 'Off'}
+                  <span style={{ color: brandColor }}>🔦</span> {torchOn ? 'On' : 'Off'}
                 </button>
                 <div className="flex items-center gap-2">
                   {devices.length > 1 && (
                     <button
                       onClick={flipCamera}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium shadow active:scale-95 transition-transform"
-                      style={{background: "#202020e0", color: "#fff"}}
+                      style={{
+                        background: white,
+                        color: brandColor,
+                        border: `1.5px solid ${brandColor}`
+                      }}
                     >
-                      <span style={{ fontSize: 15 }}>🔄</span>
+                      <span style={{ fontSize: 15, color: brandColor }}>🔄</span>
                       <span>{facingMode === 'environment' ? 'Front' : 'Rear'}</span>
                     </button>
                   )}
@@ -452,7 +461,13 @@ export default function BarcodeScanner({
                       value={activeDeviceId || ''}
                       onChange={e => { if (e.target.value !== activeDeviceId) switchCamera(e.target.value) }}
                       className="px-2 py-1.5 rounded-full text-xs font-medium border-0 shadow"
-                      style={{background:'#202020e0', color:'#fff', maxWidth:130}}
+                      style={{
+                        background: white,
+                        color: brandColor,
+                        border: `1.5px solid ${brandColor}`,
+                        maxWidth: 130,
+                        fontWeight: 500,
+                      }}
                     >
                       {devices.map((d, i) => (
                         <option value={d.deviceId} key={d.deviceId}>
@@ -473,7 +488,7 @@ export default function BarcodeScanner({
           </div>
         )}
 
-        {/* ── File upload with orange accents ───────────────────── */}
+        {/* File upload area: button and icon orange, otherwise b/w */}
         {mode === 'file' && (
           <>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
@@ -481,25 +496,25 @@ export default function BarcodeScanner({
               onClick={() => fileInputRef.current?.click()}
               className="w-full py-10 border-2 border-dashed rounded-xl text-sm flex flex-col items-center gap-2"
               style={{
-                borderColor: "#f58021",
-                color: "#f58021",
-                background: "#fff9f3",
+                borderColor: brandColor,
+                color: brandColor,
+                background: white,
                 fontWeight: 500,
               }}
             >
-              <RiImageLine className="text-3xl" style={{color: brandColor}}/>
+              <RiImageLine className="text-3xl" style={{ color: brandColor }} />
               <span>
                 {isMeesho
                   ? 'Tap to choose a photo of the QR code'
                   : 'Tap to choose a photo of the barcode'}
               </span>
-              <span className="text-xs" style={{color: '#f9c798'}}>JPG · PNG · WebP</span>
+              <span className="text-xs" style={{ color: black, opacity: 0.5 }}>JPG · PNG · WebP</span>
             </button>
           </>
         )}
 
-        {/* ── Footer note in orange ─────────────────────────────── */}
-        <p className="text-xs text-center" style={{color:"#f58021"}}>
+        {/* Footer note only black */}
+        <p className="text-xs text-center" style={{ color: black }}>
           {formatLine}<br />
           <b>{isMeesho ? 'Barcodes are always ignored for Meesho.' : 'QR codes and 2D codes are always ignored.'}</b>
         </p>

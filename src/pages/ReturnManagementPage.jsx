@@ -15,37 +15,33 @@ import AWBScanForm from '../components/return/AWBScanForm'
 import AWBMissingForm from '../components/return/AWBMissingForm'
 import AWBFilterBar from '../components/return/AWBFilterBar'
 
-// --- Orange ("#f58021") & White color palette theme ---
+// --- Orange and B/W Theme ---
 const ORANGE = '#f58021'
-const textDark = 'text-slate-800'
-const textSubtle = 'text-zinc-500'
-const borderLight = 'border-slate-200'
+const textDark = 'text-black'
+const textSubtle = 'text-zinc-700'
+const borderLight = 'border-black/10'
 const bgLight = 'bg-white'
-const bgHighlight = '[background-color:#fff4ec]'
-const accent = '[color:#f58021]'
-const accentBorder = '[border-color:#f58021]'
+const bgHighlight = 'bg-white' // no inline orange backgrounds, keep white/black
+const accent = 'text-[#f58021]'
+const accentBorder = 'border-[#f58021]'
 const cardShadow = 'shadow'
-const cardBorder = 'border border-slate-200'
+const cardBorder = 'border border-black/10'
 
-// ───────────────────────────────────────────────
 // Tabs — includes "Scan" and "Missing"
 const TABS = [
   { id: 'scan',    label: 'Scan AWB',    icon: RiBarcodeLine },
   { id: 'missing', label: 'Missing AWB', icon: RiAlertLine },
 ]
 
-// Per-tab accent colours so the active indicator matches the operation, use orange
+// Tab active/hover: only color orange; everything else B/W
 const TAB_ACTIVE_CLASSES = {
-  scan:    '[color:#f58021] [border-color:#f58021] [background-color:#fff4ec]',
-  missing: 'text-amber-600 border-amber-600 bg-amber-50', // Optionally style, or keep as is for clarity.
+  scan:    'text-[#f58021] border-[#f58021] bg-white',
+  missing: 'text-[#f58021] border-[#f58021] bg-white',
 }
-
-// Orange hover for tabs
 const TAB_HOVER_CLASSES = {
-  scan:    'hover:[color:#f58021] hover:[background-color:#fff4ec]',
-  missing: 'hover:text-amber-600 hover:bg-amber-50',
+  scan:    'hover:text-[#f58021] hover:bg-[#fff] hover:border-[#f58021]',
+  missing: 'hover:text-[#f58021] hover:bg-[#fff] hover:border-[#f58021]',
 }
-// ───────────────────────────────────────────────
 
 export default function ReturnManagementPage() {
   const [activeTab, setActiveTab] = useState('scan')
@@ -112,7 +108,7 @@ export default function ReturnManagementPage() {
       key: 'awbId',
       label: 'Return ID',
       render: (val) => (
-        <span className={`font-mono ${accent} text-xs ${bgHighlight} px-2 py-1 rounded-lg border ${accentBorder}`}>
+        <span className={`font-mono ${accent} text-xs bg-white px-2 py-1 rounded-lg border ${accentBorder}`}>
           {val}
         </span>
       ),
@@ -153,17 +149,17 @@ export default function ReturnManagementPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setViewItem(row)}
-            className="p-1.5 text-zinc-500 hover:[color:#f58021] hover:[background-color:#fff4ec] rounded-lg transition-all"
+            className="p-1.5 text-white bg-[#f58021] hover:opacity-90 rounded-lg transition-all"
             title="View"
           >
-            <RiEyeLine />
+            <RiEyeLine className="text-white" />
           </button>
           <button
             onClick={() => setDeleteItem(row)}
-            className="p-1.5 text-zinc-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all"
+            className="p-1.5 text-white bg-[#f58021] hover:opacity-90 rounded-lg transition-all"
             title="Delete"
           >
-            <RiDeleteBinLine />
+            <RiDeleteBinLine className="text-white" />
           </button>
         </div>
       ),
@@ -214,8 +210,8 @@ export default function ReturnManagementPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className={`${textDark} text-2xl font-bold tracking-tight`}>Return Management</h1>
-            <p className={`${textSubtle} text-sm mt-1`}>Scan, track, and manage AWB barcodes</p>
+            <h1 className={`text-black text-2xl font-bold tracking-tight`}>Return Management</h1>
+            <p className={`text-zinc-700 text-sm mt-1`}>Scan, track, and manage AWB barcodes</p>
           </div>
         </div>
 
@@ -224,7 +220,7 @@ export default function ReturnManagementPage() {
           {/* Left: Tab panel */}
           <div className={`${bgLight} ${cardBorder} ${cardShadow} rounded-xl overflow-hidden`}>
             {/* Tabs */}
-            <div className={`flex border-b ${borderLight} [background-color:#fff8f2]`}>
+            <div className={`flex border-b ${borderLight} bg-white`}>
               {TABS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
@@ -236,7 +232,7 @@ export default function ReturnManagementPage() {
                   }`}
                   style={{ outline: 'none' }}
                 >
-                  <Icon className="shrink-0" />
+                  <Icon className={`${activeTab === id ? 'text-[#f58021]' : 'text-black'} shrink-0`} />
                   <span className="truncate">{label}</span>
                 </button>
               ))}
@@ -250,8 +246,8 @@ export default function ReturnManagementPage() {
 
           {/* Right: Table */}
           <div className={`xl:col-span-2 ${bgLight} ${cardShadow} ${cardBorder} rounded-xl overflow-hidden`}>
-            <div className={`p-5 border-b ${borderLight} [background-color:#fff8f2]`}>
-              <h2 className={`${textDark} text-lg font-semibold mb-4`}>Return Records</h2>
+            <div className={`p-5 border-b ${borderLight} bg-white`}>
+              <h2 className={`text-black text-lg font-semibold mb-4`}>Return Records</h2>
               <AWBFilterBar
                 filters={filters}
                 onChange={handleFilterChange}

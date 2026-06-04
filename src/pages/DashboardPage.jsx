@@ -28,23 +28,22 @@ const PRESETS = [
 const FORMAT = 'YYYY-MM-DD'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Orange/white theme tokens
+// Black/white theme with orange buttons/icons
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Define all main color tokens for your orange (#f58021) + white theme
 const orange = "#f58021"
-
-const textPrimary    = 'text-[#f58021]' // Main, for headings/titles
-const textSecondary  = 'text-orange-500'
-const textSubtle     = 'text-orange-400'
-const borderLight    = 'border-orange-200'
+const textPrimary    = 'text-black'
+const textSecondary  = 'text-gray-800'
+const textSubtle     = 'text-gray-400'
+const borderLight    = 'border-gray-200'
 const bgCard         = 'bg-white'
-const progressBg     = 'bg-orange-100'
+const progressBg     = 'bg-gray-100'
 const progressBar    = 'bg-[#f58021]'
 const brandIcon      = 'text-[#f58021]'
 const btnBrand       = `bg-[#f58021] text-white border-[#f58021] hover:bg-[#f58021]/90`
 const btnBrandOutline = `bg-white text-[#f58021] border-[#f58021] hover:bg-[#f58021]/10`
 const focusRing      = "focus:ring-2 focus:ring-[#f58021]"
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DateAndFilterBar component - handles brand/channel filters
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,7 +81,6 @@ function DateAndFilterBar({
     onApply(customStart, customEnd, channel, brand)
   }
 
-  // channelPartnerId/_id (not .id!) for sending to backend
   const handleChannelChange = e => {
     setChannel(e.target.value)
     setBrand("")
@@ -98,7 +96,7 @@ function DateAndFilterBar({
     <div className={`rounded-xl border ${borderLight} ${bgCard} p-4`}>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <RiCalendarLine className={`${brandIcon} text-base shrink-0`} />
-        <span className={`text-sm font-medium ${textPrimary} mr-1`}>Filter by date:</span>
+        <span className={`text-sm font-medium text-black mr-1`}>Filter by date:</span>
         {PRESETS.map(preset => (
           <button
             key={preset.label}
@@ -109,7 +107,7 @@ function DateAndFilterBar({
               px-3 py-1 rounded-full text-xs font-medium transition-colors border
               ${activePreset === preset.label
                 ? `bg-[#f58021] text-white border-[#f58021]`
-                : `bg-white text-[#f58021] border-orange-200 hover:bg-orange-50 hover:border-[#f58021]`}
+                : `bg-white text-[#f58021] border-gray-200 hover:bg-orange-50 hover:border-[#f58021]`}
               disabled:opacity-50
             `}
           >
@@ -119,13 +117,12 @@ function DateAndFilterBar({
       </div>
       <div className="flex flex-wrap gap-3 mb-1 items-end">
         <div className="flex flex-col">
-          <label className="text-xs text-orange-500 mb-1">Channel Partner</label>
+          <label className="text-xs text-gray-800 mb-1">Channel Partner</label>
           <select
             value={channel}
             disabled={loading}
             onChange={handleChannelChange}
-            className={`input-field text-sm px-3 py-1.5 w-48 border-orange-200 focus:border-[#f58021] focus:ring-[#f58021] ${focusRing}`}
-            style={{ color: orange }}
+            className={`input-field text-sm px-3 py-1.5 w-48 border-gray-200 focus:border-[#f58021] focus:ring-[#f58021] ${focusRing} text-black`}
           >
             <option value="">All Channels</option>
             {channelOptions.map(cp => (
@@ -134,13 +131,12 @@ function DateAndFilterBar({
           </select>
         </div>
         <div className="flex flex-col">
-          <label className="text-xs text-orange-500 mb-1">Brand</label>
+          <label className="text-xs text-gray-800 mb-1">Brand</label>
           <select
             value={brand}
             disabled={loading}
             onChange={handleBrandChange}
-            className={`input-field text-sm px-3 py-1.5 w-48 border-orange-200 focus:border-[#f58021] focus:ring-[#f58021] ${focusRing}`}
-            style={{ color: orange }}
+            className={`input-field text-sm px-3 py-1.5 w-48 border-gray-200 focus:border-[#f58021] focus:ring-[#f58021] ${focusRing} text-black`}
           >
             <option value="">All Brands</option>
             {brandOptions.map(b => (
@@ -150,30 +146,27 @@ function DateAndFilterBar({
         </div>
       </div>
 
-      {/* Custom date inputs — shown only when "Custom" is selected */}
       {showCustom && (
-        <div className="flex flex-wrap items-end gap-3 mt-3 pt-3 border-t border-orange-100">
+        <div className="flex flex-wrap items-end gap-3 mt-3 pt-3 border-t border-gray-100">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-orange-500">From</label>
+            <label className="text-xs text-gray-800">From</label>
             <input
               type="date"
               value={customStart}
               max={customEnd || dayjs().format(FORMAT)}
               onChange={e => setCustomStart(e.target.value)}
-              className="input-field text-sm py-1.5 px-3 w-36 border-orange-200 focus:border-[#f58021] focus:ring-[#f58021] bg-white"
-              style={{ color: orange }}
+              className="input-field text-sm py-1.5 px-3 w-36 border-gray-200 focus:border-[#f58021] focus:ring-[#f58021] bg-white text-black"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-orange-500">To</label>
+            <label className="text-xs text-gray-800">To</label>
             <input
               type="date"
               value={customEnd}
               min={customStart}
               max={dayjs().format(FORMAT)}
               onChange={e => setCustomEnd(e.target.value)}
-              className="input-field text-sm py-1.5 px-3 w-36 border-orange-200 focus:border-[#f58021] focus:ring-[#f58021] bg-white"
-              style={{ color: orange }}
+              className="input-field text-sm py-1.5 px-3 w-36 border-gray-200 focus:border-[#f58021] focus:ring-[#f58021] bg-white text-black"
             />
           </div>
           <button
@@ -191,9 +184,8 @@ function DateAndFilterBar({
         </div>
       )}
 
-      {/* Active range display */}
       {activePreset !== 'Custom' && (
-        <p className="text-xs text-orange-400 mt-2">
+        <p className="text-xs text-gray-400 mt-2">
           Showing data for&nbsp;
           <span className="text-[#f58021] font-medium">
             {startDate === endDate
@@ -276,23 +268,19 @@ export default function DashboardPage() {
     fetchStats(start, end, _channel, _brand)
   }
 
-  // Calculate Return Percentage vs Dispatched
   const dispatched = stats?.totalDispatched ?? 0;
   const returned = stats?.totalReturnRecords ?? 0;
   const returnPercentage = dispatched > 0 ? ((returned / dispatched) * 100) : 0;
 
-  // ── Stat cards config ─────────────────────────────────────────────
-  // Use orange color theme for all cards for brand consistency
   const statCards = [
-    { icon: RiBarcodeLine,        label: 'Total Scans',         value: stats?.totalScansToday,         color: 'orange',   bg: 'bg-orange-50', text: 'text-[#f58021]' },
-    { icon: RiSendPlaneLine,      label: 'Net Dispatched',      value: stats?.totalDispatched,         color: 'orange',   bg: 'bg-orange-50', text: 'text-[#f58021]' },
-    { icon: RiCloseCircleLine,    label: 'Total Cancelled',     value: stats?.totalCancelled,          color: 'orange',   bg: 'bg-orange-50', text: 'text-[#f58021]' },
-    { icon: RiExchangeDollarLine, label: 'Total Return',        value: stats?.totalReturnRecords,      color: 'orange',   bg: 'bg-orange-50', text: 'text-[#f58021]' },
-    { icon: TbAlertCircle,        label: 'Total Missed Packages', value: stats?.awbMissingRecordsCount, color: 'orange',  bg: 'bg-orange-50', text: 'text-[#f58021]' },
-    { icon: TbAlertTriangle,      label: 'Total Missed Returns', value: stats?.returnMissingRecordsCount, color: 'orange', bg: 'bg-orange-50', text: 'text-[#f58021]' },
+    { icon: RiBarcodeLine,        label: 'Total Scans',         value: stats?.totalScansToday,           color: 'orange',   bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
+    { icon: RiSendPlaneLine,      label: 'Net Dispatched',      value: stats?.totalDispatched,           color: 'orange',   bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
+    { icon: RiCloseCircleLine,    label: 'Total Cancelled',     value: stats?.totalCancelled,            color: 'orange',   bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
+    { icon: RiExchangeDollarLine, label: 'Total Return',        value: stats?.totalReturnRecords,        color: 'orange',   bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
+    { icon: TbAlertCircle,        label: 'Total Missed Packages', value: stats?.awbMissingRecordsCount,  color: 'orange',   bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
+    { icon: TbAlertTriangle,      label: 'Total Missed Returns', value: stats?.returnMissingRecordsCount, color: 'orange',  bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
   ]
 
-  // ── Skeleton ──────────────────────────────────────────────────────
   if (loading && !stats) {
     return (
       <div className="space-y-6">
@@ -308,12 +296,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-in bg-white">
-
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="page-title text-[#f58021]">Dashboard</h1>
-          <p className={`text-orange-400 text-sm mt-1`}>
+          <h1 className="page-title text-black">Dashboard</h1>
+          <p className={`text-gray-400 text-sm mt-1`}>
             Live overview — {dayjs().format('dddd, MMMM D, YYYY')}
           </p>
         </div>
@@ -324,7 +311,7 @@ export default function DashboardPage() {
           disabled={loading}
           className={`flex items-center gap-1.5 text-sm px-3 py-1.5 self-start rounded border ${btnBrandOutline} disabled:opacity-50`}
         >
-          <RiRefreshLine className={loading ? 'animate-spin' : ''} />
+          <RiRefreshLine className={loading ? 'animate-spin text-[#f58021]' : 'text-[#f58021]'} />
           Refresh
         </button>
       </div>
@@ -346,9 +333,10 @@ export default function DashboardPage() {
       {/* Stat cards — shimmer overlay while refetching */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
         {statCards.map((card, i) => (
-          <div key={card.label} className={`${card.bg} rounded-xl`}>
+          <div key={card.label} className={`bg-white rounded-xl border border-gray-200`}>
             <StatCard {...card} index={i}
-              iconColor={card.text ? card.text : undefined}
+              iconColor={card.iconColor}
+              textColor="text-black"
             />
           </div>
         ))}
@@ -362,18 +350,18 @@ export default function DashboardPage() {
             flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4
           `}
         >
-          <span className="font-semibold text-[#f58021]">
+          <span className="font-semibold text-black">
             Dispatched vs Returns:
           </span>
-          <span className="text-[#f58021] text-lg font-mono">
+          <span className="text-black text-lg font-mono">
             {dispatched} Dispatched
-            <span className="mx-2 text-orange-400">/</span>
+            <span className="mx-2 text-gray-400">/</span>
             {returned} Returns
           </span>
           <span
             className="sm:ml-6 px-2 py-1 rounded text-xs font-medium mt-2 sm:mt-0"
             style={{
-              backgroundColor: '#f58021',
+              backgroundColor: orange,
               color: '#fff',
               border: '1px solid #f58021'
             }}
@@ -382,7 +370,6 @@ export default function DashboardPage() {
           </span>
         </div>
       </div>
- 
 
       {/* Charts row */}
       <div className={`grid grid-cols-1 xl:grid-cols-3 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`}>
@@ -390,9 +377,9 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className={`rounded-xl border ${borderLight} ${bgCard} p-5 xl:col-span-2`}
+          className={`rounded-xl border border-gray-200 bg-white p-5 xl:col-span-2`}
         >
-          <h2 className="section-title mb-4 text-[#f58021]">Scan Activity</h2>
+          <h2 className="section-title mb-4 text-black">Scan Activity</h2>
           <ScanActivityChart data={stats?.scanActivityGraph} />
         </motion.div>
 
@@ -400,9 +387,9 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className={`rounded-xl border ${borderLight} ${bgCard} p-5`}
+          className={`rounded-xl border border-gray-200 bg-white p-5`}
         >
-          <h2 className="section-title mb-4 text-[#f58021]">Brand Analytics</h2>
+          <h2 className="section-title mb-4 text-black">Brand Analytics</h2>
           <BrandAnalyticsChart data={stats?.brandAnalytics} />
         </motion.div>
       </div>
@@ -415,9 +402,9 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          className={`rounded-xl border ${borderLight} ${bgCard} p-5`}
+          className={`rounded-xl border border-gray-200 bg-white p-5`}
         >
-          <h2 className="section-title mb-4 text-[#f58021]">Dispatched Analytics</h2>
+          <h2 className="section-title mb-4 text-black">Dispatched Analytics</h2>
           {stats?.channelPartnerAnalytics?.length > 0 ? (
             <div className="space-y-3">
               {stats.channelPartnerAnalytics.map((cp, i) => {
@@ -427,10 +414,10 @@ export default function DashboardPage() {
                 return (
                   <div key={i}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-orange-400">{cp.partnerName || cp.channelPartnerName || cp.name}</span>
-                      <span className="text-orange-500 font-mono">{count}</span>
+                      <span className="text-gray-400">{cp.partnerName || cp.channelPartnerName || cp.name}</span>
+                      <span className="text-gray-800 font-mono">{count}</span>
                     </div>
-                    <div className="h-2 rounded-full overflow-hidden bg-orange-100">
+                    <div className="h-2 rounded-full overflow-hidden bg-gray-100">
                       <div
                         className="h-full rounded-full transition-all duration-500"
                         style={{
@@ -444,7 +431,7 @@ export default function DashboardPage() {
               })}
             </div>
           ) : (
-            <p className={`text-orange-400 text-sm`}>No data for selected range</p>
+            <p className={`text-gray-400 text-sm`}>No data for selected range</p>
           )}
         </motion.div>
 
@@ -453,9 +440,9 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className={`rounded-xl border ${borderLight} ${bgCard} p-5`}
+          className={`rounded-xl border border-gray-200 bg-white p-5`}
         >
-          <h2 className="section-title mb-4 text-[#f58021]">Return Analytics</h2>
+          <h2 className="section-title mb-4 text-black">Return Analytics</h2>
           {stats?.returnAnalytics?.length > 0 ? (
             <div className="space-y-3">
               {stats.returnAnalytics.map((ra, i) => {
@@ -465,12 +452,12 @@ export default function DashboardPage() {
                 return (
                   <div key={i}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-orange-400">
+                      <span className="text-gray-400">
                         {ra.channelPartnerName || ra.partnerName || ra.name}
                       </span>
-                      <span className="text-orange-500 font-mono">{count}</span>
+                      <span className="text-gray-800 font-mono">{count}</span>
                     </div>
-                    <div className="h-2 rounded-full overflow-hidden bg-orange-100">
+                    <div className="h-2 rounded-full overflow-hidden bg-gray-100">
                       <div
                         className="h-full rounded-full transition-all duration-500"
                         style={{
@@ -484,7 +471,7 @@ export default function DashboardPage() {
               })}
             </div>
           ) : (
-            <p className={`text-orange-400 text-sm`}>No return data for selected range</p>
+            <p className={`text-gray-400 text-sm`}>No return data for selected range</p>
           )}
         </motion.div>
       </div>
@@ -495,10 +482,10 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
-          className={`rounded-xl border ${borderLight} ${bgCard} p-5`}
+          className={`rounded-xl border border-gray-200 bg-white p-5`}
         >
-          <h2 className="section-title mb-4 flex items-center gap-2 text-[#f58021]">
-            <RiTimeLine className={brandIcon} />
+          <h2 className="section-title mb-4 flex items-center gap-2 text-black">
+            <RiTimeLine className="text-[#f58021]" />
             Recent Activities
           </h2>
           {stats?.recentActivities?.length > 0 ? (
@@ -506,22 +493,22 @@ export default function DashboardPage() {
               {stats.recentActivities.slice(0, 6).map((activity, i) => (
                 <div
                   key={i}
-                  className={`flex items-center justify-between py-2 border-b border-orange-100 last:border-0`}
+                  className={`flex items-center justify-between py-2 border-b border-gray-100 last:border-0`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-2 h-2 rounded-full bg-[#f58021] flex-shrink-0" />
                     <div className="min-w-0">
-                      <div className="text-sm text-[#f58021] font-mono truncate">
+                      <div className="text-sm text-black font-mono truncate">
                         {activity.awbId || activity.awb}
                       </div>
-                      <div className="text-xs text-orange-400 truncate">
+                      <div className="text-xs text-gray-400 truncate">
                         {activity.channelPartner?.name || ''} · {activity.brand?.displayName || activity.brand?.name || ''}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                     <StatusBadge status={activity.status} />
-                    <span className="text-orange-400 text-xs hidden sm:block">
+                    <span className="text-gray-400 text-xs hidden sm:block">
                       {dayjs(activity.scannedAt || activity.createdAt).format('HH:mm')}
                     </span>
                   </div>
@@ -529,7 +516,7 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className={`text-orange-400 text-sm`}>No recent activities</p>
+            <p className={`text-gray-400 text-sm`}>No recent activities</p>
           )}
         </motion.div>
       </div>
