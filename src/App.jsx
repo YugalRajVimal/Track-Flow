@@ -35,18 +35,33 @@ export default function App() {
       <Toaster
         position="top-right"
         toastOptions={{
+          duration: 6000, // Hold toaster for 6 seconds (default is usually 4s)
           style: {
-            background: '#141629',
-            color: '#e2e8f0',
-            border: '2px solid rgba(255,255,255,0.1)',
-            borderRadius: '12px',
-            fontSize: '18px', // Increased from 14px to 18px
+            background: '#fffbef',
+            color: '#141629',
+            border: '3px solid #f58021',
+            borderRadius: '20px',
+            fontSize: '24px',
+            fontWeight: '700',
+            boxShadow: '0 6px 32px 0 rgba(245,128,33,0.25), 0 1.5px 6px 0 rgba(20,22,41,0.14)',
             fontFamily: 'Sora, sans-serif',
+            letterSpacing: '0.025em',
+            padding: '26px 40px',
+            textTransform: 'uppercase',
+            textAlign: 'center',
+            zIndex: 99999,
           },
-          success: { iconTheme: { primary: '#10b981', secondary: '#0a0b14' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: '#0a0b14' } },
+          success: { 
+            duration: 6000, // Hold success toaster for 6 seconds
+            iconTheme: { primary: '#10b981', secondary: '#fff4e2' }
+          },
+          error: { 
+            duration: 9000, // Hold error toaster for 9 seconds (error may be read slower by users)
+            iconTheme: { primary: '#ef4444', secondary: '#fff4e2' }
+          },
         }}
       />
+
 
       <Routes>
         <Route

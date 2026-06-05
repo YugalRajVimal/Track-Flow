@@ -45,10 +45,10 @@ export default function Navbar({ onMenuClick }) {
         <div className="hidden sm:block text-xs text-black/50 font-mono">
           {dayjs().format('ddd, MMM D YYYY')}
         </div>
-        <button className="p-2 rounded-lg transition-all relative bg-white border border-[#f58021] hover:bg-[#f58021] group focus:ring-2 focus:ring-[#f58021]">
+        {/* <button className="p-2 rounded-lg transition-all relative bg-white border border-[#f58021] hover:bg-[#f58021] group focus:ring-2 focus:ring-[#f58021]">
           <RiBellLine className="text-lg" style={{ color: ORANGE }} />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#f58021] rounded-full"></span>
-        </button>
+        </button> */}
       </div>
     </header>
   )

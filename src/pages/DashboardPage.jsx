@@ -477,7 +477,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom row 2: Recent Activities */}
-      <div className={`mt-4`}>
+      {/* <div className={`mt-4`}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -519,7 +519,7 @@ export default function DashboardPage() {
             <p className={`text-gray-400 text-sm`}>No recent activities</p>
           )}
         </motion.div>
-      </div>
+      </div> */}
     </div>
   )
 }

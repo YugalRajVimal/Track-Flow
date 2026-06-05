@@ -223,7 +223,7 @@ export default function AWBManagementPage() {
         </div>
 
         {/* Responsive Layout */}
-        <div className="grid grid-cols-1 2xl:grid-cols-4 gap-6">
+        <div className="flex flex-col gap-6">
           {/* Tab panel on first col (1fr on mobile, 1 on lg, 1 on xl) */}
           <div className="col-span-1">
             <div className={`${bgLight} ${cardBorder} ${cardShadow} rounded-xl overflow-hidden`}>
@@ -233,13 +233,14 @@ export default function AWBManagementPage() {
                   <button
                     key={id}
                     onClick={() => setActiveTab(id)}
-                    className={`w-full sm:w-auto flex-1 flex items-center justify-center gap-1.5 px-2 py-3.5 text-xs font-medium transition-all border-b-2 sm:border-b-0 sm:border-r-2 sm:last:border-r-0 ${
+                    className={`w-full sm:w-auto flex-1 flex items-center justify-center gap-1.5 px-2 py-3.5 text-xs font-medium transition-all border-b-2  sm:border-b-0 sm:border-b-2 sm:last:border-r-0 ${
                       activeTab === id
                         ? TAB_ACTIVE_CLASSES[id]
                         : `${textSubtle} border-transparent ${TAB_HOVER_CLASSES[id]}`
                     }`}
                     style={{ outline: 'none' }}
                   >
+             
                     <Icon className={`${activeTab === id ? 'text-[#f58021]' : 'text-black'} shrink-0`} />
                     <span className="truncate">{label}</span>
                   </button>

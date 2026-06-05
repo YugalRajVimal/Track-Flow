@@ -167,9 +167,9 @@ export default function AWBScanForm({ onSuccess }) {
     `select-field bg-white border border-black text-black placeholder-gray-400 focus:border-black focus:ring-black`
   const baseLabel = 'label text-black'
   const baseButtonSecondary =
-    `btn-secondary px-3 flex-shrink-0 bg-[${orange}] border border-[${orange}] hover:bg-black hover:text-[${orange}] text-white`
+    `btn-secondary px-3 flex-shrink-0 bg-[${orange}] border border-[${orange}] hover:bg-white hover:text-[${orange}] text-white`
   const baseButtonPrimary =
-    `btn-primary px-4 py-2 rounded bg-[${orange}] text-white hover:bg-black hover:text-[${orange}] flex items-center gap-1 font-semibold`
+    `btn-primary px-4 py-2 rounded bg-[${orange}] text-white hover:bg-black  flex items-center gap-1 font-semibold`
   const errorText = 'text-pink-600 text-xs mt-1'
 
   // --- SCAN TYPE ALERT LOGIC ---
@@ -272,7 +272,7 @@ export default function AWBScanForm({ onSuccess }) {
               title="Scan barcode"
               disabled={submitting}
             >
-              <RiBarcodeLine className="text-lg" style={{ color: orange }} />
+              <RiBarcodeLine className="text-lg"/>
             </button>
           </div>
           {errors.awbId && <p className={errorText}>{errors.awbId.message}</p>}

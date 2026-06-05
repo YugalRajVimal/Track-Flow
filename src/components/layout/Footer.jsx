@@ -80,10 +80,10 @@ const Footer = () => {
 
             <div className="space-y-2 text-sm font-medium text-white/90">
               <p>
-                <span className="font-bold text-white">Call:</span> +91 - 9928092650
+                <span className="font-bold text-white">Call:</span> +91 - 8440902650
               </p>
               <p>
-                <span className="font-bold text-white">WhatsApp:</span> +91 - 9928092650
+                <span className="font-bold text-white">WhatsApp:</span> +91 - 8440902650
               </p>
               <p>
                 <span className="font-bold text-white">Customer Support Time:</span> 24/7
@@ -93,15 +93,13 @@ const Footer = () => {
                 ammiylondon@gmail.com
               </p>
               <p>
-                <span className="font-bold text-white">Address:</span> DEV PLAZA COMPLEX,
-                SHOP NO F-06 A, NAGAR NIGAM ROAD SANGANER, Jaipur, Jaipur,
-                Rajasthan, 302029, Rajasthan, Jaipur, 302029
+                <span className="font-bold text-white">Address:</span> Plot no.- 63, Jagannathpuri Colony, Shikharpura, Sanganer, Jaipur, Rajasthan, 302029
               </p>
             </div>
           </div>
         </div>
 
-        {/* Policy Links */}
+        {/* Policy Links 
         <div className="border-t border-white/30 mt-8 pt-4">
           <div className="flex flex-wrap justify-center gap-x-10 gap-y-3 text-sm font-semibold">
             {links.map((item) => (
@@ -114,10 +112,10 @@ const Footer = () => {
               </a>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Categories */}
-        <div className="border-t border-white/20 mt-6 pt-4">
+       {/*  <div className="border-t border-white/20 mt-6 pt-4">
           <div className="flex flex-wrap items-center gap-y-2 text-xs text-white/80">
             <span className="font-bold text-white mr-3">
               Most searched on store
@@ -139,7 +137,7 @@ const Footer = () => {
               </div>
             ))}
           </div>
-        </div>
+        </div>*/}
       </div>
     </footer>
   );

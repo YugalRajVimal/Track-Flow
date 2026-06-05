@@ -266,7 +266,7 @@ export default function AWBScanForm({ onSuccess }) {
           <label className={baseLabel}>AWB ID *</label>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <RiBarcodeLine className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: PRIMARY_ORANGE }} />
+              <RiBarcodeLine className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: PRIMARY_ORANGE}} />
               <input
                 {...awbRegister}
                 ref={mergedRef}
@@ -285,7 +285,7 @@ export default function AWBScanForm({ onSuccess }) {
               title="Scan barcode"
               disabled={submitting}
             >
-              <RiQrScanLine className="text-lg" style={{ color: PRIMARY_ORANGE }} />
+              <RiQrScanLine className="text-lg"  />
             </button>
           </div>
           {errors.awbId && <p className={errorText}>{errors.awbId.message}</p>}

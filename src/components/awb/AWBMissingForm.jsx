@@ -331,24 +331,25 @@ export default function AWBMissingForm({ onSuccess }) {
         {/* Date Range */}
         <div>
           <label className={labelCls}>Date Range (Scanned At) *</label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <input
               type="date"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className={inputCls}
+              className={inputCls + " w-full sm:w-auto"}
               disabled={loading}
             />
-            <span className="text-black/75 text-sm shrink-0">to</span>
+            <span className="text-black/75 text-sm shrink-0 text-center sm:text-left">to</span>
             <input
               type="date"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
-              className={inputCls}
+              className={inputCls + " w-full sm:w-auto"}
               disabled={loading}
             />
           </div>
         </div>
+ 
 
         {/* File Upload */}
         <div>
