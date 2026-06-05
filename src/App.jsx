@@ -11,6 +11,7 @@ import UsersPage from './pages/UsersPage'
 import ChannelPartnersPage from './pages/ChannelPartnersPage'
 import BrandsPage from './pages/BrandsPage'
 import ReturnManagementPage from './pages/ReturnManagementPage'
+import OfflineManagementPage from './pages/OfflineManagement'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -84,6 +85,8 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="awb-management" element={<AWBManagementPage />} />
           <Route path="return-management" element={<ReturnManagementPage />} />
+          <Route path="offline-management" element={<OfflineManagementPage />} />
+
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route
             path="users"

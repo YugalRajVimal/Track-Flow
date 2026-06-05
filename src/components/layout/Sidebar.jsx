@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: '/dashboard', icon: RiDashboardLine, label: 'Dashboard' },
   { to: '/awb-management', icon: RiBarcodeLine, label: 'Dispatch Management' },
   { to: '/return-management', icon: RiCloseLine, label: 'Return Management' },
+  { to: '/offline-management', icon: RiShip2Line, label: 'Offline Management' },
   // { to: '/audit-logs', icon: RiFileListLine, label: 'Audit Logs' },
 ]
 
