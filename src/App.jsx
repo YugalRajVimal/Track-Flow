@@ -12,6 +12,7 @@ import ChannelPartnersPage from './pages/ChannelPartnersPage'
 import BrandsPage from './pages/BrandsPage'
 import ReturnManagementPage from './pages/ReturnManagementPage'
 import OfflineManagementPage from './pages/OfflineManagement'
+import OfflineDataPage from './pages/OfflineDataPage'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -93,6 +94,14 @@ export default function App() {
             element={
               <AdminRoute>
                 <UsersPage />
+              </AdminRoute>
+            }
+          />
+           <Route
+            path="offline-data"
+            element={
+              <AdminRoute>
+                <OfflineDataPage />
               </AdminRoute>
             }
           />

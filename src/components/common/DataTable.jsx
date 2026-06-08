@@ -16,7 +16,7 @@ const paginationContainer =
   "flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-4 border-t border-black/10"
 const paginationSpan = "text-xs text-black/40"
 const btnSecondary =
-  "btn-secondary px-3 py-2 bg-[#f58021] border border-[#f58021] text-white hover:bg-white hover:text-[#f58021] hover:border-[#f58021] disabled:opacity-40 disabled:cursor-not-allowed transition"
+  "btn-secondary px-3 py-2  border border-[#f58021] text-white hover:bg-white hover:text-[#f58021] hover:border-[#f58021] disabled:opacity-40 disabled:cursor-not-allowed transition"
 const pageNumActive =
   "w-8 h-8 rounded-lg text-xs font-medium bg-[#f58021] text-white ring-2 ring-[#f58021]"
 const pageNum =

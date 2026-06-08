@@ -22,6 +22,7 @@ const ADMIN_ITEMS = [
   { to: '/users', icon: RiUserLine, label: 'Users' },
   { to: '/channel-partners', icon: RiTeamLine, label: 'Channel Partners' },
   { to: '/brands', icon: RiShieldCheckLine, label: 'Brands' },
+  { to: '/offline-data', icon: RiFileListLine, label: 'Offline Data' },
 ]
 
 const sidebarColors = {
