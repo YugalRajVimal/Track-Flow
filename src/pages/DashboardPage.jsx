@@ -270,6 +270,7 @@ export default function DashboardPage() {
 
   const dispatched = stats?.totalDispatched ?? 0;
   const returned = stats?.totalReturnRecords ?? 0;
+  const totalOfflineRecords = stats?.totalOfflineRecords ?? 0;
   const returnPercentage = dispatched > 0 ? ((returned / dispatched) * 100) : 0;
 
   const statCards = [
@@ -279,14 +280,26 @@ export default function DashboardPage() {
     { icon: RiExchangeDollarLine, label: 'Total Return',        value: stats?.totalReturnRecords,        color: 'orange',   bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
     { icon: TbAlertCircle,        label: 'Total Missed Packages', value: stats?.awbMissingRecordsCount,  color: 'orange',   bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
     { icon: TbAlertTriangle,      label: 'Total Missed Returns', value: stats?.returnMissingRecordsCount, color: 'orange',  bg: 'bg-white', text: 'text-[#f58021]', iconColor: 'text-[#f58021]' },
+    // Add a stat card for totalOfflineRecords, after Total Return (4th index)
   ]
+
+  // Insert Total Offline Scans stat card after 'Total Return'
+  statCards.splice(4, 0, {
+    icon: RiTimeLine,
+    label: 'Total Offline Records',
+    value: totalOfflineRecords,
+    color: 'orange',
+    bg: 'bg-white',
+    text: 'text-[#f58021]',
+    iconColor: 'text-[#f58021]',
+  });
 
   if (loading && !stats) {
     return (
       <div className="space-y-6">
         <div className={`h-16 rounded-xl ${bgCard} border ${borderLight} animate-pulse`} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 animate-pulse">
-          {Array(6).fill(0).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 animate-pulse">
+          {Array(7).fill(0).map((_, i) => (
             <div key={i} className={`h-36 rounded-xl ${bgCard} border ${borderLight}`} />
           ))}
         </div>
@@ -331,7 +344,7 @@ export default function DashboardPage() {
       />
 
       {/* Stat cards — shimmer overlay while refetching */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
         {statCards.map((card, i) => (
           <div key={card.label} className={`bg-white rounded-xl border border-gray-200`}>
             <StatCard {...card} index={i}
