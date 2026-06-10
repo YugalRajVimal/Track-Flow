@@ -10,8 +10,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import {
   RiUpload2Line, RiLoader4Line, RiCheckDoubleLine,
-  RiCloseLine, RiAlertLine, RiFileExcelLine,
-  RiFileTextLine, RiArrowLeftLine, RiInformationLine,
+  RiCloseLine, RiAlertLine, RiFileTextLine,
+  RiArrowLeftLine, RiInformationLine,
   RiQrScanLine, RiBarcodeLine,
 } from 'react-icons/ri'
 import { awbAPI } from '../../api/awb'
@@ -26,7 +26,7 @@ const PARTNER_LABELS = {
   flipkart: 'Flipkart',
   meesho:   'Meesho',
   myntra:   'Myntra',
-  website:  'Website (Excel)',
+  website:  'Website',
 }
 
 const PARTNER_COLORS = {
@@ -38,10 +38,7 @@ const PARTNER_COLORS = {
 
 function FileIcon({ name }) {
   // Orange only for icons, else black/white
-  if (!name) return <RiFileTextLine className="text-2xl" style={{ color: PRIMARY_ORANGE }} />
-  const ext = name.split('.').pop().toLowerCase()
-  if (ext === 'xlsx' || ext === 'xls')
-    return <RiFileExcelLine className="text-2xl" style={{ color: PRIMARY_ORANGE }} />
+  // Only .csv supported now
   return <RiFileTextLine className="text-2xl" style={{ color: PRIMARY_ORANGE }} />
 }
 
@@ -174,8 +171,8 @@ export default function AWBMissingForm({ onSuccess }) {
 
   const validateAndSetFile = (f) => {
     const ext = f.name.split('.').pop().toLowerCase()
-    if (!['csv', 'xls', 'xlsx'].includes(ext)) {
-      toast.error('Only CSV, XLS, or XLSX files are supported.')
+    if (ext !== 'csv') {
+      toast.error('Only CSV files are supported.')
       return
     }
     if (f.size > 10 * 1024 * 1024) {
@@ -208,7 +205,7 @@ export default function AWBMissingForm({ onSuccess }) {
     if (!brandId) { toast.error('Please select a Brand.'); return }
     if (!startDate || !endDate) { toast.error('Please enter both Start and End dates.'); return }
     if (new Date(startDate) > new Date(endDate)) { toast.error('Start date cannot be after end date.'); return }
-    if (!file) { toast.error('Please upload a CSV or Excel file.'); return }
+    if (!file) { toast.error('Please upload a CSV file.'); return }
 
     setLoading(true)
     try {
@@ -286,7 +283,7 @@ export default function AWBMissingForm({ onSuccess }) {
           <RiInformationLine className="text-xl shrink-0 mt-0.5" style={{ color: PRIMARY_ORANGE }} />
           <div className="text-xs text-black space-y-1">
             <p className="font-semibold">How this works:</p>
-            <p>Upload a Flipkart CSV, Meesho CSV, Myntra CSV, or Website Excel. The system will compare AWB IDs in the file against scanned records in the selected date range and flag any that are missing.</p>
+            <p>Upload a Flipkart, Meesho, Myntra, or Website CSV. The system will compare AWB IDs in the file against scanned records in the selected date range and flag any that are missing.</p>
           </div>
         </div>
 
@@ -353,7 +350,7 @@ export default function AWBMissingForm({ onSuccess }) {
 
         {/* File Upload */}
         <div>
-          <label className={labelCls}>Upload File (CSV / XLS / XLSX) *</label>
+          <label className={labelCls}>Upload File (CSV) *</label>
           {file ? (
             <div className="flex items-center gap-3 p-3 rounded-xl border border-black bg-white">
               <FileIcon name={file.name} />
@@ -384,13 +381,13 @@ export default function AWBMissingForm({ onSuccess }) {
             >
               <RiUpload2Line className="text-3xl" style={{ color: PRIMARY_ORANGE }} />
               <p className="text-sm font-medium text-black">Click or drag & drop</p>
-              <p className="text-xs text-black/40">CSV · XLS · XLSX — max 10 MB</p>
+              <p className="text-xs text-black/40">CSV — max 10 MB</p>
             </div>
           )}
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,.xls,.xlsx"
+            accept=".csv"
             className="hidden"
             onChange={handleFileChange}
             disabled={loading}
@@ -404,7 +401,9 @@ export default function AWBMissingForm({ onSuccess }) {
             <li><span className="font-medium" style={{ color: PRIMARY_ORANGE }}>Flipkart CSV</span> — column: <code className="bg-black/5 px-1 rounded text-black">Tracking ID</code></li>
             <li><span className="font-medium" style={{ color: PRIMARY_ORANGE }}>Meesho CSV</span> — column: <code className="bg-black/5 px-1 rounded text-black">Packet Id</code> (only SHIPPED rows)</li>
             <li><span className="font-medium" style={{ color: PRIMARY_ORANGE }}>Myntra CSV</span> — column: <code className="bg-black/5 px-1 rounded text-black">AWB Number</code></li>
-            <li><span className="font-medium" style={{ color: PRIMARY_ORANGE }}>Website Excel</span> — sheet: <code className="bg-black/5 px-1 rounded text-black">AWB wise Details</code>, column: <code className="bg-black/5 px-1 rounded text-black">AWB NO.</code></li>
+            <li>
+              <span className="font-medium" style={{ color: PRIMARY_ORANGE }}>Website CSV</span> — column: <code className="bg-black/5 px-1 rounded text-black">AWB NO.</code> <span className="text-black/70">(only rows with <b>SHIPPED</b> or <b>IN-TRANSIT</b> status included)</span>
+            </li>
           </ul>
         </div>
 
@@ -534,6 +533,12 @@ export default function AWBMissingForm({ onSuccess }) {
           <span>
             <span className="font-medium text-black">File:</span> {file?.name}
           </span>
+          {/* Website CSV mention for filtered statuses */}
+          {partnerLabel === 'Website' && (
+            <span>
+              <span className="font-medium text-black">Filtered by status:</span> <span className="font-semibold text-black">SHIPPED, IN-TRANSIT</span>
+            </span>
+          )}
         </div>
       </div>
 
