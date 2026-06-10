@@ -1022,6 +1022,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
+         {/* Offline stat cards */}
+         <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-opacity mt-6 ${offlineLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+          <StatCard
+            icon={RiTimeLine}
+            label="Total Offline Records"
+            value={stats?.totalOfflineRecords ?? 0}
+            color="orange" bg="bg-white" text="text-[#f58021]"
+            iconColor="text-[#f58021]" textColor="text-black"
+          />
+          <StatCard
+            icon={RiTimeLine}
+            label="Total Offline Quantity"
+            value={totalOfflineQty}
+            color="orange" bg="bg-white" text="text-[#f58021]"
+            iconColor="text-[#f58021]" textColor="text-black"
+          />
+          <StatCard
+            icon={RiTimeLine}
+            label="Total Offline Amount"
+            value={totalOfflineAmount}
+            color="orange" bg="bg-white" text="text-[#f58021]"
+            iconColor="text-[#f58021]" textColor="text-black"
+          />
+        </div>
+
       {/* Scan Activity chart */}
       <div className={`grid grid-cols-1 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`}>
         <motion.div
@@ -1131,30 +1156,7 @@ export default function DashboardPage() {
           showBrandAndChannel={false}
         /> */}
 
-        {/* Offline stat cards */}
-        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-opacity mt-6 ${offlineLoading ? 'opacity-60 pointer-events-none' : ''}`}>
-          <StatCard
-            icon={RiTimeLine}
-            label="Total Offline Records"
-            value={stats?.totalOfflineRecords ?? 0}
-            color="orange" bg="bg-white" text="text-[#f58021]"
-            iconColor="text-[#f58021]" textColor="text-black"
-          />
-          <StatCard
-            icon={RiTimeLine}
-            label="Total Offline Quantity"
-            value={totalOfflineQty}
-            color="orange" bg="bg-white" text="text-[#f58021]"
-            iconColor="text-[#f58021]" textColor="text-black"
-          />
-          <StatCard
-            icon={RiTimeLine}
-            label="Total Offline Amount"
-            value={totalOfflineAmount}
-            color="orange" bg="bg-white" text="text-[#f58021]"
-            iconColor="text-[#f58021]" textColor="text-black"
-          />
-        </div>
+     
 
         {/* Offline breakdown table */}
         {/* <div className="mt-5">

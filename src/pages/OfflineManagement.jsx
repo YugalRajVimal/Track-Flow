@@ -10,6 +10,8 @@ import { offlineAPI } from '../api/offline'
 import axios from 'axios'
 import * as XLSX from 'xlsx'
 
+// ADD: import useAuthStore
+
 const PAYMENT_OPTIONS = ['CASH', 'DUE', 'UPI']
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
@@ -470,7 +472,7 @@ const RecordForm = forwardRef(function RecordForm(props, ref) {
                       style={{ minWidth: 0 }}
                     >
                       <RiAddLine className="text-lg" />
-                      <span className="hidden xs:inline">Add</span>
+                      <span className="hidden xs:inline">SAVE</span>
                     </button>
                   )}
                 </div>
@@ -574,7 +576,7 @@ const RecordForm = forwardRef(function RecordForm(props, ref) {
               </svg>
               Saving...
             </span>
-          ) : initial ? 'Update' : 'Add'}
+          ) : initial ? 'Update' : 'SAVE'}
         </button>
       </div>
     </form>
@@ -583,6 +585,7 @@ const RecordForm = forwardRef(function RecordForm(props, ref) {
 
 // Match AWBFilterBar design & style, but for offline filters
 import { RiSearchLine, RiRefreshLine, RiUpload2Fill } from 'react-icons/ri'
+import { useAuthStore } from '../store/authStore'
 
 const offlineOrange = "#f58021";
 const offlineBlack = "#191919";
@@ -725,6 +728,10 @@ function OfflineFilterBar({
 }
 
 export default function OfflineManagementPage() {
+  // Use useAuthStore to get user and isAdmin as in @AWBScanForm.jsx (44-45)
+  const user = useAuthStore(state => state.user)
+  const isAdmin = !!(user && (user.role === 'admin' || user.isAdmin))
+
   const [records, setRecords] = useState([])
   const [pagination, setPagination] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -868,6 +875,7 @@ export default function OfflineManagementPage() {
     setMobileEditingRecord(null)
   }
 
+  // Only show Edit button if isAdmin (see instructions)
   const columns = [
     {
       key: 'partyName',
@@ -961,14 +969,17 @@ export default function OfflineManagementPage() {
           >
             <RiEyeLine className="text-lg" />
           </button>
-          <button
-            onClick={() => openEdit(row)}
-            className="btn-icon rounded-full bg-amber-50 hover:bg-amber-100 text-amber-600"
-            title="Edit"
-            type="button"
-          >
-            <RiEdit2Line className="text-lg" />
-          </button>
+          {/* Only show Edit button if isAdmin */}
+          {isAdmin && (
+            <button
+              onClick={() => openEdit(row)}
+              className="btn-icon rounded-full bg-amber-50 hover:bg-amber-100 text-amber-600"
+              title="Edit"
+              type="button"
+            >
+              <RiEdit2Line className="text-lg" />
+            </button>
+          )}
           <button
             onClick={() => setDeleteItem(row)}
             className="btn-icon rounded-full bg-red-50 hover:bg-red-100 text-red-600"
@@ -1133,20 +1144,22 @@ export default function OfflineManagementPage() {
         </div>
 
         {/* Desktop Inline Form: always shown, no toggle, never closes. Hidden on mobile. */}
-        <div className="hidden md:block mt-6">
-          <RecordForm
-            ref={desktopRecordFormRef}
-            key={inlineEditingRecord?._id || 'new'}
-            onSuccess={() => {
-              fetchRecords()
-              clearInlineEditing()
-            }}
-            onClose={clearInlineEditing}
-            initial={inlineEditingRecord}
-            compact={true}
-            onPartyNameAdded={handlePartyNameAdded}
-          />
-        </div>
+        {/* Only show the form for admins */}
+
+          <div className="hidden md:block mt-6">
+            <RecordForm
+              ref={desktopRecordFormRef}
+              key={inlineEditingRecord?._id || 'new'}
+              onSuccess={() => {
+                fetchRecords()
+                clearInlineEditing()
+              }}
+              onClose={clearInlineEditing}
+              initial={inlineEditingRecord}
+              compact={true}
+              onPartyNameAdded={handlePartyNameAdded}
+            />
+          </div>
 
         {/* Filters Toolbar (Export button is here) */}
         <OfflineFilterBar

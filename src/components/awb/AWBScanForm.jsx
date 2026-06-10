@@ -97,6 +97,7 @@ export default function AWBScanForm({ onSuccess }) {
       .finally(() => setLoadingBrands(false))
   }, [selectedPartner])
 
+  // Modified clearAWB: no longer clears backDate (date field stays)
   const clearAWB = useCallback(() => {
     setValue('awbId', '', { shouldValidate: false, shouldDirty: false })
     clearErrors('awbId')
@@ -104,9 +105,9 @@ export default function AWBScanForm({ onSuccess }) {
       awbInputRef.current.value = ''
       setTimeout(() => { awbInputRef.current?.focus() }, 0)
     }
+    // Only clear backDateScan (checkbox), don't clear backDate/date
     if (isAdmin) {
-      setValue('backDate', '', { shouldValidate: false, shouldDirty: false })
-      setValue('backDateScan', false, { shouldValidate: false, shouldDirty: false })
+      // setValue('backDateScan', false, { shouldValidate: false, shouldDirty: false })
     }
   }, [setValue, clearErrors, isAdmin])
 

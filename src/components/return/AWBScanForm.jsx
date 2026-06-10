@@ -61,6 +61,7 @@ export default function AWBScanForm({ onSuccess }) {
       .finally(() => setLoadingBrands(false))
   }, [selectedPartner])
 
+  // Modified clearAWB: backDate and backDateScan are NOT reset automatically now
   const clearAWB = useCallback(() => {
     setValue('awbId', '', { shouldValidate: false, shouldDirty: false })
     clearErrors('awbId')
@@ -68,12 +69,8 @@ export default function AWBScanForm({ onSuccess }) {
       awbInputRef.current.value = ''
       setTimeout(() => { awbInputRef.current?.focus() }, 0)
     }
-    // Also reset backDate if present
-    if (isAdmin) {
-      setValue('backDate', '', { shouldValidate: false, shouldDirty: false })
-      setValue('backDateScan', false, { shouldValidate: false, shouldDirty: false })
-    }
-  }, [setValue, clearErrors, isAdmin])
+    // Do NOT reset backDate/backDateScan here!
+  }, [setValue, clearErrors])
 
   const doSubmit = useCallback(
     async (data) => {
