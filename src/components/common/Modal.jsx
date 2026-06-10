@@ -30,7 +30,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className={`bg-white text-black shadow-xl rounded-lg w-full ${maxWidth} modal-content border-2 border-orange-200`}
+            className={`bg-white text-black shadow-xl rounded-lg w-full ${maxWidth} modal-content border-2 border-orange-200 max-h-[95vh] flex flex-col`}
             onClick={e => e.stopPropagation()}
           >
             {title && (
@@ -48,7 +48,9 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
                 </button>
               </div>
             )}
-            <div className="p-5 bg-white">{children}</div>
+            <div className="p-5 bg-white overflow-y-auto flex-1">
+              {children}
+            </div>
           </motion.div>
         </div>
       )}

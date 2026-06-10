@@ -42,9 +42,46 @@ export default function BrandAnalyticsChart({ data }) {
         <XAxis
           dataKey="name"
           stroke={AXIS_LINE}
-          tick={{ fontSize: 10, fill: AXIS_TEXT, fontFamily: 'JetBrains Mono, monospace' }}
+          tick={({ x, y, payload, index }) => {
+            // Get the full name of the brand/partner
+            const value = payload.value || "";
+            // We'll break into lines so the full name is always visible; no truncation
+            // Assume max ~14 chars per line for a 10px monospace font (estimated), or fit to available width if calc'd
+            const maxChars = 14;
+            const lines = [];
+            for (let i = 0; i < value.length; i += maxChars) {
+              lines.push(value.slice(i, i + maxChars));
+            }
+            return (
+              <text
+                x={x}
+                y={y + 6}
+                textAnchor="middle"
+                fontSize={10}
+                fill={AXIS_TEXT}
+                fontFamily="JetBrains Mono, monospace"
+                style={{
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  whiteSpace: 'pre-line'
+                  // No "nowrap", no ellipsis!
+                }}
+              >
+                {lines.map((line, i) => (
+                  <tspan
+                    x={x}
+                    dy={i === 0 ? 0 : 12}
+                    key={i}
+                  >
+                    {line}
+                  </tspan>
+                ))}
+              </text>
+            );
+          }}
           tickLine={false}
           axisLine={{ stroke: AXIS_LINE }}
+          interval={0}
         />
         <YAxis
           stroke={AXIS_LINE}
@@ -53,7 +90,6 @@ export default function BrandAnalyticsChart({ data }) {
           axisLine={{ stroke: AXIS_LINE }}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f5f5f5" }} />
-        {/* Only the bar (and icons/buttons elsewhere) should be orange */}
         <Bar dataKey="scans" fill={ORANGE} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
