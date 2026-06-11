@@ -118,6 +118,72 @@ function ScanAlertBox({ scanInfo }) {
   )
 }
 
+// --- POPUP COMPONENT FOR SELECTION SUMMARY ---
+function SelectionSummaryPopup({ show, onClose, partner, brand, startDate, endDate, partners, brands }) {
+  if (!show) return null
+
+  const foundPartner = partners.find(p => p._id === partner)
+  const foundBrand = brands.find(b => b._id === brand)
+
+  function formatDate(d) {
+    if (!d) return ''
+    try {
+      // format as e.g. 'Apr 12, 2024'
+      return dayjs(d).format('MMM D, YYYY')
+    } catch {
+      return d
+    }
+  }
+
+  return (
+    <div
+      className="fixed z-50 inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center"
+      style={{animation: "fadeIn .2s"}}
+    >
+      <div className="bg-white rounded-2xl shadow-xl px-8 py-10 min-w-[340px] flex flex-col items-center border border-black relative">
+        <RiInformationLine className="text-4xl mb-4" style={{ color: PRIMARY_ORANGE }} />
+        <h2 className="text-2xl font-bold text-black mb-3">Selection Summary</h2>
+        <div className="mb-7">
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="font-semibold">Partner:</span>
+            <span className="">{foundPartner?.name || partner || <span className="text-black/30">Not selected</span>}</span>
+          </div>
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="font-semibold">Brand:</span>
+            <span className="">{foundBrand?.name || brand || <span className="text-black/30">Not selected</span>}</span>
+          </div>
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="font-semibold">Start Date:</span>
+            <span>{formatDate(startDate) || <span className="text-black/30">Not selected</span>}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold">End Date:</span>
+            <span>{formatDate(endDate) || <span className="text-black/30">Not selected</span>}</span>
+          </div>
+        </div>
+        <div className="text-black/75 text-center mb-5">
+          Please review your selections above.<br/>
+          The popup will close automatically in 7 seconds.
+        </div>
+        <button
+          type="button"
+          className="px-6 py-2 rounded-lg bg-[#f58021] text-white font-semibold text-base transition hover:bg-orange-600"
+          onClick={onClose}
+        >
+          OK
+        </button>
+      </div>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0 }
+          to   { opacity: 1 }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+
 export default function AWBMissingForm({ onSuccess }) {
   // State - unchanged
   const [partners, setPartners] = useState([])
@@ -138,6 +204,16 @@ export default function AWBMissingForm({ onSuccess }) {
 
   const [savedPreviewDates, setSavedPreviewDates] = useState({ startDate: '', endDate: '' })
 
+  // --- For selection summary popup ---
+  const [showSelectionPopup, setShowSelectionPopup] = useState(false)
+  const [selectionPopupTimer, setSelectionPopupTimer] = useState(null)
+  const [lastSelections, setLastSelections] = useState({
+    channelPartnerId: '',
+    brandId: '',
+    startDate: '',
+    endDate: '',
+  })
+
   useEffect(() => {
     channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
   }, [])
@@ -156,6 +232,43 @@ export default function AWBMissingForm({ onSuccess }) {
       })
       .finally(() => setLoadingBrands(false))
   }, [channelPartnerId])
+
+  // Show popup logic: watch selections for first time all selected, or change to some new complete set
+  useEffect(() => {
+    if (channelPartnerId && brandId && startDate && endDate) {
+      // Only show if something changed from last recognized selection
+      const unchanged =
+        lastSelections.channelPartnerId === channelPartnerId &&
+        lastSelections.brandId === brandId &&
+        lastSelections.startDate === startDate &&
+        lastSelections.endDate === endDate;
+      if (!showSelectionPopup && !unchanged) {
+        setShowSelectionPopup(true);
+        setLastSelections({
+          channelPartnerId,
+          brandId,
+          startDate,
+          endDate,
+        });
+        // set timer for auto-close after 5 seconds
+        if (selectionPopupTimer) clearTimeout(selectionPopupTimer)
+        const t = setTimeout(() => {
+          setShowSelectionPopup(false)
+        }, 7000)
+        setSelectionPopupTimer(t)
+      }
+    }
+    // cleanup on unmount
+    return () => {
+      if (selectionPopupTimer) clearTimeout(selectionPopupTimer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelPartnerId, brandId, startDate, endDate])
+
+  const handleCloseSelectionPopup = () => {
+    setShowSelectionPopup(false)
+    if (selectionPopupTimer) clearTimeout(selectionPopupTimer)
+  }
 
   const handleFileDrop = (e) => {
     e.preventDefault()
@@ -277,6 +390,16 @@ export default function AWBMissingForm({ onSuccess }) {
   if (phase === 'upload') {
     return (
       <div className="space-y-5 w-full">
+        <SelectionSummaryPopup
+          show={showSelectionPopup}
+          onClose={handleCloseSelectionPopup}
+          partner={channelPartnerId}
+          brand={brandId}
+          startDate={startDate}
+          endDate={endDate}
+          partners={partners}
+          brands={brands}
+        />
 
         {/* Info banner */}
         <div className="flex gap-2.5 p-3.5 rounded-xl bg-white border border-black">

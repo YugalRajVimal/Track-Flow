@@ -124,6 +124,47 @@ function ScanAlertBox({ scanInfo }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FullScreenPopup component
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FullScreenPopup({ visible, partnerName, brandName, startDate, endDate }) {
+  if (!visible) return null
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#f58021]/95 transition-opacity duration-300 animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl px-10 py-12 max-w-md w-[92vw] flex flex-col items-center text-center gap-6">
+        <RiInformationLine
+          className="text-[#f58021] text-5xl mx-auto mb-2 drop-shadow"
+        />
+        <div>
+          <div className="text-2xl font-bold text-[#222] mb-2">Selection Confirmed</div>
+          <div className="text-black text-lg font-medium mb-2">
+            You have selected:
+          </div>
+          <ul className="space-y-2 text-left text-base">
+            <li>
+              <span className="font-bold text-[#f58021]">Partner:</span>
+              <span className="ml-2 text-black">{partnerName}</span>
+            </li>
+            <li>
+              <span className="font-bold text-[#f58021]">Brand:</span>
+              <span className="ml-2 text-black">{brandName}</span>
+            </li>
+            <li>
+              <span className="font-bold text-[#f58021]">Date Range:</span>
+              <span className="ml-2 text-black">{dayjs(startDate).format('MMM D, YYYY')} – {dayjs(endDate).format('MMM D, YYYY')}</span>
+            </li>
+          </ul>
+        </div>
+        <div className="text-base text-black/80 mt-4">
+          Please make sure your selection is correct before you continue.<br/>
+          This will close automatically after 7 seconds.
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -147,6 +188,16 @@ export default function AWBMissingForm({ onSuccess }) {
 
   const [savedPreviewDates, setSavedPreviewDates] = useState({ startDate: '', endDate: '' })
 
+  // State for confirmation popup
+  const [showPopup, setShowPopup] = useState(false)
+  // Track last shown selections to prevent unnecessary re-shows
+  const lastSelectionsRef = useRef({
+    channelPartnerId: '',
+    brandId: '',
+    startDate: '',
+    endDate: '',
+  })
+
   useEffect(() => {
     channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
   }, [])
@@ -165,6 +216,35 @@ export default function AWBMissingForm({ onSuccess }) {
       })
       .finally(() => setLoadingBrands(false))
   }, [channelPartnerId])
+
+  // Show popup when all: partner, brand, date range, and all changed compared to last shown
+  useEffect(() => {
+    if (
+      channelPartnerId &&
+      brandId &&
+      startDate &&
+      endDate &&
+      (
+        lastSelectionsRef.current.channelPartnerId !== channelPartnerId ||
+        lastSelectionsRef.current.brandId !== brandId ||
+        lastSelectionsRef.current.startDate !== startDate ||
+        lastSelectionsRef.current.endDate !== endDate
+      )
+    ) {
+      setShowPopup(true)
+      lastSelectionsRef.current = {
+        channelPartnerId,
+        brandId,
+        startDate,
+        endDate,
+      }
+      // Hide popup after 7 seconds
+      const timer = setTimeout(() => {
+        setShowPopup(false)
+      }, 7000)
+      return () => clearTimeout(timer)
+    }
+  }, [channelPartnerId, brandId, startDate, endDate])
 
   const handleFileDrop = (e) => {
     e.preventDefault()
@@ -278,6 +358,9 @@ export default function AWBMissingForm({ onSuccess }) {
     setStartDate('')
     setEndDate('')
     setSavedPreviewDates({ startDate: '', endDate: '' })
+    // Optionally, reset popup state and last selections so popup is shown again for next selection
+    // setShowPopup(false)
+    // lastSelectionsRef.current = { channelPartnerId: '', brandId: '', startDate: '', endDate: '' }
   }
 
   // Form fields - borders orange (for clarity), background white, text black
@@ -290,10 +373,22 @@ export default function AWBMissingForm({ onSuccess }) {
   const orangeOutlineButton =
     'flex-1 py-2.5 rounded-xl border border-[#f58021] bg-white text-[#f58021] font-semibold flex items-center justify-center gap-2 hover:bg-[#fff7ef] transition-colors disabled:opacity-60'
 
+  // Get selected names for the popup
+  const cpPopupName = partners.find(p => p._id === channelPartnerId)?.name || ''
+  const brandPopupName = brands.find(b => b._id === brandId)?.name || ''
+
   // PHASE 1: Upload form
   if (phase === 'upload') {
     return (
-      <div className="space-y-5 w-full">
+      <div className="space-y-5 w-full relative">
+        {/* Full-screen popup: shown when all selections set */}
+        <FullScreenPopup
+          visible={showPopup}
+          partnerName={cpPopupName}
+          brandName={brandPopupName}
+          startDate={startDate}
+          endDate={endDate}
+        />
 
         {/* Info banner */}
         <div className="flex gap-2.5 p-3.5 rounded-xl bg-white border border-[#f58021]">
@@ -363,7 +458,6 @@ export default function AWBMissingForm({ onSuccess }) {
             />
           </div>
         </div>
- 
 
         {/* File Upload */}
         <div>

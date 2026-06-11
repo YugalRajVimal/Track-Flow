@@ -8,6 +8,51 @@ import { channelPartnersAPI, brandsAPI } from '../../api/services'
 import BarcodeScanner from './BarcodeScanner'
 import { useAuthStore } from '../../store/authStore'
 
+// Fullscreen popup for selection feedback
+function SelectionPopup({ partner, brand, visible }) {
+  if (!visible) return null;
+  return (
+    <div
+      style={{
+        zIndex: 9999,
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(255,255,255,0.96)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'opacity 0.3s',
+      }}>
+      <div
+        style={{
+          padding: '3rem 4rem',
+          background: '#fff',
+          border: '2px solid #f58021',
+          borderRadius: '24px',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.09)',
+          textAlign: 'center',
+          minWidth: '320px',
+        }}>
+        <div className="flex flex-col items-center gap-6">
+          <div className="text-[2.5rem] font-extrabold text-[#f58021] mb-1">Selection Confirmed</div>
+          <div className="flex flex-col gap-2 items-center mt-2">
+            <span className="text-black text-xl font-semibold">
+              Partner: <span className="inline-block bg-[#f58021] bg-opacity-10 text-[#f58021] px-2 py-1 rounded">{partner}</span>
+            </span>
+            <span className="text-black text-xl font-semibold">
+              Brand:&nbsp; <span className="inline-block bg-[#f58021] bg-opacity-10 text-[#f58021] px-2 py-1 rounded">{brand}</span>
+            </span>
+          </div>
+          <div className="mt-6 text-gray-500 text-lg">
+            Please verify before continuing.<br/>
+            This window will close automatically after 7 seconds.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const orange = '#f58021'
 
 export default function AWBScanForm({ onSuccess }) {
@@ -16,8 +61,13 @@ export default function AWBScanForm({ onSuccess }) {
   const [loadingBrands, setLoadingBrands] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [showSelectionPopup, setShowSelectionPopup] = useState(false)
+  const [popupPartner, setPopupPartner] = useState('')
+  const [popupBrand, setPopupBrand] = useState('')
 
   const awbInputRef = useRef(null)
+  const prevPartnerRef = useRef('')
+  const prevBrandRef = useRef('')
 
   // Get auth details and derive isAdmin from the store
   const { user } = useAuthStore()
@@ -42,11 +92,13 @@ export default function AWBScanForm({ onSuccess }) {
   })
 
   const selectedPartner = watch('channelPartnerId')
+  const selectedBrand = watch('brandId')
   const backDateScanSelected = watch('backDateScan')
 
   // ── Derive the selected partner object so we can read its name ──
   const selectedPartnerObj = partners.find(p => p._id === selectedPartner) || null
   const selectedPartnerName = selectedPartnerObj?.name || ''
+  const selectedBrandName = brands.find(b => b._id === selectedBrand)?.name || ''
 
   useEffect(() => {
     channelPartnersAPI.list().then(r => setPartners(r.data?.data || []))
@@ -60,6 +112,28 @@ export default function AWBScanForm({ onSuccess }) {
       .then(r => setBrands(r.data?.data || []))
       .finally(() => setLoadingBrands(false))
   }, [selectedPartner])
+
+  // Show popup logic: when a partner and brand are both selected, and if either changed
+  useEffect(() => {
+    // Only show popup when both present and selection just completed/changed
+    if (selectedPartner && selectedBrand) {
+      // If popup already showing for this combo, don't retrigger
+      if (
+        prevPartnerRef.current !== selectedPartner ||
+        prevBrandRef.current !== selectedBrand
+      ) {
+        setPopupPartner(selectedPartnerName)
+        setPopupBrand(selectedBrandName)
+        setShowSelectionPopup(true)
+        prevPartnerRef.current = selectedPartner
+        prevBrandRef.current = selectedBrand
+        // Hide popup after 7 seconds
+        const to = setTimeout(() => setShowSelectionPopup(false), 7000)
+        return () => clearTimeout(to)
+      }
+    }
+    // eslint-disable-next-line
+  }, [selectedPartner, selectedBrand, selectedPartnerName, selectedBrandName])
 
   // Modified clearAWB: backDate and backDateScan are NOT reset automatically now
   const clearAWB = useCallback(() => {
@@ -192,6 +266,9 @@ export default function AWBScanForm({ onSuccess }) {
 
   return (
     <>
+      {/* ── Fullscreen selection popup ── */}
+      <SelectionPopup partner={popupPartner} brand={popupBrand} visible={showSelectionPopup} />
+
       {/* ── Alert box shows scan instructions based on selected partner ── */}
       <ScanAlertBox scanInfo={scanInfo} />
 

@@ -32,6 +32,32 @@ function ScanAlertBox({ scanInfo }) {
   )
 }
 
+// Modal Popup for Selection Feedback
+function SelectionPopup({ open, partnerName, brandName }) {
+  if (!open) return null
+  return (
+    <div
+      className="fixed z-50 inset-0 flex items-center justify-center bg-black/70"
+      style={{ minHeight: '100vh', minWidth: '100vw' }}
+    >
+      <div className="bg-white rounded-lg shadow-lg px-10 py-8 text-center flex flex-col items-center border-2 border-[#f58021]">
+        <RiQrScanLine className="text-5xl mb-4" style={{ color: PRIMARY_ORANGE }} />
+        <h2 className="font-bold text-2xl mb-2 text-black">Selection Confirmed!</h2>
+        <div className="text-lg text-black mb-4">
+          <span>
+            <strong>Partner:</strong> {partnerName ? <span className="text-[#f58021]">{partnerName}</span> : '--'}
+          </span>
+          <br />
+          <span>
+            <strong>Brand:</strong> {brandName ? <span className="text-[#f58021]">{brandName}</span> : '--'}
+          </span>
+        </div>
+        <div className="text-gray-600">You may proceed in 7 seconds...</div>
+      </div>
+    </div>
+  )
+}
+
 export default function AWBScanForm({ onSuccess }) {
   const [partners, setPartners] = useState([])
   const [brands, setBrands] = useState([])
@@ -39,6 +65,13 @@ export default function AWBScanForm({ onSuccess }) {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [showBackdate, setShowBackdate] = useState(false)
+
+  // State for selection popup
+  const [popupOpen, setPopupOpen] = useState(false)
+  const [popupPartner, setPopupPartner] = useState('')
+  const [popupBrand, setPopupBrand] = useState('')
+
+  const popupTimeoutRef = useRef(null)
 
   const awbInputRef = useRef(null)
   const user = useAuthStore((state) => state.user)
@@ -62,12 +95,38 @@ export default function AWBScanForm({ onSuccess }) {
     },
   })
 
+  // Watch selected values
   const selectedPartner = watch('channelPartnerId')
+  const selectedBrand = watch('brandId')
   const watchBackDateScan = watch('backDateScan')
   const watchBackDate = watch('backDate')
 
   const selectedPartnerObj = partners.find(p => p._id === selectedPartner) || null
   const selectedPartnerName = selectedPartnerObj?.name || ''
+  const selectedBrandObj = brands.find(b => b._id === selectedBrand) || null
+  const selectedBrandName = selectedBrandObj?.name || ''
+
+  // Show popup when both selectedPartner and selectedBrand are set & changed
+  // Don't show on first mount, only on _change_.
+  useEffect(() => {
+    // Only show popup if both were previously empty or different, and now are both valid/non-empty
+    if (selectedPartner && selectedBrand) {
+      setPopupPartner(selectedPartnerName)
+      setPopupBrand(selectedBrandName)
+      setPopupOpen(true)
+      // Ensure old timeout is cleared before setting a new one
+      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current)
+      popupTimeoutRef.current = setTimeout(() => {
+        setPopupOpen(false)
+      }, 7000)
+    }
+    // Cleanup on unmount
+    return () => {
+      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current)
+    }
+    // Only trigger when partner and brand change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPartner, selectedBrand, selectedPartnerName, selectedBrandName])
 
   let scanInfo = null
   if (selectedPartnerObj) {
@@ -216,6 +275,13 @@ export default function AWBScanForm({ onSuccess }) {
         onScan={onScan}
         title="Scan AWB Barcode"
         partnerName={selectedPartnerName}
+      />
+
+      {/* Full page selection confirmation popup */}
+      <SelectionPopup
+        open={popupOpen}
+        partnerName={popupPartner}
+        brandName={popupBrand}
       />
 
       {/* Scan alert box for selected partner */}
