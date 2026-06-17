@@ -19,6 +19,7 @@ const styles = {
   btn: 'p-1.5 text-orange-500 hover:text-white hover:bg-orange-500 rounded-lg transition-all', // Orange icon/buttons
   tagAdmin: 'text-black bg-white border-black/20',   // Black/white
   tagUser: 'text-black bg-white border-black/10',    // Black/white
+  tagHandler: 'text-black bg-white border-black/10', // Black/white for handler
   tagActive: 'text-black bg-white border-black/10',  // Black/white
   tagInactive: 'text-black bg-white border-black/10' // Black/white
 }
@@ -36,7 +37,11 @@ const USER_FIELDS = [
   },
   {
     name: 'role', label: 'Role', type: 'select', required: true,
-    options: [{ value: 'admin', label: 'Admin' }, { value: 'user', label: 'User' }]
+    options: [
+      { value: 'admin', label: 'Admin' },
+      { value: 'user', label: 'User' },
+      { value: 'handler', label: 'Handler' },
+    ]
   },
 ]
 
@@ -119,6 +124,8 @@ export default function UsersPage() {
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
           v === 'admin'
             ? styles.tagAdmin
+            : v === 'handler'
+            ? styles.tagHandler
             : styles.tagUser
         }`}>{v}</span>
       )

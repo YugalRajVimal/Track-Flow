@@ -13,6 +13,10 @@ import BrandsPage from './pages/BrandsPage'
 import ReturnManagementPage from './pages/ReturnManagementPage'
 import OfflineManagementPage from './pages/OfflineManagement'
 import OfflineDataPage from './pages/OfflineDataPage'
+import TaskDataPage from './pages/Task/TaskDataPage'
+import TaskCreationANdManagement from './pages/Task/TaskCreationANdManagement'
+import SubTaskManagement from './pages/Task/SubTaskManagement'
+import SubmissionManagement from './pages/Task/SubmissionManagement'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -87,6 +91,16 @@ export default function App() {
           <Route path="awb-management" element={<AWBManagementPage />} />
           <Route path="return-management" element={<ReturnManagementPage />} />
           <Route path="offline-management" element={<OfflineManagementPage />} />
+          <Route path="handler-dashboard" element={<>
+            <div>
+              Handler Dashboard
+            </div>
+          </>} />
+
+          <Route path="task" element={<TaskCreationANdManagement />} />
+          <Route path="sub-task" element={<SubTaskManagement />} />
+          <Route path="sub-task-submission" element={<SubmissionManagement />} />
+
 
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route
@@ -102,6 +116,14 @@ export default function App() {
             element={
               <AdminRoute>
                 <OfflineDataPage />
+              </AdminRoute>
+            }
+          />
+              <Route
+            path="task-data"
+            element={
+              <AdminRoute>
+                <TaskDataPage />
               </AdminRoute>
             }
           />

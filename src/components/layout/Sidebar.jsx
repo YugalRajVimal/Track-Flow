@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   RiDashboardLine, RiBarcodeLine, RiFileListLine, RiUserLine, RiShieldCheckLine, RiLogoutBoxLine,
-  RiCloseLine, RiShip2Line, RiTeamLine, RiArrowLeftSLine, RiArrowRightSLine
+  RiCloseLine, RiShip2Line, RiTeamLine, RiArrowLeftSLine, RiArrowRightSLine, RiTaskLine
 } from 'react-icons/ri'
 import { useAuthStore } from '../../store/authStore'
 
@@ -23,6 +23,15 @@ const ADMIN_ITEMS = [
   { to: '/channel-partners', icon: RiTeamLine, label: 'Channel Partners' },
   { to: '/brands', icon: RiShieldCheckLine, label: 'Brands' },
   { to: '/offline-data', icon: RiFileListLine, label: 'Offline Data' },
+  { to: '/task-data', icon: RiTaskLine, label: 'Task Dropdowns' },
+]
+
+// Task page for handler role
+const HANDLER_ITEMS = [
+  { to: '/handler-dashboard', icon: RiDashboardLine, label: 'Dashboard' },
+  { to: '/task', icon: RiTaskLine, label: 'Task' },
+  { to: '/sub-task', icon: RiTaskLine, label: 'Sub Task' },
+  { to: '/sub-task-submission', icon: RiTaskLine, label: 'Sub Task Submission' },
 ]
 
 const sidebarColors = {
@@ -48,8 +57,17 @@ const sidebarColors = {
 export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const isAdmin = user?.role === 'admin'
+  const isHandler = user?.role === 'handler'
   const [collapsed, setCollapsed] = useState(false)
+
+  // Redirect handler to /handler-dashboard if they land on /
+  useEffect(() => {
+    if (isHandler && (location.pathname === "/" || location.pathname === "/dashboard")) {
+      navigate('/handler-dashboard', { replace: true })
+    }
+  }, [isHandler, location.pathname, navigate])
 
   const handleLogout = () => {
     logout()
@@ -98,37 +116,69 @@ export default function Sidebar({ open, onClose }) {
       {/* Nav */}
       <nav className={`flex-1 p-4 space-y-1 overflow-y-auto bg-white transition-all ${collapsed ? "px-2" : ""}`}>
         <div className="mb-3">
-          {!collapsed && (
-            <p className="text-xs font-semibold text-black/50 uppercase tracking-wider px-3 mb-2">Main</p>
-          )}
-          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-1 ${
-                  collapsed ? "justify-center px-2" : ""
-                } ${
-                  isActive
-                    ? sidebarColors.navActiveBg + " " + sidebarColors.navActiveText + " border " + sidebarColors.borderBrand
-                    : sidebarColors.navInactiveText + " " + sidebarColors.navHoverBg + " " + sidebarColors.navHoverText
-                }`
-              }
-              style={collapsed ? { justifyContent: "center" } : {}}
-            >
-              <span
-                className='flex items-center justify-center rounded-full p-2'
-                style={{ background: BRAND_ORANGE }}
+          {/* Handler: ONLY show 1 Task link */}
+          {isHandler ? (
+            HANDLER_ITEMS.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-1 ${
+                    collapsed ? "justify-center px-2" : ""
+                  } ${
+                    isActive
+                      ? sidebarColors.navActiveBg + " " + sidebarColors.navActiveText + " border " + sidebarColors.borderBrand
+                      : sidebarColors.navInactiveText + " " + sidebarColors.navHoverBg + " " + sidebarColors.navHoverText
+                  }`
+                }
+                style={collapsed ? { justifyContent: "center" } : {}}
               >
-                <Icon className="text-lg flex-shrink-0" color="#fff" />
-              </span>
-              {!collapsed && <span className="text-black">{label}</span>}
-            </NavLink>
-          ))}
+                <span
+                  className='flex items-center justify-center rounded-full p-2'
+                  style={{ background: BRAND_ORANGE }}
+                >
+                  <Icon className="text-lg flex-shrink-0" color="#fff" />
+                </span>
+                {!collapsed && <span className="text-black">{label}</span>}
+              </NavLink>
+            ))
+          ) : (
+            <>
+              {!collapsed && (
+                <p className="text-xs font-semibold text-black/50 uppercase tracking-wider px-3 mb-2">Main</p>
+              )}
+              {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-1 ${
+                      collapsed ? "justify-center px-2" : ""
+                    } ${
+                      isActive
+                        ? sidebarColors.navActiveBg + " " + sidebarColors.navActiveText + " border " + sidebarColors.borderBrand
+                        : sidebarColors.navInactiveText + " " + sidebarColors.navHoverBg + " " + sidebarColors.navHoverText
+                    }`
+                  }
+                  style={collapsed ? { justifyContent: "center" } : {}}
+                >
+                  <span
+                    className='flex items-center justify-center rounded-full p-2'
+                    style={{ background: BRAND_ORANGE }}
+                  >
+                    <Icon className="text-lg flex-shrink-0" color="#fff" />
+                  </span>
+                  {!collapsed && <span className="text-black">{label}</span>}
+                </NavLink>
+              ))}
+            </>
+          )}
         </div>
 
-        {isAdmin && (
+        {/* Only show the admin section if not handler */}
+        {!isHandler && isAdmin && (
           <div className="pt-2">
             {!collapsed && (
               <p className="text-xs font-semibold text-black/50 uppercase tracking-wider px-3 mb-2">Admin</p>
