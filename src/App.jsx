@@ -17,6 +17,7 @@ import TaskDataPage from './pages/Task/TaskDataPage'
 import TaskCreationANdManagement from './pages/Task/TaskCreationANdManagement'
 import SubTaskManagement from './pages/Task/SubTaskManagement'
 import SubmissionManagement from './pages/Task/SubmissionManagement'
+import SubmissionPaymentData from './pages/Admin/SubmissionPaymentData'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -140,6 +141,14 @@ export default function App() {
             element={
               <AdminRoute>
                 <BrandsPage />
+              </AdminRoute>
+            }
+          />
+            <Route
+            path="submission-payment-data"
+            element={
+              <AdminRoute>
+                <SubmissionPaymentData />
               </AdminRoute>
             }
           />

@@ -24,14 +24,15 @@ const ADMIN_ITEMS = [
   { to: '/brands', icon: RiShieldCheckLine, label: 'Brands' },
   { to: '/offline-data', icon: RiFileListLine, label: 'Offline Data' },
   { to: '/task-data', icon: RiTaskLine, label: 'Task Dropdowns' },
+  { to: '/submission-payment-data', icon: RiFileListLine, label: 'Submission Payment Data' },
 ]
 
 // Task page for handler role
 const HANDLER_ITEMS = [
   { to: '/handler-dashboard', icon: RiDashboardLine, label: 'Dashboard' },
-  { to: '/task', icon: RiTaskLine, label: 'Task' },
-  { to: '/sub-task', icon: RiTaskLine, label: 'Sub Task' },
-  { to: '/sub-task-submission', icon: RiTaskLine, label: 'Sub Task Submission' },
+  { to: '/task', icon: RiTaskLine, label: 'Fabric In' },
+  { to: '/sub-task', icon: RiTaskLine, label: 'Production Process' },
+  { to: '/sub-task-submission', icon: RiTaskLine, label: 'Fabric Submission' },
 ]
 
 const sidebarColors = {
