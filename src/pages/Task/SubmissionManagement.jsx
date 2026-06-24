@@ -1378,7 +1378,7 @@
 
 // export default SubmissionManagement
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 
@@ -1401,7 +1401,8 @@ const initialSubmissionForm = {
   payment: '',
   remark: '',
   challanNo: '',
-  challanPhotoPath: ''
+  challanPhotoPath: '',
+  locationStatus: '', // Default to warehouse
 }
 
 function computeSubTaskMtrAfterSinkage(subTaskMtr, sinkage) {
@@ -1432,17 +1433,19 @@ const pillInput =
 const fileInput =
   'block w-full text-sm text-gray-600 rounded-xl border border-gray-300 bg-white px-3 py-2.5 file:mr-3 file:rounded-full file:border-0 file:bg-orange-50 file:text-orange-600 file:font-semibold file:px-4 file:py-1.5 file:text-xs hover:file:bg-orange-100'
 
-function sumSubmissionMTRs(submissions) {
+function sumSubmissionMTRs(submissions, onlyWarehouse = false) {
   if (!Array.isArray(submissions)) return 0
   return submissions.reduce((sum, s) => {
+    if (onlyWarehouse && s?.locationStatus === "missing") return sum
     const mtr = Number(s?.MTR)
     return isNaN(mtr) ? sum : sum + mtr
   }, 0)
 }
 
-function sumSubmissionMTRAfterSinkage(submissions, sinkage, length) {
+function sumSubmissionMTRAfterSinkage(submissions, sinkage, length, onlyWarehouse = false) {
   if (!Array.isArray(submissions)) return 0
   return submissions.reduce((sum, s) => {
+    if (onlyWarehouse && s?.locationStatus === "missing") return sum
     const mtr = Number(s?.MTR)
     if (isNaN(mtr)) return sum
     let afterSinkage
@@ -1462,37 +1465,62 @@ function getSubTaskSubmissionsArray(subTask) {
   return []
 }
 
-// --- Payment Rate Hook
-function useSubmissionPaymentRate({ programName, fabricType, partyName }) {
-  const [rate, setRate] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  useEffect(() => {
-    if (programName && fabricType && partyName) {
-      setLoading(true)
-      setError('')
-      axios
-        .get(`${API_BASE_URL}/submissionPaymentData/rate`, {
-          params: {
-            programName,
-            fabricType,
-            partyName
-          }
-        })
-        .then(res => {
-          setRate(res.data?.data || null)
-        })
-        .catch(() => {
-          setError('No rate found.')
-          setRate(null)
-        })
-        .finally(() => setLoading(false))
-    } else {
-      setRate(null)
-      setError('')
-    }
-  }, [programName, fabricType, partyName])
-  return { rate, loading, error }
+// --- Payment Rate Hook, now "externalized" for on-demand use
+// This will not auto-run on render. We'll fetch inside the main component when Task is loaded.
+function fetchSubmissionPaymentRate({ programName, partyName, fabricType }) {
+  // returns a promise
+  return axios
+    .get(`${API_BASE_URL}/submission-payment-data/rate`, {
+      params: { programName, partyName, fabricType },
+    })
+    .then(res => res.data?.data?.rate || null)
+    .catch(() => { throw new Error('No rate found.') })
+}
+
+// Helper to get missing meter stats for a SubTask (MTR, After Sinkage, After Length Sinkage)
+function getSubTaskMissingStats(subTask, taskData) {
+  const submissions = getSubTaskSubmissionsArray(subTask)
+  const sinkage = taskData?.sinkage
+  const subTaskLength = subTask.length ?? (
+    Array.isArray(subTask.submissions) && subTask.submissions[0]?.length
+      ? subTask.submissions[0].length
+      : (subTask.submission?.[0]?.length ?? subTask.submission?.length ?? taskData?.Length)
+  )
+  // Sum of all submission MTRs, regardless of locationStatus
+  const sumAllMTR = sumSubmissionMTRs(submissions, false)
+  const sumAllAfterSinkage = sumSubmissionMTRAfterSinkage(submissions, sinkage, subTaskLength, false)
+  const sumAllAfterLengthSinkage = sumSubmissionMTRAfterSinkage(submissions, sinkage, subTaskLength, false)
+  // Sum for "warehouse" only
+  const sumWarehouseMTR = sumSubmissionMTRs(submissions, true)
+  const sumWarehouseAfterSinkage = sumSubmissionMTRAfterSinkage(submissions, sinkage, subTaskLength, true)
+  const sumWarehouseAfterLengthSinkage = sumSubmissionMTRAfterSinkage(submissions, sinkage, subTaskLength, true)
+  // Total values:
+  const subTaskMTR = Number(subTask.mtr)
+  const afterSinkageVal = computeSubTaskMtrAfterSinkage(subTask.mtr, sinkage)
+  const afterLenSinkVal = computeSubTaskMtrAfterLengthSinkage(subTask.mtr, sinkage, subTaskLength)
+  // If any submission is "missing", calculate missing as total - all used (not just warehouse)
+  const hasMissing = submissions.some(x => x.locationStatus === 'missing');
+  let missingMTR = null, missingAfterSinkage = null, missingAfterLengthSinkage = null
+  if (hasMissing) {
+    // The missing part is what is not covered by both warehouse and missing submissions
+    missingMTR = (isNaN(subTaskMTR) || isNaN(sumAllMTR)) ? null : Math.max(Number(subTaskMTR) - sumAllMTR, 0);
+    missingAfterSinkage = (isNaN(Number(afterSinkageVal)) || isNaN(sumAllAfterSinkage)) ? null : Math.max(Number(afterSinkageVal) - sumAllAfterSinkage, 0);
+    missingAfterLengthSinkage = (isNaN(Number(afterLenSinkVal)) || isNaN(sumAllAfterLengthSinkage)) ? null : Math.max(Number(afterLenSinkVal) - sumAllAfterLengthSinkage, 0);
+  }
+  // Now, warehouseSum should also include "missing" submission MTRs
+  // So, warehouseSum = warehouse + missing
+  // i.e. warehouseSum = sumSubmissionMTRs with useWarehouseOnly = false
+  // To show the UI as described: warehouseSum = sumAllMTR, NOT just warehouse
+  // So below, warehouseSum is recalculated as sumAllMTR
+  return {
+    hasMissing,
+    missingMTR,
+    missingAfterSinkage,
+    missingAfterLengthSinkage,
+    warehouseSum: sumAllMTR,
+    warehouseSumSinkage: sumAllAfterSinkage,
+    warehouseSumLenSinkage: sumAllAfterLengthSinkage
+  }
 }
 
 const SubmissionManagement = () => {
@@ -1529,14 +1557,49 @@ const SubmissionManagement = () => {
 
   const [deleting, setDeleting] = useState(false)
 
-  // payment rate state for modal
-  const programName = selectedSubTask?.program || ''
-  const fabricType = taskData?.FabricType || ''
-  const partyName = submissionForm.fabricPartyName || ''
+  // --- Payment Rate state, now calculated when Task is loaded
+  const [rate, setRate] = useState(null)
+  const [loadingRate, setLoadingRate] = useState(false)
+  const [errorRate, setErrorRate] = useState('')
 
-  const { rate, loading: loadingRate, error: errorRate } = useSubmissionPaymentRate({
-    programName, fabricType, partyName
-  })
+  // Store these for payment rate API
+  const [rateQuery, setRateQuery] = useState({ programName: '', partyName: '', fabricType: '' })
+
+  // Calculate and fetch payment rate when Task gets selected/loaded
+  useEffect(() => {
+    // Only fetch rate when taskData is loaded
+    if (taskData) {
+      const programName =
+        Array.isArray(taskData.subTask) && taskData.subTask.length > 0
+          ? taskData.subTask[0].program || ''
+          : ''
+      const partyName = taskData.partyName || ''
+      const fabricType = taskData.FabricType || ''
+      setRateQuery({ programName, partyName, fabricType })
+
+      if (programName && partyName && fabricType) {
+        setLoadingRate(true)
+        setErrorRate('')
+        fetchSubmissionPaymentRate({ programName, partyName, fabricType })
+          .then(fetchedRate => {
+            setRate(fetchedRate)
+            // setErrorRate('')
+          })
+          .catch(err => {
+            setRate(null)
+            setErrorRate('No rate found.')
+          })
+          .finally(() => setLoadingRate(false))
+      } else {
+        setRate(null)
+        setErrorRate('')
+      }
+    } else {
+      setRate(null)
+      setErrorRate('')
+      setRateQuery({ programName: '', partyName: '', fabricType: '' })
+    }
+  }, [taskData])
 
   useEffect(() => {
     let isSubscribed = true
@@ -1671,7 +1734,8 @@ const SubmissionManagement = () => {
       payment: '',
       remark: subTask?.remark || '',
       challanNo: '',
-      challanPhotoPath: ''
+      challanPhotoPath: '',
+      locationStatus: 'warehouse'
     })
     setShowSubmissionModal(true)
   }
@@ -1692,7 +1756,8 @@ const SubmissionManagement = () => {
       payment: subToEdit?.Payment || '',
       remark: subTask?.remark || '',
       challanNo: subToEdit?.challanNo || '',
-      challanPhotoPath: ''
+      challanPhotoPath: '',
+      locationStatus: subToEdit?.locationStatus || ''
     })
     setShowSubmissionModal(true)
   }
@@ -1843,6 +1908,8 @@ const SubmissionManagement = () => {
       if (submissionForm.remark !== undefined) {
         formData.append('remark', submissionForm.remark)
       }
+      // locationStatus
+      formData.append('locationStatus', submissionForm.locationStatus || 'warehouse')
       if (submissionForm.challanPhotoPath instanceof File) {
         formData.append('file', submissionForm.challanPhotoPath)
       } else if (isEdit && existingChallanPhotoPath) {
@@ -1967,6 +2034,38 @@ const SubmissionManagement = () => {
     }
   }
 
+  // Helper to show sinkage percentage text
+  function renderSinkagePercent(sinkageVal) {
+    return (typeof sinkageVal !== 'undefined' && sinkageVal !== null && !isNaN(Number(sinkageVal)))
+      ? <span className="text-xs text-orange-500 ml-1 font-semibold">({sinkageVal}% sinkage)</span>
+      : null;
+  }
+
+  // Helper to compute and show Length Sinkage percent string
+  function renderLengthSinkagePercent(length) {
+    if (typeof length !== 'undefined' && length !== null && !isNaN(Number(length))) {
+      const sinkLength = (100 - Number(length));
+      return (
+        <span className="text-xs text-yellow-500 ml-1 font-semibold">{`(${sinkLength}% length loss)`}</span>
+      );
+    }
+    return null;
+  }
+
+  // Helper to show full % used in After Length Sinkage
+  function renderTotalSinkagePercent(sinkage, length) {
+    if (
+      typeof sinkage !== 'undefined' && sinkage !== null && !isNaN(Number(sinkage)) &&
+      typeof length !== 'undefined' && length !== null && !isNaN(Number(length))
+    ) {
+      const total = Number(sinkage) + (100 - Number(length));
+      return (
+        <span className="text-xs text-orange-800 ml-1 font-semibold">{`(${total}% total)`}</span>
+      );
+    }
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <WorkflowHeader
@@ -1978,6 +2077,7 @@ const SubmissionManagement = () => {
 
       <div className="max-w-6xl mx-auto px-2 md:px-6 sm:px-10 pb-6">
         {/* Pending Tasks Table */}
+        {/* ... no changes ... */}
         <div className="mb-8">
           <h3 className="font-bold text-gray-900 text-lg mb-2 flex gap-2 items-center">
             Tasks with Pending SubTasks
@@ -2077,6 +2177,7 @@ const SubmissionManagement = () => {
         {taskData && (
           <div className="mb-7">
             <div className="rounded-3xl border border-gray-200 bg-white shadow-sm flex flex-wrap gap-6 px-7 py-6 mb-6 justify-between">
+              {/* ... unchanged ... */}
               <div className="flex flex-col min-w-[140px]">
                 <span className="text-xs uppercase font-bold text-gray-400">Task ID</span>
                 <span className="text-base font-bold text-gray-900">{taskData.taskId || taskId}</span>
@@ -2108,7 +2209,8 @@ const SubmissionManagement = () => {
               <div className="flex flex-col min-w-[130px]">
                 <span className="text-xs uppercase font-bold text-gray-400">MTR after Sinkage</span>
                 <span className="text-base font-semibold text-gray-800">
-                  {taskData.mtrAfterSinkage ?? (taskData.MTR && taskData.sinkage ? computeSubTaskMtrAfterSinkage(taskData.MTR, taskData.sinkage) : '-')}
+                  {(taskData.mtrAfterSinkage ?? (taskData.MTR && taskData.sinkage ? computeSubTaskMtrAfterSinkage(taskData.MTR, taskData.sinkage) : '-'))}
+                  {renderSinkagePercent(taskData.sinkage)}
                 </span>
               </div>
               <div className="flex flex-col min-w-[130px]">
@@ -2117,6 +2219,7 @@ const SubmissionManagement = () => {
                   {typeof taskData.MTR !== 'undefined' && typeof taskData.sinkage !== 'undefined' && typeof taskData.Length !== 'undefined'
                     ? computeSubTaskMtrAfterLengthSinkage(taskData.MTR, taskData.sinkage, taskData.Length)
                     : '-'}
+                  {typeof taskData.Length !== 'undefined' && taskData.Length !== null ? renderTotalSinkagePercent(taskData.sinkage, taskData.Length) : null}
                 </span>
               </div>
               <div className="flex flex-col min-w-[130px]">
@@ -2176,10 +2279,13 @@ const SubmissionManagement = () => {
                       {subTasks.map((st, idx) => {
                         const submissions = getSubmissionsForSubTask(st)
                         const alreadySubmitted = submissions.length > 0
+                        const missingStats = getSubTaskMissingStats(st, taskData)
+                        const isMissingRow = missingStats.hasMissing
+
                         return (
                           <tr
                             key={st.subTaskId || st._id || idx}
-                            className="border-t border-gray-100 hover:bg-orange-50/40 transition-colors"
+                            className={`border-t border-gray-100 hover:bg-orange-50/40 transition-colors ${isMissingRow ? 'bg-red-100 !hover:bg-red-100' : ''}`}
                           >
                             <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">
                               <span className="bg-gray-100 border border-gray-200 rounded-full px-3 py-1">{st.subTaskId ?? st._id ?? '-'}</span>
@@ -2192,18 +2298,30 @@ const SubmissionManagement = () => {
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
                               {computeSubTaskMtrAfterSinkage(st.mtr, taskData?.sinkage)}
+                              {renderSinkagePercent(taskData?.sinkage)}
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
                               {getSubTaskAfterLengthSinkage(st, taskData?.sinkage)}
+                              {renderTotalSinkagePercent(taskData?.sinkage, st.length ?? (Array.isArray(st.submissions) && st.submissions[0]?.length ? st.submissions[0].length : (st.submission?.[0]?.length ?? st.submission?.length)))}
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">{st.status ?? '-'}</td>
-                            <td className="px-3 py-3 whitespace-nowrap text-gray-700">
+                            <td className={`px-3 py-3 whitespace-nowrap text-gray-700`}>
                               {submissions.length === 0
                                 ? <span className="italic text-gray-400 text-xs font-semibold">N/A</span>
                                 : (
                                   <div className="flex flex-col gap-1">
                                     {submissions.map((sub, subIdx) => (
                                       <div key={sub._id || subIdx} className="flex items-center gap-2">
+                                        {/* Show locationStatus label */}
+                                        <span className={
+                                          "rounded-lg text-xs px-2 py-0.5 font-bold " +
+                                          (sub.locationStatus === "missing"
+                                            ? "bg-red-300 text-red-900 border border-red-400"
+                                            : "bg-green-100 text-green-700 border border-green-200"
+                                          )
+                                        }>
+                                          {sub.locationStatus === "missing" ? "Missing" : (sub.locationStatus || "Warehouse")}
+                                        </span>
                                         {/* View button */}
                                         <button
                                           type="button"
@@ -2235,6 +2353,13 @@ const SubmissionManagement = () => {
                                         </button>
                                       </div>
                                     ))}
+                                    {/* If missing, show summary */}
+                                    {missingStats.hasMissing &&
+                                      <div className="mt-2 text-xs text-red-900 font-bold bg-red-200 rounded px-2 py-1">
+                                        Missing MTR: {missingStats.missingMTR ?? "-"} 
+                                        {/* | After Sinkage: {missingStats.missingAfterSinkage ?? "-"} | After Length Sinkage: {missingStats.missingAfterLengthSinkage ?? "-"} */}
+                                      </div>
+                                    }
                                   </div>
                                 )
                               }
@@ -2281,33 +2406,86 @@ const SubmissionManagement = () => {
             onSubmit={handleSubmission}
             autoComplete="off"
           >
+
             {/* SubTask info summary */}
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 grid grid-cols-2 gap-4">
+              {/* unchanged */}
               <div className="text-xs space-y-2">
-                <div><span className="font-bold text-gray-500">Task ID:</span> <span className="font-mono text-gray-800">{taskData.taskId || taskId}</span></div>
-                <div><span className="font-bold text-gray-500">SubTask ID:</span> <span className="font-mono text-gray-800">{selectedSubTask.subTaskId ?? selectedSubTask._id ?? '-'}</span></div>
-                <div><span className="font-bold text-gray-500">Program:</span> <span className="text-gray-800">{selectedSubTask.program ?? '-'}</span></div>
-                <div><span className="font-bold text-gray-500">Jigar No:</span> <span className="text-gray-800">{selectedSubTask.jigarNo ?? '-'}</span></div>
-                <div><span className="font-bold text-gray-500">Status:</span> <span className="text-gray-800">{selectedSubTask.status ?? '-'}</span></div>
+                <div>
+                  <span className="font-bold text-gray-500">Task ID:</span>{' '}
+                  <span className="font-mono text-gray-800">{taskData.taskId || taskId}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-500">SubTask ID:</span>{' '}
+                  <span className="font-mono text-gray-800">{selectedSubTask.subTaskId ?? selectedSubTask._id ?? '-'}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-500">Program:</span>{' '}
+                  <span className="text-gray-800">{selectedSubTask.program ?? '-'}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-500">Jigar No:</span>{' '}
+                  <span className="text-gray-800">{selectedSubTask.jigarNo ?? '-'}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-500">Status:</span>{' '}
+                  <span className="text-gray-800">{selectedSubTask.status ?? '-'}</span>
+                </div>
               </div>
               <div className="text-xs space-y-2">
-                <div><span className="font-bold text-gray-500">MTR:</span> <span className="text-gray-800">{selectedSubTask.mtr ?? '-'}</span></div>
-                <div><span className="font-bold text-gray-500">Length:</span> <span className="text-gray-800">{selectedSubTask.length ?? '-'}</span></div>
-                <div><span className="font-bold text-gray-500">MTR After Sinkage:</span> <span className="text-gray-800">{computeSubTaskMtrAfterSinkage(selectedSubTask.mtr, taskData?.sinkage)}</span></div>
-                <div><span className="font-bold text-gray-500">MTR After Length Sinkage:</span> <span className="text-gray-800">{getSubTaskAfterLengthSinkage(selectedSubTask, taskData?.sinkage)}</span></div>
-                <div><span className="font-bold text-gray-500">Remark:</span> <span className="text-gray-800">{selectedSubTask.remark ?? '-'}</span></div>
+                <div>
+                  <span className="font-bold text-gray-500">MTR:</span>{' '}
+                  <span className="text-gray-800">{selectedSubTask.mtr ?? '-'}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-500">Length:</span>{' '}
+                  <span className="text-gray-800">{selectedSubTask.length ?? '-'}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-500">MTR After Sinkage:</span>{' '}
+                  <span className="text-gray-800">
+                    {computeSubTaskMtrAfterSinkage(selectedSubTask.mtr, taskData?.sinkage)}
+                    {renderSinkagePercent(taskData?.sinkage)}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-500">MTR After Length Sinkage:</span>{' '}
+                  <span className="text-gray-800">
+                    {getSubTaskAfterLengthSinkage(selectedSubTask, taskData?.sinkage)}
+                    {renderTotalSinkagePercent(
+                      taskData?.sinkage,
+                      selectedSubTask.length
+                        ?? (Array.isArray(selectedSubTask.submissions)
+                              && selectedSubTask.submissions[0]?.length
+                          ? selectedSubTask.submissions[0].length
+                          : (selectedSubTask.submission?.[0]?.length
+                              ?? selectedSubTask.submission?.length))
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-500">Remark:</span>{' '}
+                  <span className="text-gray-800">{selectedSubTask.remark ?? '-'}</span>
+                </div>
               </div>
             </div>
 
             {/* Existing submissions list */}
             {getSubmissionsForSubTask(selectedSubTask).length > 0 && (
               <div className="rounded-2xl border border-orange-100 bg-orange-50/50 px-5 py-4">
-                <div className="font-bold text-orange-700 mb-2 text-xs uppercase tracking-wide">Current Submissions</div>
+                <div className="font-bold text-orange-700 mb-2 text-xs uppercase tracking-wide">
+                  Current Submissions
+                </div>
                 <div className="flex flex-col gap-2 text-xs text-gray-700">
                   {getSubmissionsForSubTask(selectedSubTask).map((submission, idx) => (
-                    <div key={submission._id || idx} className={`py-1 border-b border-orange-100 last:border-b-0 ${idx === selectedSubmissionIndex ? 'bg-orange-100 rounded px-2' : ''}`}>
+                    <div
+                      key={submission._id || idx}
+                      className={`py-1 border-b border-orange-100 last:border-b-0 ${idx === selectedSubmissionIndex ? 'bg-orange-100 rounded px-2' : ''}`}
+                    >
                       <span className="font-semibold">#{idx + 1}</span>
-                      {idx === selectedSubmissionIndex && <span className="ml-1 text-orange-600 font-bold">(editing)</span>}
+                      {idx === selectedSubmissionIndex && (
+                        <span className="ml-1 text-orange-600 font-bold">(editing)</span>
+                      )}
                       {' '}Party: {submission.fabricPartyName ?? '-'},
                       Recv: {submission.recieverPartyName ?? '-'},
                       Submitter: {submission.submitterName ?? '-'},
@@ -2315,15 +2493,24 @@ const SubmissionManagement = () => {
                       MTR: {submission.MTR ?? '-'},
                       Payment: {submission.Payment ?? '-'},
                       Challan: {submission.challanNo ?? '-'},
-                      {' '}{renderChallanPhotoLink(submission.challanPhotoPath)}
+                      {' '}{renderChallanPhotoLink(submission.challanPhotoPath)},
+                      <span className={
+                        "ml-1 px-2 py-0.5 rounded-full inline-block font-bold " +
+                        (submission.locationStatus === 'missing'
+                          ? "bg-red-300 text-red-900"
+                          : "bg-green-100 text-green-700"
+                        )
+                      }>
+                        {submission.locationStatus === 'missing' ? "Missing" : (submission.locationStatus || "Warehouse")}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Form fields */}
             <div className="flex flex-col gap-4">
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className={labelClass}>Fabric Party Name</label>
@@ -2386,6 +2573,7 @@ const SubmissionManagement = () => {
                   </select>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className={labelClass}>MTR</label>
@@ -2399,22 +2587,8 @@ const SubmissionManagement = () => {
                     className={pillInput}
                     required
                   />
-                  {/* Added: Display MTR after sinkage and after length sinkage for inputed value */}
-                  <div className="mt-2 bg-orange-50 border border-orange-100 rounded-xl p-3 text-xs text-gray-700">
-                    <div>
-                      <span className="font-bold text-gray-700">MTR:</span>{' '}
-                      <span className="font-mono">{mtrInputValue || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="font-bold text-gray-700">MTR After Sinkage:</span>{' '}
-                      <span className="font-mono">{mtrAfterSinkage}</span>
-                    </div>
-                    <div>
-                      <span className="font-bold text-gray-700">MTR After Length Sinkage:</span>{' '}
-                      <span className="font-mono">{mtrAfterLengthSinkage}</span>
-                    </div>
-                  </div>
                 </div>
+                
                 <div className="flex flex-col">
                   <label className={labelClass}>Payment</label>
                   <input
@@ -2429,6 +2603,100 @@ const SubmissionManagement = () => {
                   />
                 </div>
               </div>
+
+              {/* Add Location Status Dropdown */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <label className={labelClass}>Location Status</label>
+                  <select
+                    name="locationStatus"
+                    value={submissionForm.locationStatus}
+                    onChange={handleSubmissionFormChange}
+                    className={pillInput}
+                  >
+                    <option value="" disabled>Select Location Status</option>
+                    <option value="warehouse">Warehouse</option>
+                    <option value="missing">Missing</option>
+                  </select>
+                </div>
+              </div>
+         
+         
+
+              {/* Display MTR after sinkage and after length sinkage for inputed value */}
+              <div className="mt-4 w-full bg-gradient-to-br from-orange-100 to-yellow-50 border border-orange-200 rounded-2xl px-5 py-4 shadow-lg text-sm">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="flex items-center gap-2">
+                    <span className="text-orange-700 font-semibold tracking-wide">
+                      Payment Rate
+                    </span>
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-orange-200 text-orange-800 font-bold text-xs shadow-sm border border-orange-300 ml-1">
+                      {loadingRate ? (
+                        <span className="italic animate-pulse text-orange-400">...</span>
+                      ) : errorRate ? (
+                        <span className="text-red-500">{errorRate}</span>
+                      ) : rate ? (
+                        <span>&#8377;{rate}</span>
+                      ) : (
+                        <span className="text-gray-400">Not set</span>
+                      )}
+                    </span>
+                  </span>
+                  {/* Optionally detail the units */}
+                  <span className="text-gray-400 ml-2 text-xs font-normal">Per MTR</span>
+                </div>
+                <div className="divide-y divide-orange-100">
+                  <div className="flex justify-between py-2">
+                    <div className="space-x-1">
+                      <span className="font-medium text-orange-800">MTR</span>
+                      <span className="text-gray-400 font-mono">({mtrInputValue || '-'})</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-gray-500">Total:</span>
+                      <span className="font-bold text-orange-700 font-mono">
+                        {mtrInputValue && rate
+                          ? `₹${(Number(mtrInputValue) * Number(rate)).toFixed(2)}`
+                          : '-'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <div className="space-x-1">
+                      <span className="font-medium text-orange-800">
+                        After Sinkage
+                      </span>
+                      <span className="text-gray-400 font-mono">({mtrAfterSinkage || '-'})</span>
+                      {renderSinkagePercent(sinkageInputValue)}
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-gray-500">Total:</span>
+                      <span className="font-bold text-orange-700 font-mono">
+                        {(Number(mtrAfterSinkage) && !isNaN(Number(mtrAfterSinkage)) && rate)
+                          ? `₹${(Number(mtrAfterSinkage) * Number(rate)).toFixed(2)}`
+                          : '-'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <div className="space-x-1">
+                      <span className="font-medium text-orange-800">
+                        After Length Sinkage
+                      </span>
+                      <span className="text-gray-400 font-mono">({mtrAfterLengthSinkage || '-'})</span>
+                      {renderTotalSinkagePercent(sinkageInputValue, lengthInputValue)}
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-gray-500">Total:</span>
+                      <span className="font-bold text-orange-700 font-mono">
+                        {(Number(mtrAfterLengthSinkage) && !isNaN(Number(mtrAfterLengthSinkage)) && rate)
+                          ? `₹${(Number(mtrAfterLengthSinkage) * Number(rate)).toFixed(2)}`
+                          : '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className={labelClass}>Challan No</label>
@@ -2445,12 +2713,10 @@ const SubmissionManagement = () => {
                 <div className="flex flex-col">
                   <label className={labelClass}>
                     Challan Photo
-                    {/* FIX: show "(optional – existing kept)" label when editing with existing photo */}
                     {existingChallanPhotoPath && (
                       <span className="ml-1 text-gray-400 font-normal normal-case">(optional — existing kept if blank)</span>
                     )}
                   </label>
-                  {/* FIX: show the existing photo as a clickable link when editing */}
                   {existingChallanPhotoPath && (
                     <div className="mb-1 flex items-center gap-2 text-xs">
                       <span className="text-gray-500">Current:</span>
@@ -2464,7 +2730,6 @@ const SubmissionManagement = () => {
                     accept="image/*"
                     onChange={handleSubmissionFormChange}
                     className={fileInput}
-                    // FIX: not required when editing and existing photo is present
                     required={!existingChallanPhotoPath}
                   />
                   {submissionForm.challanPhotoPath instanceof File && (
@@ -2513,6 +2778,7 @@ const SubmissionManagement = () => {
       >
         {subTaskForSubmissionDetails && subTaskForSubmissionDetails.submission ? (
           <div className="py-1">
+           
             <div className="font-bold text-gray-900 mb-4 text-base text-center">
               SubTask{' '}
               <span className="font-mono bg-gray-100 border border-gray-200 rounded-full px-3 py-1 text-sm">
@@ -2524,15 +2790,55 @@ const SubmissionManagement = () => {
                 </span>
               )}
             </div>
+            <div className="flex justify-end mb-2">
+              <div className="inline-block rounded-lg bg-orange-100 border border-orange-200 px-4 py-1 text-xs font-semibold text-orange-700">
+                Rate / m: <span className="font-mono">{typeof rate !== 'undefined' && rate !== null ? `₹${Number(rate).toFixed(2)}` : '-'}</span>
+              </div>
+            </div>
             <div className="rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 flex flex-col gap-2.5 text-sm">
+              <div>
+                <span className="font-bold text-gray-500">Location Status: </span>
+                <span className={
+                  subTaskForSubmissionDetails.submission.locationStatus === "missing"
+                  ? "text-red-700 font-bold"
+                  : "text-green-700 font-bold"
+                }>
+                  {subTaskForSubmissionDetails.submission.locationStatus === "missing"
+                    ? "Missing"
+                    : (subTaskForSubmissionDetails.submission.locationStatus || "Warehouse")
+                  }
+                </span>
+              </div>
               <div><span className="font-bold text-gray-500">Fabric Party: </span><span className="text-gray-800">{subTaskForSubmissionDetails.submission.fabricPartyName ?? '-'}</span></div>
               <div><span className="font-bold text-gray-500">Receiver Party: </span><span className="text-gray-800">{subTaskForSubmissionDetails.submission.recieverPartyName ?? '-'}</span></div>
               <div><span className="font-bold text-gray-500">Submitter Name: </span><span className="text-gray-800">{subTaskForSubmissionDetails.submission.submitterName ?? '-'}</span></div>
               <div><span className="font-bold text-gray-500">Length: </span><span className="text-gray-800">{subTaskForSubmissionDetails.submission.length ?? '-'}</span></div>
-              <div><span className="font-bold text-gray-500">MTR: </span><span className="text-gray-800">{subTaskForSubmissionDetails.submission.MTR ?? '-'}</span></div>
+              <div>
+                <span className="font-bold text-gray-500">MTR: </span>
+                <span className="text-gray-800">{subTaskForSubmissionDetails.submission.MTR ?? '-'}</span>
+                <span className="text-xs text-orange-700 font-semibold ml-2">
+                  {typeof rate !== "undefined" && !isNaN(Number(subTaskForSubmissionDetails.submission.MTR)) && rate
+                    ? `₹${(Number(subTaskForSubmissionDetails.submission.MTR) * Number(rate)).toFixed(2)}`
+                    : ""}
+                </span>
+              </div>
               <div>
                 <span className="font-bold text-gray-500">MTR After Sinkage: </span>
-                <span className="text-gray-800">{computeSubTaskMtrAfterSinkage(subTaskForSubmissionDetails.submission.MTR, taskData?.sinkage)}</span>
+                <span className="text-gray-800">
+                  {computeSubTaskMtrAfterSinkage(subTaskForSubmissionDetails.submission.MTR, taskData?.sinkage)}
+                  {renderSinkagePercent(taskData?.sinkage)}
+                </span>
+                <span className="text-xs text-orange-700 font-semibold ml-2">
+                  {(() => {
+                    const afterSink = computeSubTaskMtrAfterSinkage(
+                      subTaskForSubmissionDetails.submission.MTR,
+                      taskData?.sinkage
+                    );
+                    return typeof rate !== "undefined" && !isNaN(Number(afterSink)) && afterSink && rate
+                      ? `₹${(Number(afterSink) * Number(rate)).toFixed(2)}`
+                      : "";
+                  })()}
+                </span>
               </div>
               <div>
                 <span className="font-bold text-gray-500">MTR After Length Sinkage: </span>
@@ -2544,6 +2850,26 @@ const SubmissionManagement = () => {
                       subTaskForSubmissionDetails.length ??
                       taskData?.Length
                   )}
+                  {renderTotalSinkagePercent(
+                    taskData?.sinkage,
+                    subTaskForSubmissionDetails.submission.length ??
+                      subTaskForSubmissionDetails.length ??
+                      taskData?.Length
+                  )}
+                </span>
+                <span className="text-xs text-orange-700 font-semibold ml-2">
+                  {(() => {
+                    const afterLenSink = computeSubTaskMtrAfterLengthSinkage(
+                      subTaskForSubmissionDetails.submission.MTR,
+                      taskData?.sinkage,
+                      subTaskForSubmissionDetails.submission.length ??
+                        subTaskForSubmissionDetails.length ??
+                        taskData?.Length
+                    );
+                    return typeof rate !== "undefined" && !isNaN(Number(afterLenSink)) && afterLenSink && rate
+                      ? `₹${(Number(afterLenSink) * Number(rate)).toFixed(2)}`
+                      : "";
+                  })()}
                 </span>
               </div>
               <div><span className="font-bold text-gray-500">Payment: </span><span className="text-gray-800">{subTaskForSubmissionDetails.submission.Payment ?? '-'}</span></div>
@@ -2592,6 +2918,12 @@ const SubmissionManagement = () => {
         maxWidth="max-w-5xl"
       >
         <div className="p-2">
+          {/* Show Rate / mtr at the top for all submissions as well */}
+          <div className="flex justify-end mb-2">
+            <div className="inline-block rounded-lg bg-orange-100 border border-orange-200 px-4 py-1 text-xs font-semibold text-orange-700">
+              Rate / m: <span className="font-mono">{typeof rate !== 'undefined' && rate !== null ? `₹${Number(rate).toFixed(2)}` : '-'}</span>
+            </div>
+          </div>
           {getAllSubmissionsForTask().length === 0 ? (
             <EmptyState icon="📭" text="No submissions found for any sub-task." />
           ) : (
@@ -2604,70 +2936,132 @@ const SubmissionManagement = () => {
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Program</th>
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Jigar No</th>
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Length</th>
-                    <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">MTR</th>
-                    <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">MTR After Sinkage</th>
-                    <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">MTR After Length Sinkage</th>
+                    <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">MTR<br /><span className="font-normal text-[10px] text-gray-400">(Total)</span></th>
+                    <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">MTR After Sinkage<br /><span className="font-normal text-[10px] text-gray-400">(Total)</span></th>
+                    <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">MTR After Length Sinkage<br /><span className="font-normal text-[10px] text-gray-400">(Total)</span></th>
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Fabric Party</th>
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Receiver Party</th>
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Submitter</th>
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Payment</th>
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Challan No</th>
                     <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Challan Photo</th>
+                    <th className="px-3 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap">Location Status</th>
                     <th className="px-3 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {getAllSubmissionsForTask().map(({ subTask, submission, subTaskIndex, submissionIndex }) => (
-                    <tr
-                      key={`${subTask.subTaskId || subTask._id || subTaskIndex}-${submissionIndex}`}
-                      className="border-t border-orange-100 hover:bg-orange-50/30 transition-colors"
-                    >
-                      <td className="px-3 py-2 font-mono text-[10px] text-gray-400 whitespace-nowrap">#{submissionIndex + 1}</td>
-                      <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
-                        <span className="bg-orange-50 border border-orange-100 rounded-full px-3 py-1">{subTask.subTaskId ?? subTask._id ?? '-'}</span>
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{subTask.program ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-700">{subTask.jigarNo ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{submission.length ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{submission.MTR ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{computeSubTaskMtrAfterSinkage(submission.MTR, taskData?.sinkage)}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {computeSubTaskMtrAfterLengthSinkage(
-                          submission.MTR,
-                          taskData?.sinkage,
-                          submission.length ?? subTask.length ?? taskData?.Length
-                        )}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">{submission.fabricPartyName ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{submission.recieverPartyName ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{submission.submitterName ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{submission.Payment ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{submission.challanNo ?? '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{renderChallanPhotoLink(submission.challanPhotoPath)}</td>
-                      <td className="px-3 py-2 whitespace-nowrap flex items-center gap-1">
-                        <button
-                          type="button"
-                          className="rounded-full border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-600 font-semibold text-xs px-4 py-1.5 transition"
-                          onClick={() => {
-                            setShowAllSubmissions(false)
-                            setSubTaskForSubmissionDetails({ ...subTask, submission, submissionIndex })
-                            setShowSubmissionDetailModal(true)
-                          }}
+                  {/* subtaskIndex-based grouping for missing highlighting */}
+                  {subTasks.map((subTask, subTaskIndex) => {
+                    const submissions = getSubTaskSubmissionsArray(subTask)
+                    const missingStats = getSubTaskMissingStats(subTask, taskData)
+                    const rows = submissions.map((submission, submissionIndex) => {
+                      const mtrValue = Number(submission.MTR);
+                      const mtrAfterSink = computeSubTaskMtrAfterSinkage(submission.MTR, taskData?.sinkage);
+                      const mtrAfterLenSink = computeSubTaskMtrAfterLengthSinkage(
+                        submission.MTR,
+                        taskData?.sinkage,
+                        submission.length ?? subTask.length ?? taskData?.Length
+                      );
+                      const lengthForPercent = submission.length ?? subTask.length ?? taskData?.Length;
+                      return (
+                        <tr
+                          key={`${subTask.subTaskId || subTask._id || subTaskIndex}-${submissionIndex}`}
+                          className={`border-t border-orange-100 ${missingStats.hasMissing ? 'bg-red-100 !hover:bg-red-100' : 'hover:bg-orange-50/30'} transition-colors`}
                         >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          className="ml-1 rounded-full border border-red-200 text-red-600 hover:bg-red-50 p-1.5 transition"
-                          title="Delete submission"
-                          onClick={() => handleSubmissionDelete(subTask, submissionIndex)}
-                          disabled={deleting}
-                        >
-                          <RiDeleteBin5Line size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                          <td className="px-3 py-2 font-mono text-[10px] text-gray-400 whitespace-nowrap">#{submissionIndex + 1}</td>
+                          <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
+                            <span className="bg-orange-50 border border-orange-100 rounded-full px-3 py-1">{subTask.subTaskId ?? subTask._id ?? '-'}</span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">{subTask.program ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-700">{subTask.jigarNo ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{submission.length ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {submission.MTR ?? '-'}
+                            <br />
+                            <span className="text-xs text-orange-700 font-semibold">
+                              {typeof rate !== "undefined" && !isNaN(Number(mtrValue)) && rate
+                                ? `₹${(Number(mtrValue) * Number(rate)).toFixed(2)}`
+                                : ''}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {mtrAfterSink}
+                            {renderSinkagePercent(taskData?.sinkage)}
+                            <br />
+                            <span className="text-xs text-orange-700 font-semibold">
+                              {typeof rate !== "undefined" && !isNaN(Number(mtrAfterSink)) && mtrAfterSink && rate
+                                ? `₹${(Number(mtrAfterSink) * Number(rate)).toFixed(2)}`
+                                : ''}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {mtrAfterLenSink}
+                            {renderTotalSinkagePercent(taskData?.sinkage, lengthForPercent)}
+                            <br />
+                            <span className="text-xs text-orange-700 font-semibold">
+                              {typeof rate !== "undefined" && !isNaN(Number(mtrAfterLenSink)) && mtrAfterLenSink && rate
+                                ? `₹${(Number(mtrAfterLenSink) * Number(rate)).toFixed(2)}`
+                                : ''}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">{submission.fabricPartyName ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{submission.recieverPartyName ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{submission.submitterName ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{submission.Payment ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{submission.challanNo ?? '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{renderChallanPhotoLink(submission.challanPhotoPath)}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <span className={
+                              "rounded-lg text-xs px-2 py-0.5 font-bold " +
+                              (submission.locationStatus === "missing"
+                                ? "bg-red-300 text-red-900 border border-red-400"
+                                : "bg-green-100 text-green-700 border border-green-200"
+                              )
+                            }>
+                              {submission.locationStatus === "missing" ? "Missing" : (submission.locationStatus || "Warehouse")}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="rounded-full border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-600 font-semibold text-xs px-4 py-1.5 transition"
+                              onClick={() => {
+                                setShowAllSubmissions(false)
+                                setSubTaskForSubmissionDetails({ ...subTask, submission, submissionIndex })
+                                setShowSubmissionDetailModal(true)
+                              }}
+                            >
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              className="ml-1 rounded-full border border-red-200 text-red-600 hover:bg-red-50 p-1.5 transition"
+                              title="Delete submission"
+                              onClick={() => handleSubmissionDelete(subTask, submissionIndex)}
+                              disabled={deleting}
+                            >
+                              <RiDeleteBin5Line size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    });
+                    // Insert missing summary only if needed
+                    if (missingStats.hasMissing) {
+                      return (
+                        <React.Fragment key={"missing-row-"+(subTask.subTaskId || subTask._id || subTaskIndex)}>
+                          {rows}
+                          <tr className="bg-red-200">
+                            <td colSpan={16} className="py-2 text-red-900 text-xs font-bold text-left pl-4">
+                              Missing MTR: {missingStats.missingMTR ?? "-"} 
+                              {/* | After Sinkage: {missingStats.missingAfterSinkage ?? "-"} | After Length Sinkage: {missingStats.missingAfterLengthSinkage ?? "-"} */}
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      )
+                    }
+                    return rows
+                  })}
                 </tbody>
               </table>
             </div>

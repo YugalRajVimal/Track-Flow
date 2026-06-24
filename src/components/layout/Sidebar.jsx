@@ -25,6 +25,8 @@ const ADMIN_ITEMS = [
   { to: '/offline-data', icon: RiFileListLine, label: 'Offline Data' },
   { to: '/task-data', icon: RiTaskLine, label: 'Task Dropdowns' },
   { to: '/submission-payment-data', icon: RiFileListLine, label: 'Submission Payment Data' },
+  { to: '/payment-data', icon: RiFileListLine, label: 'Payment Data' },
+  { to: '/payment-record', icon: RiFileListLine, label: 'Payment Record' },
 ]
 
 // Task page for handler role
