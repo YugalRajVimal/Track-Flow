@@ -20,6 +20,9 @@ import SubmissionManagement from './pages/Task/SubmissionManagement'
 import SubmissionPaymentData from './pages/Admin/SubmissionPaymentData'
 import PaymentRecord from './pages/Admin/PaymentRecord'
 import PaymentDataPage from './pages/Admin/PaymentData'
+import HandlerDashboard from './pages/Task/Dashboard/Dasboard'
+import SubmissionPaymentPage from './pages/Admin/SubmissionPayments'
+import ColorChemical from './pages/Admin/ColorChemical'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -94,11 +97,7 @@ export default function App() {
           <Route path="awb-management" element={<AWBManagementPage />} />
           <Route path="return-management" element={<ReturnManagementPage />} />
           <Route path="offline-management" element={<OfflineManagementPage />} />
-          <Route path="handler-dashboard" element={<>
-            <div>
-              Handler Dashboard
-            </div>
-          </>} />
+          <Route path="handler-dashboard" element={<HandlerDashboard/>} />
 
           <Route path="task" element={<TaskCreationANdManagement />} />
           <Route path="sub-task" element={<SubTaskManagement />} />
@@ -165,11 +164,28 @@ export default function App() {
            <Route
             path="payment-record"
             element={
-              <AdminRoute>
+
                 <PaymentRecord />
-              </AdminRoute>
+
             }
           />
+            <Route
+            path="color-chemical"
+            element={
+
+                <ColorChemical />
+
+            }
+          />
+        <Route
+          path="submission-payment"
+          element={
+
+              <SubmissionPaymentPage />
+
+          }
+        />
+  
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

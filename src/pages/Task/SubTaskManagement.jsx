@@ -1,13 +1,13 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import toast from 'react-hot-toast'
-import { RiAddCircleLine, RiEdit2Line, RiDeleteBinLine, RiCloseLine, RiCheckLine } from 'react-icons/ri'
+import { RiAddCircleLine, RiEdit2Line, RiDeleteBinLine, RiCloseLine, RiCheckLine, RiFileCopy2Line } from 'react-icons/ri'
 import Modal from '../../components/common/Modal'
 import ConfirmDialog from '../../components/common/ConfirmDialog'
 import axios from 'axios'
 import WorkflowHeader from '../../components/common/WorkflowHeader'
 import NextStepBanner from '../../components/common/NextStepBanner'
-import StatusBadgeTask from '../../components/common/StatusBadgeTask'
+// import StatusBadgeTask from '../../components/common/StatusBadgeTask'
 import EmptyState from '../../components/common/EmptyState'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -17,22 +17,18 @@ const initialSubTask = {
   jigarNo: '',
   mtr: '',
   mtrShort: '',
-  status: 'pending',
+  // status: 'pending', // Removed
   remark: ''
 }
 
-const SUBTASK_STATUS_OPTIONS = [
-  { value: 'pending', text: 'Pending' },
-  { value: 'processing', text: 'Processing' },
-  { value: 'done', text: 'Done' },
-  { value: 'partiallyDone', text: 'Partially Done' },
-]
-
-const SUBTASK_STATUS_TONE = {
-  pending: 'neutral',
-  processing: 'progress',
-  done: 'success',
-  partiallyDone: 'warning',
+// --- Copy to clipboard utility using toast alerts ---
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success('Copied Task ID');
+  } catch (err) {
+    toast.error('Failed to copy');
+  }
 }
 
 const labelClass = 'block text-xs font-bold uppercase tracking-wide text-gray-600 mb-2'
@@ -179,7 +175,7 @@ const SubTaskManagement = () => {
       jigarNo: subTask.jigarNo || '',
       mtr: subTask.mtr !== undefined ? String(subTask.mtr) : '',
       mtrShort: subTask.mtrShort !== undefined ? String(subTask.mtrShort) : '',
-      status: subTask.status || 'pending',
+      // status: subTask.status || 'pending', // Removed
       remark: subTask.remark || ''
     })
     setEditIdx(idx)
@@ -221,6 +217,9 @@ const SubTaskManagement = () => {
       mtr: form.mtr !== '' ? Number(form.mtr) : '',
       mtrShort: form.mtrShort !== '' ? Number(form.mtrShort) : '',
     }
+    // Remove status if present on payload to align with BE
+    delete payload.status
+
     try {
       if (editIdx !== null) {
         await axios.put(`${API_BASE_URL}/tasks/${taskId}/subtasks/${editIdx}`, payload)
@@ -400,6 +399,7 @@ const SubTaskManagement = () => {
     )
   }
 
+  // Remove Status column for subTask grid
   const columns = [
     {
       title: 'SubTask ID',
@@ -434,17 +434,7 @@ const SubTaskManagement = () => {
       render: row => <span className="">{row.mtrShort}</span>,
       width: 100
     },
-    {
-      title: 'Status',
-      key: 'status',
-      render: row => (
-        <StatusBadgeTask
-          label={SUBTASK_STATUS_OPTIONS.find(s => s.value === row.status)?.text || row.status}
-          tone={SUBTASK_STATUS_TONE[row.status] || 'neutral'}
-        />
-      ),
-      width: 130
-    },
+    // Status column removed
     {
       title: 'Remark',
       key: 'remark',
@@ -477,6 +467,23 @@ const SubTaskManagement = () => {
       align: 'center'
     }
   ]
+
+  // CLIPBOARD BUTTON: For taskId and subTaskId copy 
+  const CopyButton = ({ label = 'Copy', value }) => (
+    <button
+      className="ml-2 inline-flex items-center justify-center rounded-full border border-orange-200 text-orange-600 hover:bg-orange-50 active:bg-orange-100 p-1 transition"
+      title={`Copy ${label}`}
+      type="button"
+      onClick={e => {
+        e.stopPropagation();
+        copyToClipboard(value)
+      }}
+      style={{ lineHeight: 1 }}
+      tabIndex={0}
+    >
+      <RiFileCopy2Line size={15} />
+    </button>
+  );
 
   function TaskMetaInfo({ taskMeta }) {
     return (
@@ -514,7 +521,6 @@ const SubTaskManagement = () => {
               <th className="px-4 py-3 text-xs font-bold uppercase text-gray-500">Builty No</th>
               <th className="px-4 py-3 text-xs font-bold uppercase text-gray-500">Total MTR</th>
               <th className="px-4 py-3 text-xs font-bold uppercase text-gray-500"></th>
-
               {/* <th className="px-4 py-3 text-xs font-bold uppercase text-gray-500">Pending Count</th> */}
             </tr>
           </thead>
@@ -539,7 +545,10 @@ const SubTaskManagement = () => {
                       : 'hover:bg-orange-100/50 transition'
                   }`}
                 >
-                  <td className={`px-4 py-2 font-mono text-base font-semibold text-gray-800 whitespace-nowrap`}>{task.taskId}</td>
+                  <td className="px-4 py-2 font-mono text-base font-semibold text-gray-800 whitespace-nowrap flex items-center justify-center">
+                    {task.taskId}
+                    <CopyButton value={task.taskId} label="Task ID" />
+                  </td>
                   <td className="px-4 py-2">{task.FabricType || '-'}</td>
                   <td className="px-4 py-2">{task.partyName || '-'}</td>
                   <td className="px-4 py-2">{task.BuiltyNo || '-'}</td>
@@ -558,11 +567,22 @@ const SubTaskManagement = () => {
                     </button>
                   </td>
                 </tr>
-           
               ))
             )}
           </tbody>
         </table>
+      </div>
+    )
+  }
+
+  // Add Clipboard Button to the top "meta" pane, near the current TaskId
+  const TaskIdDisplayWithCopy = ({ taskId }) => {
+    if (!taskId) return null;
+    return (
+      <div className="flex items-center gap-2 px-3 py-1 bg-white mb-2">
+        <span className="font-mono font-bold text-base text-orange-700">Task ID:</span>
+        <span className="font-mono text-base text-gray-800">{taskId}</span>
+        <CopyButton value={taskId} label="Task ID" />
       </div>
     )
   }
@@ -626,6 +646,8 @@ const SubTaskManagement = () => {
           </button>
         </div>
 
+        <TaskIdDisplayWithCopy taskId={taskId} />
+
         {fetchingTask && <div className="mb-3 text-orange-500 text-sm font-medium text-center">Loading...</div>}
         {error && <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-600 text-sm font-medium text-center">{error}</div>}
 
@@ -638,6 +660,14 @@ const SubTaskManagement = () => {
         {taskId && (
           <div className="mt-2">
             <div className="rounded-3xl border border-gray-200 bg-white shadow-sm flex flex-wrap gap-5 px-7 py-6 mb-6 justify-between">
+              {/* "Task ID" display with copy button at the top */}
+              <div className="flex flex-col min-w-[150px]">
+                <span className="text-xs uppercase font-bold text-gray-400">Task ID</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-base font-bold text-orange-700">{taskId}</span>
+                  <CopyButton value={taskId} label="Task ID" />
+                </div>
+              </div>
               <div className="flex flex-col min-w-[150px]">
                 <span className="text-xs uppercase font-bold text-gray-400">Fabric Type</span>
                 <span className="text-base font-semibold text-gray-900">{taskMeta.FabricType}</span>
@@ -656,7 +686,23 @@ const SubTaskManagement = () => {
               </div>
             </div>
             <SubTaskTable
-              columns={columns}
+              columns={[
+                // Copy-paste with custom SubTask column:
+                {
+                  ...columns[0],
+                  render: row => (
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono text-gray-700 text-xs bg-gray-100 border border-gray-200 rounded-full px-3 py-1">
+                        {row.subTaskId || row._id || '-'}
+                      </span>
+                      {!!row.subTaskId && (
+                        <CopyButton value={row.subTaskId} label="SubTask ID" />
+                      )}
+                    </span>
+                  ),
+                },
+                ...columns.slice(1)
+              ]}
               data={subTasks.slice((pagination.page - 1) * pagination.pageSize, pagination.page * pagination.pageSize)}
               loading={loading}
               striped={true}
@@ -749,19 +795,7 @@ const SubTaskManagement = () => {
                     className={pillInput}
                   />
                 </div>
-                <div className="flex flex-col">
-                  <label className={labelClass}>Status</label>
-                  <select
-                    name="status"
-                    value={form.status}
-                    onChange={handleFormChange}
-                    className={pillInput}
-                  >
-                    {SUBTASK_STATUS_OPTIONS.map(opt =>
-                      <option value={opt.value} key={opt.value}>{opt.text}</option>
-                    )}
-                  </select>
-                </div>
+                {/* Status removed */}
                 <div className="flex flex-col">
                   <label className={labelClass}>Remark</label>
                   <input

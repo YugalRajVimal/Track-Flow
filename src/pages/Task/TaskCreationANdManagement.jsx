@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import axios from "axios";
+import toast from 'react-hot-toast'
 import {
   RiAddLine,
   RiEdit2Line,
@@ -8,13 +9,43 @@ import {
   RiCheckLine,
   RiCloseLine,
   RiUploadCloud2Line,
+  RiEyeLine,
+  RiDownloadLine,
+  RiFileCopy2Line,
 } from "react-icons/ri";
 import WorkflowHeader from "../../components/common/WorkflowHeader";
 import NextStepBanner from "../../components/common/NextStepBanner";
 import StatusBadgeTask from "../../components/common/StatusBadgeTask";
 import EmptyState from "../../components/common/EmptyState";
 
-// -- Modern DataTable, restyled to match the workflow design system --
+// --- Copy to clipboard with toast ---
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success('Copied Task ID');
+  } catch (err) {
+    toast.error('Failed to copy');
+  }
+};
+
+// // Vanilla toast API for demo (uses alert as fallback if toast not found)
+// const toast = {
+//   success: (msg) => {
+//     if (window && window.toast && typeof window.toast.success === "function") {
+//       window.toast.success(msg);
+//     } else {
+//       alert(msg);
+//     }
+//   },
+//   error: (msg) => {
+//     if (window && window.toast && typeof window.toast.error === "function") {
+//       window.toast.error(msg);
+//     } else {
+//       alert(msg);
+//     }
+//   }
+// };
+
 function DataTable({
   columns,
   data,
@@ -96,6 +127,14 @@ function DataTable({
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+function getChallanImageUrl(path) {
+  if (!path) return "";
+  if (/^https?:\/\//.test(path)) return path;
+  let base = (API_BASE_URL || "").replace(/\/$/, "");
+  if (path.startsWith("/")) return `${base}${path}`;
+  return `${base}/${path}`;
+}
+
 const initialGroupData = {
   challanNo: "",
   partyName: "",
@@ -113,10 +152,8 @@ const initialTaskDetail = {
   sinkage: "",
   mtrAfterSinkage: "",
   totalRolls: "",
-  taskStatus: "pending",
 };
 
-// Task detail required fields
 const REQUIRED_TASK_FIELDS = [
   "FabricType",
   "Length",
@@ -148,7 +185,6 @@ const calculateMtrAfterSinkage = (MTR, sinkage) => {
   return result === 0 ? "" : Number(result.toFixed(2));
 };
 
-// -- Shared field styling tokens --
 const labelClass = "block text-xs font-bold uppercase tracking-wide text-gray-600 mb-2";
 const pillInput =
   "w-full rounded-full border border-gray-300 bg-white px-5 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition disabled:bg-gray-50 disabled:text-gray-400";
@@ -156,6 +192,74 @@ const pillInputSm =
   "w-full rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition";
 const fileInput =
   "block w-full text-sm text-gray-600 rounded-xl border border-gray-300 bg-white px-3 py-2.5 file:mr-3 file:rounded-full file:border-0 file:bg-orange-50 file:text-orange-600 file:font-semibold file:px-4 file:py-1.5 file:text-xs hover:file:bg-orange-100";
+
+function ChallanImageModal({ open, onClose, imageUrl }) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={onClose}
+      aria-modal="true"
+      tabIndex={-1}
+    >
+      <div
+        className="bg-white rounded-2xl max-w-[90vw] max-h-[90vh] p-5 shadow-2xl flex flex-col items-center relative"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-orange-500 transition"
+          title="Close"
+        >
+          <RiCloseLine size={28} />
+        </button>
+        <img
+          src={imageUrl}
+          alt="Challan"
+          className="max-h-[70vh] max-w-full border rounded-xl mb-2"
+          crossOrigin="anonymous"
+        />
+        <button
+          type="button"
+          className="inline-flex gap-1 items-center rounded-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 text-xs font-semibold shadow transition mt-2"
+          onClick={async () => {
+            try {
+              const response = await fetch(imageUrl, { mode: "cors" });
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = imageUrl.split("/").pop() || "challan.jpg";
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              window.URL.revokeObjectURL(url);
+            } catch (error) {
+              alert("Failed to download file.");
+            }
+          }}
+        >
+          <RiDownloadLine size={15} /> Download
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const TaskIdWithCopyBtn = ({ taskId }) => (
+  <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold bg-gray-100 text-gray-700 rounded-full px-3 py-1 border border-gray-200">
+    {taskId}
+    <button
+      type="button"
+      title="Copy Task ID"
+      onClick={() => copyToClipboard(taskId)}
+      className="p-1 ml-1 rounded hover:bg-orange-100 text-gray-500 hover:text-orange-600"
+      style={{ lineHeight: 1, verticalAlign: "middle" }}
+    >
+      <RiFileCopy2Line size={14} />
+    </button>
+  </span>
+);
 
 const TaskCreationAndManagement = () => {
   const [dropdowns, setDropdowns] = useState({
@@ -176,11 +280,12 @@ const TaskCreationAndManagement = () => {
   const [editTaskData, setEditTaskData] = useState(null);
   const [message, setMessage] = useState("");
   const [showGroupForm, setShowGroupForm] = useState(true);
-  const [filePreview, setFilePreview] = useState(null); // for UI feedback if needed
+  const [filePreview, setFilePreview] = useState(null);
 
-  // File input ref for create
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [imageModalUrl, setImageModalUrl] = useState(null);
+
   const challanFileInputRef = useRef(null);
-  // File input ref for edit (per-row, only handles one at a time)
   const editChallanFileInputRef = useRef(null);
   const [editChallanFile, setEditChallanFile] = useState(null);
 
@@ -244,7 +349,6 @@ const TaskCreationAndManagement = () => {
     }));
   };
 
-  // New handler for file selection (create)
   const handleGroupFileChange = (e) => {
     const file = e.target.files[0] || null;
     setGroupData((prev) => ({
@@ -254,10 +358,16 @@ const TaskCreationAndManagement = () => {
     setFilePreview(file ? URL.createObjectURL(file) : null);
   };
 
-  // New handler for file selection in edit
   const handleEditFileChange = (e) => {
     const file = e.target.files[0] || null;
     setEditChallanFile(file);
+  };
+
+  const handlePreviewChallanImage = (photoPath) => {
+    if (!photoPath) return;
+    const imageUrl = getChallanImageUrl(photoPath);
+    setImageModalUrl(imageUrl);
+    setImageModalOpen(true);
   };
 
   const handleTaskDetailChange = (idx, e) => {
@@ -284,21 +394,13 @@ const TaskCreationAndManagement = () => {
     setTaskDetails((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Post as multipart/form-data, send file as "file"
   const handleCreateTasks = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
     try {
-      // Validate: Challan Photo file is required
       const createFile = challanFileInputRef.current?.files?.[0];
-      if (!createFile) {
-        setMessage("Challan Photo is required.");
-        setLoading(false);
-        return;
-      }
 
-      // Validate: All taskDetails fields required
       for (let tIdx = 0; tIdx < taskDetails.length; tIdx++) {
         const t = taskDetails[tIdx];
         for (let field of REQUIRED_TASK_FIELDS) {
@@ -323,23 +425,21 @@ const TaskCreationAndManagement = () => {
       );
       const mappedTaskDetails = cleanedTaskDetails.map((t) => ({
         ...t,
-        taskStatus: t.taskStatus || "pending",
         mtrAfterSinkage: calculateMtrAfterSinkage(t.MTR, t.sinkage),
       }));
 
       const formData = new FormData();
-      // Append groupData as JSON string
       formData.append(
         "groupData",
         JSON.stringify({
           ...groupData,
-          challanPhotoPath: undefined, // don't send challanPhotoPath (backend gets file), but keep everything else
+          challanPhotoPath: undefined,
         })
       );
-      // Append taskDetails as JSON string
       formData.append("taskDetails", JSON.stringify(mappedTaskDetails));
-      // Append challan file (mandated above)
-      formData.append("file", createFile);
+      if (createFile) {
+        formData.append("file", createFile);
+      }
 
       await axios.post(`${API_BASE_URL}/tasks`, formData, {
         headers: {
@@ -387,7 +487,6 @@ const TaskCreationAndManagement = () => {
       sinkage: task.sinkage || "",
       mtrAfterSinkage: calculateMtrAfterSinkage(task.MTR, task.sinkage),
       totalRolls: task.totalRolls || "",
-      taskStatus: task.taskStatus || "pending",
     });
     setEditChallanFile(null);
     if (editChallanFileInputRef.current) editChallanFileInputRef.current.value = "";
@@ -407,11 +506,9 @@ const TaskCreationAndManagement = () => {
     });
   };
 
-  // Update sends as multipart/form-data with optional file
   const handleSaveEdit = async (e) => {
     if (e) e.preventDefault();
 
-    // Validate edit fields
     for (let field of REQUIRED_TASK_FIELDS) {
       if (
         editTaskData[field] === "" ||
@@ -432,7 +529,6 @@ const TaskCreationAndManagement = () => {
           editTaskData.MTR,
           editTaskData.sinkage
         ),
-        taskStatus: editTaskData.taskStatus || "pending",
       };
 
       const formData = new FormData();
@@ -472,30 +568,54 @@ const TaskCreationAndManagement = () => {
   const renderPhotoCell = (path) => {
     if (!path) return <span className="text-gray-300 text-xs">—</span>;
     if (path.startsWith("/uploads/")) {
+      const imageUrl = getChallanImageUrl(path);
       return (
-        <a
-          href={API_BASE_URL ? `${API_BASE_URL}${path}` : path}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-orange-600 hover:text-orange-700 underline underline-offset-2 text-xs font-medium"
-        >
-          View
-        </a>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => handlePreviewChallanImage(path)}
+            type="button"
+            className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700 underline underline-offset-2 text-xs font-medium"
+            title="Preview"
+          >
+            <RiEyeLine size={15} /> View
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700 underline underline-offset-2 text-xs font-medium"
+            title="Download"
+            onClick={async (e) => {
+              e.preventDefault();
+              try {
+                const response = await fetch(imageUrl, { mode: "cors" });
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = imageUrl.split("/").pop() || "challan.jpg";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+              } catch (error) {
+                alert("Failed to download file.");
+              }
+            }}
+          >
+            <RiDownloadLine size={13} /> Download
+          </button>
+        </div>
       );
     }
     return <span className="text-xs text-gray-400">{path}</span>;
   };
 
-  // --- Columns for DataTable ---
   const columns = useMemo(
     () => [
       {
         title: "Task ID",
         accessor: "taskId",
         render: (row) => (
-          <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 rounded-full px-3 py-1 border border-gray-200">
-            {row.taskId}
-          </span>
+          <TaskIdWithCopyBtn taskId={row.taskId} />
         ),
       },
       { title: "Challan No", accessor: "challanNo" },
@@ -519,18 +639,6 @@ const TaskCreationAndManagement = () => {
         cellClassName: "text-orange-600 font-semibold",
       },
       { title: "Total Rolls", accessor: "totalRolls" },
-      {
-        title: "Task Status",
-        render: (row) => (
-          <StatusBadgeTask
-            label={
-              TASK_STATUS_OPTIONS.find((opt) => opt.value === row.taskStatus)
-                ?.label ?? row.taskStatus
-            }
-            tone={TASK_STATUS_TONE[row.taskStatus] || "neutral"}
-          />
-        ),
-      },
       { title: "Remark", accessor: "remark" },
       {
         title: "Actions",
@@ -558,10 +666,11 @@ const TaskCreationAndManagement = () => {
     [editId, tasks]
   );
 
-  // -- Inline Edit Row UI --
   const renderEditRow = useCallback(
     (row) => [
-      <td key="taskId" className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{row.taskId}</td>,
+      <td key="taskId" className="px-4 py-3">
+        <TaskIdWithCopyBtn taskId={row.taskId} />
+      </td>,
       <td key="challanNo" className="px-4 py-3">{row.challanNo}</td>,
       <td key="partyName" className="px-4 py-3">{row.partyName}</td>,
       <td key="transportName" className="px-4 py-3">{row.transportName}</td>,
@@ -652,20 +761,6 @@ const TaskCreationAndManagement = () => {
           required
         />
       </td>,
-      <td key="taskStatus" className="px-4 py-3">
-        <select
-          name="taskStatus"
-          value={editTaskData.taskStatus || "pending"}
-          onChange={handleEditTaskChange}
-          className={pillInputSm}
-        >
-          {TASK_STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </td>,
       <td key="remark" className="px-4 py-3 text-gray-600">{tasks.find((t) => t.taskId === editId)?.remark}</td>,
       <td key="rowActions" className="px-4 py-3 whitespace-nowrap">
         <div className="flex flex-col gap-2 min-w-[160px]">
@@ -679,7 +774,6 @@ const TaskCreationAndManagement = () => {
               ref={editChallanFileInputRef}
               onChange={handleEditFileChange}
               className={fileInput}
-              required // require file upload on edit also
             />
             {editChallanFile && (
               <span className="block text-xs text-orange-600 mt-1 font-medium">
@@ -709,8 +803,6 @@ const TaskCreationAndManagement = () => {
     [editTaskData, editId, dropdowns, dropdownsLoading, tasks, editChallanFile]
   );
 
-  // ---- Render page ----
-
   return (
     <div className="min-h-screen bg-white">
       <WorkflowHeader
@@ -718,6 +810,12 @@ const TaskCreationAndManagement = () => {
         topLabel="Fabric Task Workflow"
         title="Task Creation"
         subtitle="Create a challan group, then add one or more fabric task line items under it."
+      />
+
+      <ChallanImageModal
+        open={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        imageUrl={imageModalUrl}
       />
 
       <div className="max-w-6xl mx-auto px-2 md:px-6 sm:px-10 pb-6">
@@ -776,7 +874,7 @@ const TaskCreationAndManagement = () => {
                   </div>
                   <div>
                     <label className={labelClass}>
-                      Transport Name {/* NOT REQUIRED */}
+                      Transport Name
                     </label>
                     <select
                       name="transportName"
@@ -824,7 +922,7 @@ const TaskCreationAndManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Challan Photo <span className="text-orange-500">*</span></label>
+                    <label className={labelClass}>Challan Photo</label>
                     <input
                       type="file"
                       accept="image/*"
@@ -832,12 +930,43 @@ const TaskCreationAndManagement = () => {
                       ref={challanFileInputRef}
                       onChange={handleGroupFileChange}
                       className={fileInput}
-                      required
                     />
                     {filePreview && (
-                      <span className="block text-xs text-orange-600 mt-1.5 font-medium">
-                        File selected
-                      </span>
+                      <>
+                        <span className="block text-xs text-orange-600 mt-1.5 font-medium">
+                          File selected
+                        </span>
+                        <div className="mt-2">
+                          <img
+                            src={filePreview}
+                            alt="Challan Preview"
+                            className="max-h-[120px] rounded-lg border shadow-sm"
+                          />
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 mt-2 text-orange-600 hover:text-orange-700 underline text-xs font-medium"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              try {
+                                const response = await fetch(filePreview, { mode: "cors" });
+                                const blob = await response.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = "challan-preview.jpg";
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                window.URL.revokeObjectURL(url);
+                              } catch (error) {
+                                alert("Failed to download preview.");
+                              }
+                            }}
+                          >
+                            <RiDownloadLine size={13} /> Download Preview
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -871,98 +1000,134 @@ const TaskCreationAndManagement = () => {
                         )}
                       </div>
                       <div className="grid  md:grid-cols-4 gap-3">
-                        <select
-                          name="FabricType"
-                          value={task.FabricType}
-                          onChange={(e) => handleTaskDetailChange(idx, e)}
-                          required
-                          className={pillInputSm}
-                          disabled={dropdownsLoading}
-                        >
-                          <option value="">-- Fabric Type --</option>
-                          {dropdowns.fabricType.map((ft) => (
-                            <option key={ft} value={ft}>
-                              {ft}
+                        <div className="flex flex-col">
+                          <label className="text-xs font-medium mb-1">
+                            Fabric Type{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="FabricType"
+                            value={task.FabricType}
+                            onChange={(e) => handleTaskDetailChange(idx, e)}
+                            required
+                            className={pillInputSm}
+                            disabled={dropdownsLoading}
+                          >
+                            <option value="" disabled>
+                              Fabric Type
                             </option>
-                          ))}
-                        </select>
-                        <select
-                          name="Length"
-                          value={task.Length}
-                          onChange={(e) => handleTaskDetailChange(idx, e)}
-                          required
-                          className={pillInputSm}
-                          disabled={dropdownsLoading}
-                        >
-                          <option value="">-- Length --</option>
-                          {dropdowns.length.map((len) => (
-                            <option key={len} value={len}>
-                              {len}
+                            {dropdowns.fabricType.map((ft) => (
+                              <option key={ft} value={ft}>
+                                {ft}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs font-medium mb-1">
+                            Length{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="Length"
+                            value={task.Length}
+                            onChange={(e) => handleTaskDetailChange(idx, e)}
+                            required
+                            className={pillInputSm}
+                            disabled={dropdownsLoading}
+                          >
+                            <option value="" disabled>
+                              Length
                             </option>
-                          ))}
-                        </select>
-                        <input
-                          name="BuiltyNo"
-                          value={task.BuiltyNo}
-                          onChange={(e) => handleTaskDetailChange(idx, e)}
-                          placeholder="Builty No"
-                          className={pillInputSm}
-                          required
-                        />
-                        <input
-                          name="MTR"
-                          type="number"
-                          value={task.MTR}
-                          onChange={(e) => handleTaskDetailChange(idx, e)}
-                          placeholder="MTR"
-                          className={pillInputSm}
-                          required
-                        />
-                        <select
-                          name="sinkage"
-                          value={task.sinkage}
-                          onChange={(e) => handleTaskDetailChange(idx, e)}
-                          className={pillInputSm}
-                          disabled={dropdownsLoading}
-                          required
-                        >
-                          <option value="">-- Sinkage (%) --</option>
-                          {dropdowns.sinkage.map((sk) => (
-                            <option key={sk} value={sk}>
-                              {sk}
+                            {dropdowns.length.map((len) => (
+                              <option key={len} value={len}>
+                                {len}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs font-medium mb-1">
+                            Builty No{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            name="BuiltyNo"
+                            value={task.BuiltyNo}
+                            onChange={(e) => handleTaskDetailChange(idx, e)}
+                            placeholder="Builty No"
+                            className={pillInputSm}
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs font-medium mb-1">
+                            MTR{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            name="MTR"
+                            type="number"
+                            value={task.MTR}
+                            onChange={(e) => handleTaskDetailChange(idx, e)}
+                            placeholder="MTR"
+                            className={pillInputSm}
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs font-medium mb-1">
+                            Sinkage (%){" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="sinkage"
+                            value={task.sinkage}
+                            onChange={(e) => handleTaskDetailChange(idx, e)}
+                            className={pillInputSm}
+                            disabled={dropdownsLoading}
+                            required
+                          >
+                            <option value="" disabled>
+                              Sinkage (%)
                             </option>
-                          ))}
-                        </select>
-                        <input
-                          name="mtrAfterSinkage"
-                          value={task.mtrAfterSinkage}
-                          readOnly
-                          title="Calculated: MTR - (MTR × Sinkage % / 100)"
-                          className="rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-sm text-gray-500"
-                          placeholder="MTR After Sinkage"
-                        />
-                        <input
-                          name="totalRolls"
-                          type="number"
-                          value={task.totalRolls}
-                          onChange={(e) => handleTaskDetailChange(idx, e)}
-                          placeholder="Total Rolls"
-                          className={pillInputSm}
-                          required
-                        />
-                        <select
-                          name="taskStatus"
-                          value={task.taskStatus || "pending"}
-                          onChange={(e) => handleTaskDetailChange(idx, e)}
-                          required
-                          className={pillInputSm}
-                        >
-                          {TASK_STATUS_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                            {dropdowns.sinkage.map((sk) => (
+                              <option key={sk} value={sk}>
+                                {sk}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs font-medium mb-1">
+                            MTR After Sinkage{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            name="mtrAfterSinkage"
+                            value={task.mtrAfterSinkage}
+                            readOnly
+                            title="Calculated: MTR - (MTR × Sinkage % / 100)"
+                            className="rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-sm text-gray-500"
+                            placeholder="MTR After Sinkage"
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs font-medium mb-1">
+                            Total Rolls{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            name="totalRolls"
+                            type="number"
+                            value={task.totalRolls}
+                            onChange={(e) => handleTaskDetailChange(idx, e)}
+                            placeholder="Total Rolls"
+                            className={pillInputSm}
+                            required
+                          />
+                        </div>
                       </div>
                       <div className="mt-2 text-xs text-gray-400 pl-1">
                         <em>

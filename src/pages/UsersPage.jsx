@@ -24,6 +24,7 @@ const styles = {
   tagInactive: 'text-black bg-white border-black/10' // Black/white
 }
 
+// --- Add paymentDepartmentPasscode to User Fields ---
 const USER_FIELDS = [
   { name: 'name', label: 'Full Name', required: true, placeholder: 'John Doe' },
   { name: 'email', label: 'Email', type: 'email', required: true, placeholder: 'john@example.com' },
@@ -34,6 +35,20 @@ const USER_FIELDS = [
   {
     name: 'passcode', label: 'Passcode', type: 'text', required: true, placeholder: 'e.g. 12345',
     validation: { pattern: { value: /^\d{5}$/, message: 'Passcode must be exactly 5 digits' } }
+  },
+  {
+    name: 'paymentDepartmentPasscode',
+    label: 'Payment Dept Passcode',
+    type: 'text',
+    required: false,
+    placeholder: 'e.g. pay123',
+    validation: {
+      pattern: {
+        value: /^[a-zA-Z0-9]{5,16}$/,
+        message: '5-16 alphanumeric characters',
+      },
+    },
+    helpText: 'Leave blank if not assigning payment department access'
   },
   {
     name: 'role', label: 'Role', type: 'select', required: true,
@@ -77,6 +92,7 @@ export default function UsersPage() {
         const payload = { ...data }
         if (!payload.password) delete payload.password
         if (!payload.passcode) delete payload.passcode
+        if (!payload.paymentDepartmentPasscode) delete payload.paymentDepartmentPasscode
         await usersAPI.update(editing._id, payload)
         toast.success('User updated')
       } else {
@@ -116,6 +132,11 @@ export default function UsersPage() {
     { key: 'email', label: 'Email', render: v => <span className={`${styles.labelSecondary} text-xs`}>{v}</span> },
     {
       key: 'passcode', label: 'Passcode',
+      render: v => <span className="text-xs">{v ? v : <span className={styles.muted}>—</span>}</span>
+    },
+    // Add Payment Department Passcode column
+    {
+      key: 'paymentDepartmentPasscode', label: 'Payment Dept Passcode',
       render: v => <span className="text-xs">{v ? v : <span className={styles.muted}>—</span>}</span>
     },
     {
@@ -180,6 +201,8 @@ export default function UsersPage() {
               f.name === 'password'
                 ? { ...f, required: false }
                 : f.name === 'passcode'
+                ? { ...f, required: false }
+                : f.name === 'paymentDepartmentPasscode'
                 ? { ...f, required: false }
                 : f
             )

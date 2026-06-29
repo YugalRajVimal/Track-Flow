@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   RiDashboardLine, RiBarcodeLine, RiFileListLine, RiUserLine, RiShieldCheckLine, RiLogoutBoxLine,
-  RiCloseLine, RiShip2Line, RiTeamLine, RiArrowLeftSLine, RiArrowRightSLine, RiTaskLine
+  RiCloseLine, RiShip2Line, RiTeamLine, RiArrowLeftSLine, RiArrowRightSLine, RiTaskLine, RiArrowDownSLine, RiArrowUpSLine
 } from 'react-icons/ri'
 import { useAuthStore } from '../../store/authStore'
 
@@ -15,7 +15,15 @@ const NAV_ITEMS = [
   { to: '/awb-management', icon: RiBarcodeLine, label: 'Dispatch Management' },
   { to: '/return-management', icon: RiCloseLine, label: 'Return Management' },
   { to: '/offline-management', icon: RiShip2Line, label: 'Offline Management' },
-  // { to: '/audit-logs', icon: RiFileListLine, label: 'Audit Logs' },
+  // Payment links removed; now live in Payment Department
+  // { to: '/payment-record', icon: RiFileListLine, label: 'Payment Record' },
+  // { to: '/submission-payment', icon: RiFileListLine, label: 'Submission Payment' },
+]
+
+const PAYMENT_ITEMS = [
+  { to: '/payment-record', icon: RiFileListLine, label: 'Payment Record' },
+  { to: '/submission-payment', icon: RiFileListLine, label: 'Submission Payment' },
+  { to: '/color-chemical', icon: RiFileListLine, label: 'Color Chemical' },
 ]
 
 const ADMIN_ITEMS = [ 
@@ -27,6 +35,7 @@ const ADMIN_ITEMS = [
   { to: '/submission-payment-data', icon: RiFileListLine, label: 'Submission Payment Data' },
   { to: '/payment-data', icon: RiFileListLine, label: 'Payment Data' },
   { to: '/payment-record', icon: RiFileListLine, label: 'Payment Record' },
+  { to: '/submission-payment', icon: RiFileListLine, label: 'Submission Payment' },
 ]
 
 // Task page for handler role
@@ -64,6 +73,14 @@ export default function Sidebar({ open, onClose }) {
   const isAdmin = user?.role === 'admin'
   const isHandler = user?.role === 'handler'
   const [collapsed, setCollapsed] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(false) // for Payment Department collapse
+
+  // Expand Payment Department if current path is in Payment Department routes
+  useEffect(() => {
+    if (PAYMENT_ITEMS.some(item => location.pathname.startsWith(item.to))) {
+      setPaymentOpen(false)
+    }
+  }, [location.pathname])
 
   // Redirect handler to /handler-dashboard if they land on /
   useEffect(() => {
@@ -176,6 +193,83 @@ export default function Sidebar({ open, onClose }) {
                   {!collapsed && <span className="text-black">{label}</span>}
                 </NavLink>
               ))}
+
+              {/* Collapsable Payment Department section */}
+              <div>
+                <button
+                  onClick={() => setPaymentOpen(o => !o)}
+                  className={`
+                    flex items-center w-full gap-2 px-4 py-2 rounded-xl
+                    ${collapsed ? "justify-center px-2" : "justify-between"}
+                    hover:bg-black/5 transition-colors mb-1 group
+                  `}
+                  style={{ outline: "none", border: "none", background: "transparent" }}
+                  tabIndex={0}
+                  aria-expanded={paymentOpen}
+                  aria-controls="payment-department-nav"
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="flex items-center justify-center rounded-full p-2"
+                      style={{ background: BRAND_ORANGE }}
+                    >
+                      <RiFileListLine className="text-lg flex-shrink-0" color="#fff" />
+                    </span>
+                    {!collapsed && (
+                      <span className="text-black text-left font-semibold">
+                        Payment Department
+                      </span>
+                    )}
+                  </span>
+                  {!collapsed && (
+                    <span className="ml-auto">
+                      {paymentOpen ? (
+                        <RiArrowUpSLine className="text-lg text-black/50" />
+                      ) : (
+                        <RiArrowDownSLine className="text-lg text-black/50" />
+                      )}
+                    </span>
+                  )}
+                </button>
+                <AnimatePresence initial={false}>
+                  {paymentOpen && (
+                    <motion.div
+                      id="payment-department-nav"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className={`overflow-hidden ${collapsed ? 'pl-0' : 'pl-8'}`}
+                    >
+                      {PAYMENT_ITEMS.map(({ to, icon: Icon, label }) => (
+                        <NavLink
+                          key={to}
+                          to={to}
+                          onClick={onClose}
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-1 mt-0.5
+                            ${collapsed ? "justify-center px-2" : ""}
+                            ${
+                              isActive
+                                ? sidebarColors.navActiveBg + " " + sidebarColors.navActiveText + " border " + sidebarColors.borderBrand
+                                : sidebarColors.navInactiveText + " " + sidebarColors.navHoverBg + " " + sidebarColors.navHoverText
+                            }`
+                          }
+                          style={collapsed ? { justifyContent: "center" } : {}}
+                        >
+                          <span
+                            className='flex items-center justify-center rounded-full p-2'
+                            style={{ background: BRAND_ORANGE }}
+                          >
+                            <Icon className="text-lg flex-shrink-0" color="#fff" />
+                          </span>
+                          {!collapsed && <span className="text-black">{label}</span>}
+                        </NavLink>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </>
           )}
         </div>
