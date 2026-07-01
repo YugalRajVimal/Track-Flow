@@ -23,7 +23,7 @@ const NAV_ITEMS = [
 const PAYMENT_ITEMS = [
   { to: '/payment-record', icon: RiFileListLine, label: 'Payment Record' },
   { to: '/submission-payment', icon: RiFileListLine, label: 'Submission Payment' },
-  { to: '/color-chemical', icon: RiFileListLine, label: 'Color Chemical' },
+ 
 ]
 
 const ADMIN_ITEMS = [ 
@@ -44,6 +44,7 @@ const HANDLER_ITEMS = [
   { to: '/task', icon: RiTaskLine, label: 'Fabric In' },
   { to: '/sub-task', icon: RiTaskLine, label: 'Production Process' },
   { to: '/sub-task-submission', icon: RiTaskLine, label: 'Fabric Submission' },
+  { to: '/color-chemical', icon: RiFileListLine, label: 'Color Chemical' },
 ]
 
 const sidebarColors = {
@@ -138,37 +139,8 @@ export default function Sidebar({ open, onClose }) {
         <div className="mb-3">
           {/* Handler: ONLY show 1 Task link */}
           {isHandler ? (
-            HANDLER_ITEMS.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-1 ${
-                    collapsed ? "justify-center px-2" : ""
-                  } ${
-                    isActive
-                      ? sidebarColors.navActiveBg + " " + sidebarColors.navActiveText + " border " + sidebarColors.borderBrand
-                      : sidebarColors.navInactiveText + " " + sidebarColors.navHoverBg + " " + sidebarColors.navHoverText
-                  }`
-                }
-                style={collapsed ? { justifyContent: "center" } : {}}
-              >
-                <span
-                  className='flex items-center justify-center rounded-full p-2'
-                  style={{ background: BRAND_ORANGE }}
-                >
-                  <Icon className="text-lg flex-shrink-0" color="#fff" />
-                </span>
-                {!collapsed && <span className="text-black">{label}</span>}
-              </NavLink>
-            ))
-          ) : (
             <>
-              {!collapsed && (
-                <p className="text-xs font-semibold text-black/50 uppercase tracking-wider px-3 mb-2">Main</p>
-              )}
-              {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+              {HANDLER_ITEMS.map(({ to, icon: Icon, label }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -194,8 +166,8 @@ export default function Sidebar({ open, onClose }) {
                 </NavLink>
               ))}
 
-              {/* Collapsable Payment Department section */}
-              <div>
+                {/* Collapsable Payment Department section */}
+                <div>
                 <button
                   onClick={() => setPaymentOpen(o => !o)}
                   className={`
@@ -270,6 +242,40 @@ export default function Sidebar({ open, onClose }) {
                   )}
                 </AnimatePresence>
               </div>
+            </>
+       
+          ) : (
+            <>
+              {!collapsed && (
+                <p className="text-xs font-semibold text-black/50 uppercase tracking-wider px-3 mb-2">Main</p>
+              )}
+              {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-1 ${
+                      collapsed ? "justify-center px-2" : ""
+                    } ${
+                      isActive
+                        ? sidebarColors.navActiveBg + " " + sidebarColors.navActiveText + " border " + sidebarColors.borderBrand
+                        : sidebarColors.navInactiveText + " " + sidebarColors.navHoverBg + " " + sidebarColors.navHoverText
+                    }`
+                  }
+                  style={collapsed ? { justifyContent: "center" } : {}}
+                >
+                  <span
+                    className='flex items-center justify-center rounded-full p-2'
+                    style={{ background: BRAND_ORANGE }}
+                  >
+                    <Icon className="text-lg flex-shrink-0" color="#fff" />
+                  </span>
+                  {!collapsed && <span className="text-black">{label}</span>}
+                </NavLink>
+              ))}
+
+            
             </>
           )}
         </div>

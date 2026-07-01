@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import axios from "axios";
-import toast from 'react-hot-toast'
+import toast from "react-hot-toast";
 import {
   RiAddLine,
   RiEdit2Line,
@@ -12,39 +12,22 @@ import {
   RiEyeLine,
   RiDownloadLine,
   RiFileCopy2Line,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
 } from "react-icons/ri";
 import WorkflowHeader from "../../components/common/WorkflowHeader";
 import NextStepBanner from "../../components/common/NextStepBanner";
-import StatusBadgeTask from "../../components/common/StatusBadgeTask";
 import EmptyState from "../../components/common/EmptyState";
 
 // --- Copy to clipboard with toast ---
 const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success('Copied Task ID');
+    toast.success("Copied Task ID");
   } catch (err) {
-    toast.error('Failed to copy');
+    toast.error("Failed to copy");
   }
 };
-
-// // Vanilla toast API for demo (uses alert as fallback if toast not found)
-// const toast = {
-//   success: (msg) => {
-//     if (window && window.toast && typeof window.toast.success === "function") {
-//       window.toast.success(msg);
-//     } else {
-//       alert(msg);
-//     }
-//   },
-//   error: (msg) => {
-//     if (window && window.toast && typeof window.toast.error === "function") {
-//       window.toast.error(msg);
-//     } else {
-//       alert(msg);
-//     }
-//   }
-// };
 
 function DataTable({
   columns,
@@ -70,7 +53,9 @@ function DataTable({
             {columns.map((col) => (
               <th
                 key={col.accessor || col.key || col.title}
-                className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap ${col.className || ""}`}
+                className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500 whitespace-nowrap ${
+                  col.className || ""
+                }`}
                 style={col.style}
               >
                 {col.title}
@@ -81,7 +66,10 @@ function DataTable({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={columns.length} className="py-14 text-center text-orange-400 font-medium">
+              <td
+                colSpan={columns.length}
+                className="py-14 text-center text-orange-400 font-medium"
+              >
                 Loading...
               </td>
             </tr>
@@ -94,18 +82,25 @@ function DataTable({
           ) : (
             data.map((row, idx) =>
               editRowId && editRowId === (row[rowKey] ?? row.id) ? (
-                <tr key={row[rowKey] ?? row.id ?? idx} className="bg-orange-50/60">
+                <tr
+                  key={row[rowKey] ?? row.id ?? idx}
+                  className="bg-orange-50/60"
+                >
                   {editRowRender(row)}
                 </tr>
               ) : (
                 <tr
                   key={row[rowKey] ?? row.id ?? idx}
-                  className={`${striped && idx % 2 === 1 ? "bg-gray-50/60" : ""} border-b border-gray-100 hover:bg-orange-50/40 transition-colors`}
+                  className={`${
+                    striped && idx % 2 === 1 ? "bg-gray-50/60" : ""
+                  } border-b border-gray-100 hover:bg-orange-50/40 transition-colors`}
                 >
                   {columns.map((col, cidx) => (
                     <td
                       key={col.accessor || col.key || cidx}
-                      className={`px-4 py-3 align-middle whitespace-nowrap ${col.cellClassName || ""}`}
+                      className={`px-4 py-3 align-middle whitespace-nowrap ${
+                        col.cellClassName || ""
+                      }`}
                       style={col.cellStyle}
                     >
                       {col.render
@@ -150,7 +145,6 @@ const initialTaskDetail = {
   BuiltyNo: "",
   MTR: "",
   sinkage: "",
-  mtrAfterSinkage: "",
   totalRolls: "",
 };
 
@@ -163,29 +157,16 @@ const REQUIRED_TASK_FIELDS = [
   "totalRolls",
 ];
 
-const TASK_STATUS_OPTIONS = [
-  { value: "pending", label: "Pending" },
-  { value: "processing", label: "Processing" },
-  { value: "done", label: "Done" },
-  { value: "partiallyDone", label: "Partially Done" },
-];
-
-const TASK_STATUS_TONE = {
-  pending: "neutral",
-  processing: "progress",
-  done: "success",
-  partiallyDone: "warning",
-};
-
-const calculateMtrAfterSinkage = (MTR, sinkage) => {
+const calculateMtrL100 = (MTR, Length) => {
   const mtrNum = parseFloat(MTR);
-  const sinkageNum = parseFloat(sinkage);
-  if (isNaN(mtrNum) || isNaN(sinkageNum)) return "";
-  const result = mtrNum - (mtrNum * sinkageNum) / 100;
+  const lengthNum = parseFloat(Length);
+  if (isNaN(mtrNum) || isNaN(lengthNum)) return "";
+  const result = mtrNum - (mtrNum * (100 - lengthNum)) / 100;
   return result === 0 ? "" : Number(result.toFixed(2));
 };
 
-const labelClass = "block text-xs font-bold uppercase tracking-wide text-gray-600 mb-2";
+const labelClass =
+  "block text-xs font-bold uppercase tracking-wide text-gray-600 mb-2";
 const pillInput =
   "w-full rounded-full border border-gray-300 bg-white px-5 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition disabled:bg-gray-50 disabled:text-gray-400";
 const pillInputSm =
@@ -204,7 +185,7 @@ function ChallanImageModal({ open, onClose, imageUrl }) {
     >
       <div
         className="bg-white rounded-2xl max-w-[90vw] max-h-[90vh] p-5 shadow-2xl flex flex-col items-center relative"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
@@ -261,6 +242,22 @@ const TaskIdWithCopyBtn = ({ taskId }) => (
   </span>
 );
 
+// Filter and pagination defaults
+const defaultFilters = {
+  dateFrom: "",
+  dateTo: "",
+  partyName: "",
+  transportName: "",
+  receiverName: "",
+  fabricType: "",
+};
+const pageSizeOptions = [5, 10, 20, 50, 100];
+
+const defaultPagination = {
+  page: 1,
+  pageSize: 10,
+};
+
 const TaskCreationAndManagement = () => {
   const [dropdowns, setDropdowns] = useState({
     partyName: [],
@@ -274,6 +271,7 @@ const TaskCreationAndManagement = () => {
   const [groupData, setGroupData] = useState(initialGroupData);
   const [taskDetails, setTaskDetails] = useState([{ ...initialTaskDetail }]);
   const [tasks, setTasks] = useState([]);
+  const [tasksTotal, setTasksTotal] = useState(0); // <--- pagination support
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -289,15 +287,22 @@ const TaskCreationAndManagement = () => {
   const editChallanFileInputRef = useRef(null);
   const [editChallanFile, setEditChallanFile] = useState(null);
 
+  const [filters, setFilters] = useState({ ...defaultFilters });
+  const [pagination, setPagination] = useState({ ...defaultPagination });
+
+  // We fetch dropdowns once, but fetchTasks anytime filters/pagination change
   useEffect(() => {
-    fetchTasks();
     fetchDropdownsAndTasks();
     // eslint-disable-next-line
   }, []);
 
+  useEffect(() => {
+    fetchTasks();
+    // eslint-disable-next-line
+  }, [filters, pagination.page, pagination.pageSize]);
+
   const fetchDropdownsAndTasks = async () => {
     setDropdownsLoading(true);
-    setFetching(true);
     try {
       const res = await axios.get(`${API_BASE_URL}/tasks/dropdowns`);
       const d = res.data.data || {};
@@ -311,7 +316,7 @@ const TaskCreationAndManagement = () => {
       });
     } catch (err) {
       setMessage(
-        "Failed to load dropdowns/tasks: " +
+        "Failed to load dropdowns: " +
           (err?.response?.data?.message || err.message)
       );
       setDropdowns({
@@ -324,14 +329,26 @@ const TaskCreationAndManagement = () => {
       });
     }
     setDropdownsLoading(false);
-    setFetching(false);
   };
 
   const fetchTasks = async () => {
     setFetching(true);
+    setMessage("");
     try {
-      const res = await axios.get(`${API_BASE_URL}/tasks`);
+      // Collect filter values for API params
+      const params = {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
+        ...(filters.dateTo && { dateTo: filters.dateTo }),
+        ...(filters.partyName && { partyName: filters.partyName }),
+        ...(filters.transportName && { transportName: filters.transportName }),
+        ...(filters.receiverName && { receiverName: filters.receiverName }),
+        ...(filters.fabricType && { fabricType: filters.fabricType }),
+      };
+      const res = await axios.get(`${API_BASE_URL}/tasks`, { params });
       setTasks(res.data.data || []);
+      setTasksTotal(res.data.total || 0);
     } catch (err) {
       setMessage(
         "Failed to fetch tasks: " +
@@ -375,12 +392,6 @@ const TaskCreationAndManagement = () => {
     setTaskDetails((prev) => {
       const updated = [...prev];
       let newTask = { ...updated[idx], [name]: value };
-      if (name === "MTR" || name === "sinkage") {
-        newTask.mtrAfterSinkage = calculateMtrAfterSinkage(
-          newTask.MTR,
-          newTask.sinkage
-        );
-      }
       updated[idx] = newTask;
       return updated;
     });
@@ -410,7 +421,10 @@ const TaskCreationAndManagement = () => {
             t[field] === undefined
           ) {
             setMessage(
-              `Task Detail #${tIdx + 1}: ${field.replace(/([a-z])([A-Z])/g, '$1 $2')} is required.`
+              `Task Detail #${tIdx + 1}: ${field.replace(
+                /([a-z])([A-Z])/g,
+                "$1 $2"
+              )} is required.`
             );
             setLoading(false);
             return;
@@ -425,7 +439,6 @@ const TaskCreationAndManagement = () => {
       );
       const mappedTaskDetails = cleanedTaskDetails.map((t) => ({
         ...t,
-        mtrAfterSinkage: calculateMtrAfterSinkage(t.MTR, t.sinkage),
       }));
 
       const formData = new FormData();
@@ -451,8 +464,8 @@ const TaskCreationAndManagement = () => {
       setTaskDetails([{ ...initialTaskDetail }]);
       if (challanFileInputRef.current) challanFileInputRef.current.value = "";
       setFilePreview(null);
-      fetchTasks();
-      fetchDropdownsAndTasks();
+      // RE-fetch with filters (effect will re-run)
+      setPagination({ ...pagination, page: 1 });
     } catch (err) {
       setMessage(
         "Failed to create tasks: " +
@@ -467,8 +480,7 @@ const TaskCreationAndManagement = () => {
     try {
       await axios.delete(`${API_BASE_URL}/tasks/${taskId}`);
       setMessage("Task deleted!");
-      fetchTasks();
-      fetchDropdownsAndTasks();
+      setPagination({ ...pagination }); // to force rerender/fetch
     } catch (err) {
       setMessage(
         "Failed to delete: " +
@@ -485,23 +497,17 @@ const TaskCreationAndManagement = () => {
       BuiltyNo: task.BuiltyNo || "",
       MTR: task.MTR || "",
       sinkage: task.sinkage || "",
-      mtrAfterSinkage: calculateMtrAfterSinkage(task.MTR, task.sinkage),
       totalRolls: task.totalRolls || "",
     });
     setEditChallanFile(null);
-    if (editChallanFileInputRef.current) editChallanFileInputRef.current.value = "";
+    if (editChallanFileInputRef.current)
+      editChallanFileInputRef.current.value = "";
   };
 
   const handleEditTaskChange = (e) => {
     const { name, value } = e.target;
     setEditTaskData((prev) => {
       const next = { ...prev, [name]: value };
-      if (name === "MTR" || name === "sinkage") {
-        next.mtrAfterSinkage = calculateMtrAfterSinkage(
-          next.MTR,
-          next.sinkage
-        );
-      }
       return next;
     });
   };
@@ -516,7 +522,10 @@ const TaskCreationAndManagement = () => {
         editTaskData[field] === undefined
       ) {
         setMessage(
-          `${field.replace(/([a-z])([A-Z])/g, "$1 $2")} is required in editing task.`
+          `${field.replace(
+            /([a-z])([A-Z])/g,
+            "$1 $2"
+          )} is required in editing task.`
         );
         return;
       }
@@ -525,12 +534,7 @@ const TaskCreationAndManagement = () => {
     try {
       const editPayload = {
         ...editTaskData,
-        mtrAfterSinkage: calculateMtrAfterSinkage(
-          editTaskData.MTR,
-          editTaskData.sinkage
-        ),
       };
-
       const formData = new FormData();
       formData.append("updateData", JSON.stringify(editPayload));
       if (editChallanFile) {
@@ -546,9 +550,9 @@ const TaskCreationAndManagement = () => {
       setEditId(null);
       setEditTaskData(null);
       setEditChallanFile(null);
-      if (editChallanFileInputRef.current) editChallanFileInputRef.current.value = "";
-      fetchTasks();
-      fetchDropdownsAndTasks();
+      if (editChallanFileInputRef.current)
+        editChallanFileInputRef.current.value = "";
+      setPagination({ ...pagination }); // refetch
     } catch (err) {
       setMessage(
         "Failed to update: " +
@@ -562,7 +566,8 @@ const TaskCreationAndManagement = () => {
     setEditId(null);
     setEditTaskData(null);
     setEditChallanFile(null);
-    if (editChallanFileInputRef.current) editChallanFileInputRef.current.value = "";
+    if (editChallanFileInputRef.current)
+      editChallanFileInputRef.current.value = "";
   };
 
   const renderPhotoCell = (path) => {
@@ -609,14 +614,13 @@ const TaskCreationAndManagement = () => {
     return <span className="text-xs text-gray-400">{path}</span>;
   };
 
+  // Columns: Remove "MTR After Sinkage", add "MTR(L100)"
   const columns = useMemo(
     () => [
       {
         title: "Task ID",
         accessor: "taskId",
-        render: (row) => (
-          <TaskIdWithCopyBtn taskId={row.taskId} />
-        ),
+        render: (row) => <TaskIdWithCopyBtn taskId={row.taskId} />,
       },
       { title: "Challan No", accessor: "challanNo" },
       { title: "Party Name", accessor: "partyName" },
@@ -634,8 +638,8 @@ const TaskCreationAndManagement = () => {
       { title: "MTR", accessor: "MTR" },
       { title: "Sinkage", accessor: "sinkage" },
       {
-        title: "MTR After Sinkage",
-        render: (row) => calculateMtrAfterSinkage(row.MTR, row.sinkage),
+        title: "MTR(L100)",
+        render: (row) => calculateMtrL100(row.MTR, row.Length),
         cellClassName: "text-orange-600 font-semibold",
       },
       { title: "Total Rolls", accessor: "totalRolls" },
@@ -740,15 +744,12 @@ const TaskCreationAndManagement = () => {
           ))}
         </select>
       </td>,
-      <td key="mtrAfterSinkage" className="px-4 py-3">
+      <td key="mtrL100" className="px-4 py-3">
         <input
-          name="mtrAfterSinkage"
-          value={calculateMtrAfterSinkage(
-            editTaskData.MTR,
-            editTaskData.sinkage
-          )}
+          name="mtrL100"
+          value={calculateMtrL100(editTaskData.MTR, editTaskData.Length)}
           readOnly
-          className="w-full rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-500"
+          className="w-full rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-orange-600 font-semibold"
         />
       </td>,
       <td key="totalRolls" className="px-4 py-3">
@@ -761,7 +762,9 @@ const TaskCreationAndManagement = () => {
           required
         />
       </td>,
-      <td key="remark" className="px-4 py-3 text-gray-600">{tasks.find((t) => t.taskId === editId)?.remark}</td>,
+      <td key="remark" className="px-4 py-3 text-gray-600">
+        {tasks.find((t) => t.taskId === editId)?.remark}
+      </td>,
       <td key="rowActions" className="px-4 py-3 whitespace-nowrap">
         <div className="flex flex-col gap-2 min-w-[160px]">
           <div>
@@ -803,6 +806,47 @@ const TaskCreationAndManagement = () => {
     [editTaskData, editId, dropdowns, dropdownsLoading, tasks, editChallanFile]
   );
 
+  // ---- FILTER ROW ----
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({
+      ...prev,
+      page: newPage < 1 ? 1 : newPage > Math.max(Math.ceil(tasksTotal / pagination.pageSize), 1) ? Math.max(Math.ceil(tasksTotal / pagination.pageSize), 1) : newPage,
+    }));
+  };
+
+  const handlePageSizeChange = (e) => {
+    setPagination({ ...pagination, pageSize: Number(e.target.value), page: 1 });
+  };
+
+  // Date range for filter convenience
+  const minDate = useMemo(() => {
+    if (!tasks || tasks.length === 0) return "";
+    let min = tasks[0]?.createdAt || "";
+    tasks.forEach((t) => {
+      if (t.createdAt && t.createdAt < min) min = t.createdAt;
+    });
+    return min.substr(0, 10);
+  }, [tasks]);
+  const maxDate = useMemo(() => {
+    if (!tasks || tasks.length === 0) return "";
+    let max = tasks[0]?.createdAt || "";
+    tasks.forEach((t) => {
+      if (t.createdAt && t.createdAt > max) max = t.createdAt;
+    });
+    return max.substr(0, 10);
+  }, [tasks]);
+
+
   return (
     <div className="min-h-screen bg-white">
       <WorkflowHeader
@@ -836,7 +880,11 @@ const TaskCreationAndManagement = () => {
               </button>
             </div>
             {showGroupForm && (
-              <form onSubmit={handleCreateTasks} className="flex flex-col gap-8" encType="multipart/form-data">
+              <form
+                onSubmit={handleCreateTasks}
+                className="flex flex-col gap-8"
+                encType="multipart/form-data"
+              >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className={labelClass}>
@@ -873,9 +921,7 @@ const TaskCreationAndManagement = () => {
                     </select>
                   </div>
                   <div>
-                    <label className={labelClass}>
-                      Transport Name
-                    </label>
+                    <label className={labelClass}>Transport Name</label>
                     <select
                       name="transportName"
                       value={groupData.transportName}
@@ -948,7 +994,9 @@ const TaskCreationAndManagement = () => {
                             onClick={async (e) => {
                               e.preventDefault();
                               try {
-                                const response = await fetch(filePreview, { mode: "cors" });
+                                const response = await fetch(filePreview, {
+                                  mode: "cors",
+                                });
                                 const blob = await response.blob();
                                 const url = window.URL.createObjectURL(blob);
                                 const a = document.createElement("a");
@@ -1100,17 +1148,15 @@ const TaskCreationAndManagement = () => {
                         </div>
                         <div className="flex flex-col">
                           <label className="text-xs font-medium mb-1">
-                            MTR After Sinkage{" "}
-                            <span className="text-red-500">*</span>
+                            MTR(L100)
                           </label>
                           <input
-                            name="mtrAfterSinkage"
-                            value={task.mtrAfterSinkage}
+                            name="mtrL100"
+                            value={calculateMtrL100(task.MTR, task.Length)}
                             readOnly
-                            title="Calculated: MTR - (MTR × Sinkage % / 100)"
-                            className="rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-sm text-gray-500"
-                            placeholder="MTR After Sinkage"
-                            required
+                            title="Calculated: MTR - [MTR × (100 - Length)%]"
+                            className="rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-sm text-orange-600 font-semibold"
+                            placeholder="MTR(L100)"
                           />
                         </div>
                         <div className="flex flex-col">
@@ -1131,7 +1177,7 @@ const TaskCreationAndManagement = () => {
                       </div>
                       <div className="mt-2 text-xs text-gray-400 pl-1">
                         <em>
-                          MTR After Sinkage = MTR − (MTR × Sinkage&nbsp;% / 100)
+                          MTR(L100) = MTR − [MTR × (100 − Length)%]
                         </em>
                       </div>
                     </div>
@@ -1172,6 +1218,103 @@ const TaskCreationAndManagement = () => {
                 </span>
               )}
             </div>
+            {/* ------- FILTERS ROW ------- */}
+            <div className="mb-6 px-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-2">
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium mb-1">From Date</label>
+                  <input
+                    type="date"
+                    name="dateFrom"
+                    value={filters.dateFrom}
+                    onChange={handleFilterChange}
+                    className={pillInputSm}
+                    min={minDate || undefined}
+                    max={filters.dateTo || undefined}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium mb-1">To Date</label>
+                  <input
+                    type="date"
+                    name="dateTo"
+                    value={filters.dateTo}
+                    onChange={handleFilterChange}
+                    className={pillInputSm}
+                    min={filters.dateFrom || undefined}
+                    max={maxDate || undefined}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium mb-1">Party Name</label>
+                  <select
+                    name="partyName"
+                    value={filters.partyName}
+                    onChange={handleFilterChange}
+                    className={pillInputSm}
+                  >
+                    <option value="">All Parties</option>
+                    {dropdowns.partyName.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium mb-1">
+                    Transport Name
+                  </label>
+                  <select
+                    name="transportName"
+                    value={filters.transportName}
+                    onChange={handleFilterChange}
+                    className={pillInputSm}
+                  >
+                    <option value="">All Transports</option>
+                    {dropdowns.transportName.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium mb-1">
+                    Receiver Name
+                  </label>
+                  <select
+                    name="receiverName"
+                    value={filters.receiverName}
+                    onChange={handleFilterChange}
+                    className={pillInputSm}
+                  >
+                    <option value="">All Receivers</option>
+                    {dropdowns.recieverName.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium mb-1">Fabric Type</label>
+                  <select
+                    name="fabricType"
+                    value={filters.fabricType}
+                    onChange={handleFilterChange}
+                    className={pillInputSm}
+                  >
+                    <option value="">All Types</option>
+                    {dropdowns.fabricType.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
             {message && (
               <div
                 className={`mb-6 px-4 py-3 rounded-2xl text-sm font-medium border ${
@@ -1183,17 +1326,68 @@ const TaskCreationAndManagement = () => {
                 {message}
               </div>
             )}
-            <DataTable
-              columns={columns}
-              data={tasks}
-              loading={fetching}
-              emptyText="No tasks created yet"
-              rowKey="taskId"
-              editRowId={editId}
-              editRowRender={renderEditRow}
-              striped={true}
-              autoHeight={false}
-            />
+
+            <div>
+              <DataTable
+                columns={columns}
+                data={tasks}
+                loading={fetching}
+                emptyText="No tasks found with current filter"
+                rowKey="taskId"
+                editRowId={editId}
+                editRowRender={renderEditRow}
+                striped={true}
+                autoHeight={false}
+              />
+            </div>
+
+            {/* PAGINATION CONTROLS */}
+            <div className="flex flex-wrap items-center justify-between mt-4 gap-3 select-none">
+              <div className="flex gap-2 items-center">
+                <span className="text-xs text-gray-500">Rows per page:</span>
+                <select
+                  className="bg-white py-1 px-3 border border-gray-200 rounded"
+                  value={pagination.pageSize}
+                  onChange={handlePageSizeChange}
+                  style={{ minWidth: "55px" }}
+                >
+                  {pageSizeOptions.map((sz) => (
+                    <option key={sz} value={sz}>
+                      {sz}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2 items-center">
+                <button
+                  className="p-1 rounded border border-gray-200 hover:bg-gray-100 disabled:opacity-60"
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page <= 1}
+                >
+                  <RiArrowLeftSLine />
+                </button>
+                <span className="mx-2">
+                  Page {pagination.page} of{" "}
+                  {Math.max(Math.ceil(tasksTotal / pagination.pageSize), 1)}
+                </span>
+                <button
+                  className="p-1 rounded border border-gray-200 hover:bg-gray-100 disabled:opacity-60"
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page >= Math.ceil(tasksTotal / pagination.pageSize)}
+                >
+                  <RiArrowRightSLine />
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 ml-auto">
+                Showing {(tasks.length === 0 || tasksTotal === 0)
+                  ? 0
+                  : (pagination.page - 1) * pagination.pageSize + 1}
+                {tasks.length !== 0 &&
+                  "- " + ((pagination.page - 1) * pagination.pageSize + tasks.length)}
+                {" "}
+                of {tasksTotal} records
+              </div>
+            </div>
           </div>
         </div>
 
